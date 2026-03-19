@@ -708,8 +708,8 @@ func runTurn(ctx context.Context, al *AgentLoop, ts *turnState, cfg SubTurnConfi
 
 				logger.DebugCF("subturn", "Token budget updated",
 					map[string]any{
-						"turn_id":         ts.turnID,
-						"tokens_used":     usage.TotalTokens,
+						"turn_id":          ts.turnID,
+						"tokens_used":      usage.TotalTokens,
 						"remaining_budget": newBudget,
 					})
 			}

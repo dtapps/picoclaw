@@ -308,6 +308,9 @@ type SubagentTool struct {
 }
 
 func NewSubagentTool(manager *SubagentManager) *SubagentTool {
+	if manager == nil {
+		return &SubagentTool{}
+	}
 	return &SubagentTool{
 		defaultModel: manager.defaultModel,
 		maxTokens:    manager.maxTokens,
@@ -406,5 +409,5 @@ Task: %s`, label, task)
 	}
 
 	// Fallback: spawner not configured
-	return ErrorResult("SubagentTool: spawner not configured - call SetSpawner() during initialization").WithError(fmt.Errorf("spawner not set"))
+	return ErrorResult("Subagent manager not configured").WithError(fmt.Errorf("spawner not set"))
 }
