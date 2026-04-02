@@ -31,7 +31,7 @@ require (
 	github.com/pion/rtp v1.8.7
 	github.com/pion/webrtc/v3 v3.3.6
 	github.com/rivo/tview v0.42.0
-	github.com/rs/zerolog v1.34.0
+	github.com/rs/zerolog v1.35.0
 	github.com/slack-go/slack v0.17.3
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -126,7 +126,7 @@ require (
 	golang.org/x/arch v0.24.0 // indirect
 	golang.org/x/crypto v0.49.0
 	golang.org/x/net v0.52.0
-	golang.org/x/sync v0.20.0 // indirect
+	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.42.0
 )
 
