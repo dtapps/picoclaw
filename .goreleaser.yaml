@@ -19,6 +19,7 @@ builds:
   - id: picoclaw
     env:
       - CGO_ENABLED=0
+      - GOFLAGS=-x
     tags:
       - goolm
       - stdjson
@@ -63,6 +64,7 @@ builds:
     binary: picoclaw-launcher
     env:
       - CGO_ENABLED=0
+      - GOFLAGS=-x
     tags:
       - goolm
       - stdjson
@@ -103,6 +105,7 @@ builds:
     binary: picoclaw-launcher-tui
     env:
       - CGO_ENABLED=0
+      - GOFLAGS=-x
     tags:
       - goolm
       - stdjson
