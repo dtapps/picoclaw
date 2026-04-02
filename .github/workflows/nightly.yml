@@ -83,7 +83,7 @@ jobs:
         with:
           distribution: goreleaser
           version: ~> v2
-          args: release --clean --debug
+          args: --debug release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
