@@ -248,7 +248,6 @@ type AgentDefaults struct {
 	SplitOnMarker             bool               `json:"split_on_marker"                  env:"PICOCLAW_AGENTS_DEFAULTS_SPLIT_ON_MARKER"` // split messages on <|[SPLIT]|> marker
 	ContextManager            string             `json:"context_manager,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER"`
 	ContextManagerConfig      json.RawMessage    `json:"context_manager_config,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER_CONFIG"`
-	SplitOnMarker             bool               `json:"split_on_marker"                 env:"PICOCLAW_AGENTS_DEFAULTS_SPLIT_ON_MARKER"` // split messages on <|[SPLIT]|> marker
 	// OriginalModelName holds the original model name as specified in the config.
 	// This is used to resolve the model name in the model_list configuration.
 	OriginalModelName string `json:"-"`
