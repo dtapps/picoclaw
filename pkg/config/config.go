@@ -299,6 +299,7 @@ type ChannelsConfig struct {
 	Pico       PicoConfig       `json:"pico"        yaml:"pico,omitempty"`
 	PicoClient PicoClientConfig `json:"pico_client" yaml:"pico_client,omitempty"`
 	IRC        IRCConfig        `json:"irc"         yaml:"irc,omitempty"`
+	VK         VKConfig         `json:"vk"          yaml:"vk,omitempty"`
 }
 
 // GroupTriggerConfig controls when the bot responds in group chats.
@@ -554,6 +555,21 @@ type IRCConfig struct {
 	ReasoningChannelID string              `json:"reasoning_channel_id"       yaml:"-"`
 }
 
+type VKConfig struct {
+	Enabled            bool                `json:"enabled"                 yaml:"-"               env:"PICOCLAW_CHANNELS_VK_ENABLED"`
+	Token              SecureString        `json:"token,omitzero"          yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_VK_TOKEN"`
+	GroupID            int                 `json:"group_id"                yaml:"-"               env:"PICOCLAW_CHANNELS_VK_GROUP_ID"`
+	AllowFrom          FlexibleStringSlice `json:"allow_from"              yaml:"-"               env:"PICOCLAW_CHANNELS_VK_ALLOW_FROM"`
+	GroupTrigger       GroupTriggerConfig  `json:"group_trigger,omitempty" yaml:"-"`
+	Typing             TypingConfig        `json:"typing,omitempty"        yaml:"-"`
+	Placeholder        PlaceholderConfig   `json:"placeholder,omitempty"   yaml:"-"`
+	ReasoningChannelID string              `json:"reasoning_channel_id"    yaml:"-"               env:"PICOCLAW_CHANNELS_VK_REASONING_CHANNEL_ID"`
+}
+
+func (c *VKConfig) SetToken(token string) {
+	c.Token = *NewSecureString(token)
+}
+
 type HeartbeatConfig struct {
 	Enabled  bool `json:"enabled"  env:"PICOCLAW_HEARTBEAT_ENABLED"`
 	Interval int  `json:"interval" env:"PICOCLAW_HEARTBEAT_INTERVAL"` // minutes, min 5
@@ -770,13 +786,13 @@ type WebToolsConfig struct {
 	// the client-side web_search tool is hidden to avoid duplicate search surfaces,
 	// and the provider's built-in search is used instead. Falls back to client-side
 	// search when the provider does not support native search.
-	PreferNative bool `json:"prefer_native" yaml:"-" env:"PICOCLAW_TOOLS_WEB_PREFER_NATIVE"`
+	PreferNative bool `yaml:"-" json:"prefer_native" env:"PICOCLAW_TOOLS_WEB_PREFER_NATIVE"`
 	// Proxy is an optional proxy URL for web tools (http/https/socks5/socks5h).
 	// For authenticated proxies, prefer HTTP_PROXY/HTTPS_PROXY env vars instead of embedding credentials in config.
-	Proxy                string              `json:"proxy,omitempty"                  yaml:"-" env:"PICOCLAW_TOOLS_WEB_PROXY"`
-	FetchLimitBytes      int64               `json:"fetch_limit_bytes,omitempty"      yaml:"-" env:"PICOCLAW_TOOLS_WEB_FETCH_LIMIT_BYTES"`
-	Format               string              `json:"format,omitempty"                 yaml:"-" env:"PICOCLAW_TOOLS_WEB_FORMAT"`
-	PrivateHostWhitelist FlexibleStringSlice `json:"private_host_whitelist,omitempty" yaml:"-" env:"PICOCLAW_TOOLS_WEB_PRIVATE_HOST_WHITELIST"`
+	Proxy                string              `yaml:"-" json:"proxy,omitempty"                  env:"PICOCLAW_TOOLS_WEB_PROXY"`
+	FetchLimitBytes      int64               `yaml:"-" json:"fetch_limit_bytes,omitempty"      env:"PICOCLAW_TOOLS_WEB_FETCH_LIMIT_BYTES"`
+	Format               string              `yaml:"-" json:"format,omitempty"                 env:"PICOCLAW_TOOLS_WEB_FORMAT"`
+	PrivateHostWhitelist FlexibleStringSlice `yaml:"-" json:"private_host_whitelist,omitempty" env:"PICOCLAW_TOOLS_WEB_PRIVATE_HOST_WHITELIST"`
 }
 
 type CronToolsConfig struct {
@@ -944,7 +960,10 @@ func LoadConfig(path string) (*Config, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			logger.WarnF("config file not found, using default config", map[string]any{"path": path})
+			logger.WarnF(
+				"config file not found, using default config",
+				map[string]any{"path": path},
+			)
 			return DefaultConfig(), nil
 		}
 		logger.Errorf("failed to read config file: %v", err)
@@ -967,7 +986,10 @@ func LoadConfig(path string) (*Config, error) {
 	var cfg *Config
 	switch versionInfo.Version {
 	case 0:
-		logger.InfoF("config migrate start", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+		logger.InfoF(
+			"config migrate start",
+			map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+		)
 		// Legacy config (no version field)
 		v, e := loadConfigV0(data)
 		if e != nil {
@@ -975,10 +997,16 @@ func LoadConfig(path string) (*Config, error) {
 		}
 		cfg, e = v.Migrate()
 		if e != nil {
-			logger.ErrorF("config migrate fail", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+			logger.ErrorF(
+				"config migrate fail",
+				map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+			)
 			return nil, e
 		}
-		logger.InfoF("config migrate success", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+		logger.InfoF(
+			"config migrate success",
+			map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+		)
 		err = makeBackup(path)
 		if err != nil {
 			return nil, err
@@ -986,7 +1014,10 @@ func LoadConfig(path string) (*Config, error) {
 		// Load existing security config and merge with migrated one to prevent data loss
 		secErr := loadSecurityConfig(cfg, securityPath(path))
 		if secErr != nil && !os.IsNotExist(secErr) {
-			logger.WarnF("failed to load existing security config during migration", map[string]any{"error": secErr})
+			logger.WarnF(
+				"failed to load existing security config during migration",
+				map[string]any{"error": secErr},
+			)
 			return nil, fmt.Errorf("failed to load existing security config: %w", secErr)
 		}
 		defer func(cfg *Config) {
@@ -994,7 +1025,10 @@ func LoadConfig(path string) (*Config, error) {
 		}(cfg)
 	case 1:
 		// V1→V2 migration: infer Enabled and migrate channel config fields
-		logger.InfoF("config migrate start", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+		logger.InfoF(
+			"config migrate start",
+			map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+		)
 		cfg, err = loadConfig(data)
 		if err != nil {
 			return nil, err
@@ -1008,7 +1042,10 @@ func LoadConfig(path string) (*Config, error) {
 		oldCfg := &configV1{Config: *cfg}
 		cfg, err = oldCfg.Migrate()
 		if err != nil {
-			logger.ErrorF("config migrate fail", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+			logger.ErrorF(
+				"config migrate fail",
+				map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+			)
 			return nil, err
 		}
 
@@ -1020,7 +1057,10 @@ func LoadConfig(path string) (*Config, error) {
 		defer func(cfg *Config) {
 			_ = SaveConfig(path, cfg)
 		}(cfg)
-		logger.InfoF("config migrate success", map[string]any{"from": versionInfo.Version, "to": CurrentVersion})
+		logger.InfoF(
+			"config migrate success",
+			map[string]any{"from": versionInfo.Version, "to": CurrentVersion},
+		)
 	case CurrentVersion:
 		// Current version
 		cfg, err = loadConfig(data)

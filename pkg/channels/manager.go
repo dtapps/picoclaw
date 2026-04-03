@@ -426,6 +426,10 @@ func (m *Manager) initChannels(channels *config.ChannelsConfig) error {
 		m.initChannel("irc", "IRC")
 	}
 
+	if channels.VK.Enabled && channels.VK.Token.String() != "" && channels.VK.GroupID != 0 {
+		m.initChannel("vk", "VK")
+	}
+
 	logger.InfoCF("channels", "Channel initialization completed", map[string]any{
 		"enabled_channels": len(m.channels),
 	})
