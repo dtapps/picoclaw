@@ -919,6 +919,7 @@ type ToolsConfig struct {
 	WebFetch              ToolConfig         `json:"web_fetch"               yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
 	WriteFile             ToolConfig         `json:"write_file"              yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
 	WebEncyclopediaSearch ToolConfig         `json:"web_encyclopedia_search" yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_WEB_ENCYCLOPEDIA_SEARCH_"`
+	Browser               BrowserToolConfig  `json:"browser"           yaml:"browser,omitempty"`
 }
 
 // IsFilterSensitiveDataEnabled returns true if sensitive data filtering is enabled
@@ -937,6 +938,16 @@ func (c *ToolsConfig) GetFilterMinLength() int {
 type SearchCacheConfig struct {
 	MaxSize    int `json:"max_size"    env:"PICOCLAW_SKILLS_SEARCH_CACHE_MAX_SIZE"`
 	TTLSeconds int `json:"ttl_seconds" env:"PICOCLAW_SKILLS_SEARCH_CACHE_TTL_SECONDS"`
+}
+
+// BrowserToolConfig holds configuration for the browser automation tool.
+// The browser tool provides CDP-based browser control and requires Chrome/Chromium.
+type BrowserToolConfig struct {
+	ToolConfig  `envPrefix:"PICOCLAW_TOOLS_BROWSER_"`
+	CDPEndpoint string `json:"cdp_endpoint"    yaml:"cdp_endpoint,omitempty"  env:"PICOCLAW_TOOLS_BROWSER_CDP_ENDPOINT"`
+	Timeout     int    `json:"timeout_seconds"  yaml:"timeout_seconds,omitempty" env:"PICOCLAW_TOOLS_BROWSER_TIMEOUT"`
+	Stealth     bool   `json:"stealth"          yaml:"stealth,omitempty"       env:"PICOCLAW_TOOLS_BROWSER_STEALTH"`
+	AllowEval   bool   `json:"allow_evaluate"   yaml:"allow_evaluate,omitempty" env:"PICOCLAW_TOOLS_BROWSER_ALLOW_EVALUATE"`
 }
 
 type SkillsRegistriesConfig struct {
@@ -1412,6 +1423,8 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.MCP.Enabled
 	case "web_encyclopedia_search":
 		return t.WebEncyclopediaSearch.Enabled
+	case "browser":
+		return t.Browser.Enabled
 	default:
 		return true
 	}
