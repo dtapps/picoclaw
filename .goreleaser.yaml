@@ -32,8 +32,8 @@ builds:
       - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ .Env.GOVERSION }}
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
       # - freebsd
       # - netbsd
     goarch:
@@ -73,8 +73,8 @@ builds:
       - -s -w
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
       # - freebsd
       # - netbsd
     goarch:
@@ -114,8 +114,8 @@ builds:
       - -s -w
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
       # - freebsd
       # - netbsd
     goarch:
