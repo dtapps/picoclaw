@@ -20,6 +20,7 @@ export interface ModelInfo {
   request_timeout?: number
   thinking_level?: string
   extra_body?: Record<string, unknown>
+  custom_headers?: Record<string, string>
   // Meta
   available: boolean
   status: "available" | "unconfigured" | "unreachable"
