@@ -249,6 +249,9 @@ type AgentDefaults struct {
 	SplitOnMarker             bool               `json:"split_on_marker"                  env:"PICOCLAW_AGENTS_DEFAULTS_SPLIT_ON_MARKER"` // split messages on <|[SPLIT]|> marker
 	ContextManager            string             `json:"context_manager,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER"`
 	ContextManagerConfig      json.RawMessage    `json:"context_manager_config,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER_CONFIG"`
+	// OriginalModelName holds the original model name as specified in the config.
+	// This is used to resolve the model name in the model_list configuration.
+	OriginalModelName string `json:"-"`
 }
 
 const DefaultMaxMediaSize = 20 * 1024 * 1024 // 20 MB
@@ -338,6 +341,7 @@ type StreamingConfig struct {
 type WhatsAppConfig struct {
 	Enabled            bool                `json:"enabled"              yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_ENABLED"`
 	BridgeURL          string              `json:"bridge_url"           yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_BRIDGE_URL"`
+	Proxy              string              `json:"proxy"                yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_PROXY"`
 	UseNative          bool                `json:"use_native"           yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_USE_NATIVE"`
 	SessionStorePath   string              `json:"session_store_path"   yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_SESSION_STORE_PATH"`
 	AllowFrom          FlexibleStringSlice `json:"allow_from"           yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_ALLOW_FROM"`
@@ -620,6 +624,7 @@ type ModelConfig struct {
 
 	// Optional optimizations
 	RPM            int               `json:"rpm,omitempty"`              // Requests per minute limit
+	MaxTokens      int               `json:"max_tokens,omitempty"`       // Maximum number of tokens per request
 	MaxTokensField string            `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
 	RequestTimeout int               `json:"request_timeout,omitempty"`
 	ThinkingLevel  string            `json:"thinking_level,omitempty"` // Extended thinking: off|low|medium|high|xhigh|adaptive
@@ -1290,6 +1295,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 				ConnectMode:    m.ConnectMode,
 				Workspace:      m.Workspace,
 				RPM:            m.RPM,
+				MaxTokens:      m.MaxTokens,
 				MaxTokensField: m.MaxTokensField,
 				RequestTimeout: m.RequestTimeout,
 				ThinkingLevel:  m.ThinkingLevel,
@@ -1311,6 +1317,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 			ConnectMode:    m.ConnectMode,
 			Workspace:      m.Workspace,
 			RPM:            m.RPM,
+			MaxTokens:      m.MaxTokens,
 			MaxTokensField: m.MaxTokensField,
 			RequestTimeout: m.RequestTimeout,
 			ThinkingLevel:  m.ThinkingLevel,
