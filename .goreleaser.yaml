@@ -165,7 +165,7 @@ dockers_v2:
     ids:
       - picoclaw
       - picoclaw-launcher
-      - picoclaw-launcher-tui
+      # - picoclaw-launcher-tui
     images:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/picoclaw"
       - 'docker.io/{{ .Env.DOCKERHUB_IMAGE_NAME }}'
@@ -183,7 +183,7 @@ notarize:
       ids:
         - picoclaw
         - picoclaw-launcher
-        - picoclaw-launcher-tui
+        # - picoclaw-launcher-tui
       sign:
         certificate: "{{.Env.MACOS_SIGN_P12}}"
         password: "{{.Env.MACOS_SIGN_PASSWORD}}"
@@ -214,7 +214,7 @@ nfpms:
     ids:
       - picoclaw
       - picoclaw-launcher
-      - picoclaw-launcher-tui
+      # - picoclaw-launcher-tui
     package_name: picoclaw
     file_name_template: >-
       {{ .PackageName }}_
@@ -228,7 +228,7 @@ nfpms:
     description: picoclaw - a tool for managing and running tasks
     license: MIT
     formats:
-      - rpm
+      # - rpm
       - deb
     bindir: /usr/bin
     contents:
