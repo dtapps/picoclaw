@@ -1668,7 +1668,7 @@ func (t *WebEncyclopediaSearchTool) Name() string {
 }
 
 func (t *WebEncyclopediaSearchTool) Description() string {
-	return "Search the web for current information. Supports query, count, and an optional temporal range filter. Returns titles, URLs, and snippets from search results."
+	return "Search the web for current information. Supports query. Returns titles, URLs, and snippets from search results."
 }
 
 func (t *WebEncyclopediaSearchTool) Parameters() map[string]any {
