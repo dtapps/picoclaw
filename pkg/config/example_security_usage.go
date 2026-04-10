@@ -130,6 +130,10 @@ Note: Sensitive fields are omitted because they're loaded from .security.yml
 	        "enabled": true
 	        // api_key is automatically loaded from .security.yml
 	      }
+	      "baidu_baike": {
+	        "enabled": true
+	        // api_key is automatically loaded from .security.yml
+	      }
 	    }
 	  }
 	}
