@@ -59,29 +59,30 @@ type configV0 struct {
 }
 
 type toolsConfigV0 struct {
-	AllowReadPaths  []string            `json:"allow_read_paths"  env:"PICOCLAW_TOOLS_ALLOW_READ_PATHS"`
-	AllowWritePaths []string            `json:"allow_write_paths" env:"PICOCLAW_TOOLS_ALLOW_WRITE_PATHS"`
-	Web             webToolsConfigV0    `json:"web"`
-	Cron            CronToolsConfig     `json:"cron"`
-	Exec            ExecConfig          `json:"exec"`
-	Skills          skillsToolsConfigV0 `json:"skills"`
-	MediaCleanup    MediaCleanupConfig  `json:"media_cleanup"`
-	MCP             MCPConfig           `json:"mcp"`
-	AppendFile      ToolConfig          `json:"append_file"                                              envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
-	EditFile        ToolConfig          `json:"edit_file"                                                envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
-	FindSkills      ToolConfig          `json:"find_skills"                                              envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
-	I2C             ToolConfig          `json:"i2c"                                                      envPrefix:"PICOCLAW_TOOLS_I2C_"`
-	InstallSkill    ToolConfig          `json:"install_skill"                                            envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
-	ListDir         ToolConfig          `json:"list_dir"                                                 envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
-	Message         ToolConfig          `json:"message"                                                  envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
-	ReadFile        ReadFileToolConfig  `json:"read_file"                                                envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
-	SendFile        ToolConfig          `json:"send_file"                                                envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
-	Spawn           ToolConfig          `json:"spawn"                                                    envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
-	SpawnStatus     ToolConfig          `json:"spawn_status"                                             envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
-	SPI             ToolConfig          `json:"spi"                                                      envPrefix:"PICOCLAW_TOOLS_SPI_"`
-	Subagent        ToolConfig          `json:"subagent"                                                 envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
-	WebFetch        ToolConfig          `json:"web_fetch"                                                envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
-	WriteFile       ToolConfig          `json:"write_file"                                               envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	AllowReadPaths        []string            `json:"allow_read_paths"        env:"PICOCLAW_TOOLS_ALLOW_READ_PATHS"`
+	AllowWritePaths       []string            `json:"allow_write_paths"       env:"PICOCLAW_TOOLS_ALLOW_WRITE_PATHS"`
+	Web                   webToolsConfigV0    `json:"web"`
+	Cron                  CronToolsConfig     `json:"cron"`
+	Exec                  ExecConfig          `json:"exec"`
+	Skills                skillsToolsConfigV0 `json:"skills"`
+	MediaCleanup          MediaCleanupConfig  `json:"media_cleanup"`
+	MCP                   MCPConfig           `json:"mcp"`
+	AppendFile            ToolConfig          `json:"append_file"                                                    envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
+	EditFile              ToolConfig          `json:"edit_file"                                                      envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
+	FindSkills            ToolConfig          `json:"find_skills"                                                    envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
+	I2C                   ToolConfig          `json:"i2c"                                                            envPrefix:"PICOCLAW_TOOLS_I2C_"`
+	InstallSkill          ToolConfig          `json:"install_skill"                                                  envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
+	ListDir               ToolConfig          `json:"list_dir"                                                       envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
+	Message               ToolConfig          `json:"message"                                                        envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+	ReadFile              ReadFileToolConfig  `json:"read_file"                                                      envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
+	SendFile              ToolConfig          `json:"send_file"                                                      envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
+	Spawn                 ToolConfig          `json:"spawn"                                                          envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
+	SpawnStatus           ToolConfig          `json:"spawn_status"                                                   envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
+	SPI                   ToolConfig          `json:"spi"                                                            envPrefix:"PICOCLAW_TOOLS_SPI_"`
+	Subagent              ToolConfig          `json:"subagent"                                                       envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
+	WebFetch              ToolConfig          `json:"web_fetch"                                                      envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
+	WriteFile             ToolConfig          `json:"write_file"                                                     envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	WebEncyclopediaSearch ToolConfig          `json:"web_encyclopedia_search"                                        envPrefix:"PICOCLAW_TOOLS_WEB_ENCYCLOPEDIA_SEARCH_"`
 }
 
 type channelsConfigV0 struct {
@@ -726,6 +727,7 @@ func (c *configV0) Migrate() (*Config, error) {
 	cfg.Tools.SPI = c.Tools.SPI
 	cfg.Tools.Subagent = c.Tools.Subagent
 	cfg.Tools.WebFetch = c.Tools.WebFetch
+	cfg.Tools.WebEncyclopediaSearch = c.Tools.WebEncyclopediaSearch
 	cfg.Tools.AllowReadPaths = c.Tools.AllowReadPaths
 	cfg.Tools.AllowWritePaths = c.Tools.AllowWritePaths
 	cfg.Heartbeat = c.Heartbeat

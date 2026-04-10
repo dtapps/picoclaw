@@ -804,10 +804,10 @@ type BaiduSearchConfig struct {
 }
 
 type BaiduBaikeConfig struct {
-	Enabled    bool         `json:"enabled"          env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_ENABLED"`
-	APIKey     SecureString `json:"api_key,omitzero" env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_API_KEY"     yaml:"api_key,omitempty"`
-	BaseURL    string       `json:"base_url"         env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_BASE_URL"    yaml:"-"`
-	MaxResults int          `json:"max_results"      env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_MAX_RESULTS" yaml:"-"`
+	Enabled    bool         `json:"enabled"          yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_ENABLED"`
+	APIKey     SecureString `json:"api_key,omitzero" yaml:"api_key,omitempty" env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_API_KEY"`
+	BaseURL    string       `json:"base_url"         yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_BASE_URL"`
+	MaxResults int          `json:"max_results"      yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_MAX_RESULTS"`
 }
 
 type WebToolsConfig struct {
