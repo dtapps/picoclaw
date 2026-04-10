@@ -230,6 +230,24 @@ func registerSharedTools(
 				agent.Tools.Register(fetchTool)
 			}
 		}
+		if cfg.Tools.IsToolEnabled("web_encyclopedia_search") {
+			encyclopediaSearchTool, err := tools.NewWebEncyclopediaSearchTool(tools.WebEncyclopediaSearchToolOptions{
+				BaiduBaikeAPIKey:     cfg.Tools.Web.BaiduBaike.APIKey.String(),
+				BaiduBaikeBaseURL:    cfg.Tools.Web.BaiduBaike.BaseURL,
+				BaiduBaikeMaxResults: cfg.Tools.Web.BaiduBaike.MaxResults,
+				BaiduBaikeEnabled:    cfg.Tools.Web.BaiduBaike.Enabled,
+				Proxy:                cfg.Tools.Web.Proxy,
+			})
+			if err != nil {
+				logger.ErrorCF(
+					"agent",
+					"Failed to create web encyclopedia search tool",
+					map[string]any{"error": err.Error()},
+				)
+			} else if encyclopediaSearchTool != nil {
+				agent.Tools.Register(encyclopediaSearchTool)
+			}
+		}
 
 		// Hardware tools (I2C, SPI) - Linux only, returns error on other platforms
 		if cfg.Tools.IsToolEnabled("i2c") {

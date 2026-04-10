@@ -819,6 +819,7 @@ type webToolsConfigV0 struct {
 	SearXNG              SearXNGConfig       `                                json:"searxng"`
 	GLMSearch            glmSearchConfigV0   `                                json:"glm_search"`
 	BaiduSearch          baiduSearchConfigV0 `                                json:"baidu_search"`
+	BaiduBaike           baiduBaikeConfigV0  `                                json:"baidu_baike"`
 	PreferNative         bool                `                                json:"prefer_native"                    env:"PICOCLAW_TOOLS_WEB_PREFER_NATIVE"`
 	Proxy                string              `                                json:"proxy,omitempty"                  env:"PICOCLAW_TOOLS_WEB_PROXY"`
 	FetchLimitBytes      int64               `                                json:"fetch_limit_bytes,omitempty"      env:"PICOCLAW_TOOLS_WEB_FETCH_LIMIT_BYTES"`
@@ -913,12 +914,29 @@ func (v *baiduSearchConfigV0) ToBaiduSearchConfig() BaiduSearchConfig {
 	}
 }
 
+type baiduBaikeConfigV0 struct {
+	Enabled    bool   `json:"enabled"     env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_ENABLED"`
+	APIKey     string `json:"api_key"     env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_API_KEY"`
+	BaseURL    string `json:"base_url"    env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_BASE_URL"`
+	MaxResults int    `json:"max_results" env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_MAX_RESULTS"`
+}
+
+func (v *baiduBaikeConfigV0) ToBaiduBaikeConfig() BaiduBaikeConfig {
+	return BaiduBaikeConfig{
+		Enabled:    v.Enabled,
+		APIKey:     *NewSecureString(v.APIKey),
+		BaseURL:    v.BaseURL,
+		MaxResults: v.MaxResults,
+	}
+}
+
 func (v *webToolsConfigV0) ToWebToolsConfig() WebToolsConfig {
 	brave := v.Brave.ToBraveConfig()
 	tavily := v.Tavily.ToTavilyConfig()
 	perplexity := v.Perplexity.ToPerplexityConfig()
 	glmSearch := v.GLMSearch.ToGLMSearchConfig()
 	baiduSearch := v.BaiduSearch.ToBaiduSearchConfig()
+	baiduBaike := v.BaiduBaike.ToBaiduBaikeConfig()
 
 	return WebToolsConfig{
 		ToolConfig:           v.ToolConfig,
@@ -934,6 +952,7 @@ func (v *webToolsConfigV0) ToWebToolsConfig() WebToolsConfig {
 		Format:               v.Format,
 		PrivateHostWhitelist: v.PrivateHostWhitelist,
 		BaiduSearch:          baiduSearch,
+		BaiduBaike:           baiduBaike,
 	}
 }
 

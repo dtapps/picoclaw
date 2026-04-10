@@ -89,6 +89,12 @@ var toolCatalog = []toolCatalogEntry{
 		ConfigKey:   "web_fetch",
 	},
 	{
+		Name:        "web_encyclopedia_search",
+		Description: "Search the web encyclopedia using the configured providers.",
+		Category:    "web",
+		ConfigKey:   "web_encyclopedia_search",
+	},
+	{
 		Name:        "message",
 		Description: "Send a follow-up message back to the active user or chat.",
 		Category:    "communication",
@@ -287,6 +293,8 @@ func applyToolState(cfg *config.Config, toolName string, enabled bool) error {
 		cfg.Tools.Web.Enabled = enabled
 	case "web_fetch":
 		cfg.Tools.WebFetch.Enabled = enabled
+	case "web_encyclopedia_search":
+		cfg.Tools.WebEncyclopediaSearch.Enabled = enabled
 	case "message":
 		cfg.Tools.Message.Enabled = enabled
 	case "send_file":
