@@ -7,6 +7,7 @@ export interface SessionSummary {
   message_count: number
   created: string
   updated: string
+  channel: string
 }
 
 export interface SessionDetail {

@@ -70,28 +70,37 @@ export function SessionHistoryMenu({
                 }`}
                 onClick={() => onSwitchSession(session.id)}
               >
-                <span className="line-clamp-1 text-sm font-medium">
-                  {session.title}
-                </span>
+                <div className="flex w-full items-center gap-2">
+                  <span className="bg-muted text-muted-foreground shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold">
+                    {t(`channels.name.${session.channel}`, {
+                      defaultValue: session.channel,
+                    })}
+                  </span>
+                  <span className="line-clamp-1 flex-1 text-sm font-medium">
+                    {session.title}
+                  </span>
+                </div>
                 <span className="text-muted-foreground text-xs">
                   {t("chat.messagesCount", {
                     count: session.message_count,
                   })}{" "}
                   · {dayjs(session.updated).fromNow()}
                 </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={t("chat.deleteSession")}
-                  className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    onDeleteSession(session.id)
-                  }}
-                >
-                  <IconTrash className="h-4 w-4" />
-                </Button>
+                {session.channel === "pico" && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={t("chat.deleteSession")}
+                    className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive absolute top-1/2 right-2 h-6 w-6 -translate-y-1/2 opacity-0 transition-opacity group-hover:opacity-100"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onDeleteSession(session.id)
+                    }}
+                  >
+                    <IconTrash className="h-4 w-4" />
+                  </Button>
+                )}
               </DropdownMenuItem>
             ))
           )}

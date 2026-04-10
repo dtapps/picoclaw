@@ -109,6 +109,9 @@ export function ChatPage() {
     }
   }, [messages, isTyping, isAtBottom])
 
+  const activeSession = sessions.find((s) => s.id === activeSessionId)
+  const currentChannel = activeSession?.channel || "pico"
+
   const handleSend = () => {
     if ((!input.trim() && attachments.length === 0) || !canSend) return
     if (
@@ -280,6 +283,7 @@ export function ChatPage() {
         isConnected={isChatConnected}
         hasDefaultModel={Boolean(defaultModelName)}
         canSend={canSubmit}
+        channel={currentChannel}
       />
     </div>
   )
