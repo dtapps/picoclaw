@@ -110,6 +110,7 @@ Cette conception permet également le **support multi-agents** avec une sélecti
 | `proxy` | string | Non | URL du proxy HTTP pour cette entrée de modèle |
 | `user_agent` | string | Non | En-tête `User-Agent` personnalisé pour les requêtes API (supporté par les providers OpenAI-compatible, Anthropic et Azure) |
 | `request_timeout` | int | Non | Délai d'expiration de la requête en secondes (la valeur par défaut varie selon le provider) |
+| `max_tokens` | int | Non | Nombre de Token maximum à utiliser pour chaque requête |
 | `max_tokens_field` | string | Non | Remplace le nom du champ max tokens dans le corps de la requête (ex : `max_completion_tokens` pour les modèles o1) |
 | `thinking_level` | string | Non | Niveau de pensée étendue : `off`, `low`, `medium`, `high`, `xhigh` ou `adaptive` |
 | `extra_body` | object | Non | Champs supplémentaires à injecter dans chaque corps de requête |
