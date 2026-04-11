@@ -281,7 +281,9 @@
       "maixcam": "MaixCam",
       "matrix": "Matrix",
       "irc": "IRC",
-      "weixin": "WeChat"
+      "weixin": "WeChat",
+      "heartbeat": "Heartbeat",
+      "main": "Cron"
     },
     "weixin": {
       "bindTitle": "WeChat Account Binding",
