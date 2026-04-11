@@ -85,6 +85,8 @@ func defaultToolFeedbackMaxArgsLength() int {
 
 // extractPicoSessionID extracts the session UUID from a full session key.
 // Returns the UUID and true if the key matches the Pico session pattern.
+//
+//nolint:unused
 func extractPicoSessionID(key string) (string, bool) {
 	if strings.HasPrefix(key, picoSessionPrefix) {
 		return strings.TrimPrefix(key, picoSessionPrefix), true
