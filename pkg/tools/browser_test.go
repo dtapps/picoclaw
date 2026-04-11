@@ -125,19 +125,19 @@ func TestStealthJSGeneration(t *testing.T) {
 	}
 	// Verify key patches are present
 	checks := []string{
-		"navigator.webdriver",     // Patch 1
-		"window.chrome",           // Patch 2
-		"navigator.plugins",       // Patch 3
-		"navigator.languages",     // Patch 4
-		"Permissions.prototype",   // Patch 5
-		"__playwright",            // Patch 6
-		"Error.prototype",         // Patch 7
-		"debugger",                // Patch 8
-		"console",                 // Patch 9
-		"outerWidth",              // Patch 10
-		"Performance.prototype",   // Patch 11
-		"$cdc_",                   // Patch 12
-		"contentWindow",           // Patch 13
+		"navigator.webdriver",   // Patch 1
+		"window.chrome",         // Patch 2
+		"navigator.plugins",     // Patch 3
+		"navigator.languages",   // Patch 4
+		"Permissions.prototype", // Patch 5
+		"__playwright",          // Patch 6
+		"Error.prototype",       // Patch 7
+		"debugger",              // Patch 8
+		"console",               // Patch 9
+		"outerWidth",            // Patch 10
+		"Performance.prototype", // Patch 11
+		"$cdc_",                 // Patch 12
+		"contentWindow",         // Patch 13
 	}
 	for _, check := range checks {
 		if !strings.Contains(js, check) {

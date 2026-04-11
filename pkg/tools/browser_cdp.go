@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -111,7 +112,11 @@ func (c *CDPClient) Send(method string, params map[string]any) (json.RawMessage,
 }
 
 // SendWithTimeout sends a CDP command with a custom timeout.
-func (c *CDPClient) SendWithTimeout(method string, params map[string]any, timeout time.Duration) (json.RawMessage, error) {
+func (c *CDPClient) SendWithTimeout(
+	method string,
+	params map[string]any,
+	timeout time.Duration,
+) (json.RawMessage, error) {
 	if c.closed.Load() {
 		return nil, fmt.Errorf("CDP connection closed")
 	}
@@ -500,9 +505,9 @@ func (c *CDPClient) InjectScript(source string) error {
 func (c *CDPClient) DispatchMouseEvent(eventType string, x, y float64, button string, clickCount int) error {
 	_, err := c.Send("Input.dispatchMouseEvent", map[string]any{
 		"type":       eventType,
-		"x":         x,
-		"y":         y,
-		"button":    button,
+		"x":          x,
+		"y":          y,
+		"button":     button,
 		"clickCount": clickCount,
 	})
 	return err
