@@ -706,6 +706,12 @@ func detectChannelFromKey(key string) string {
 		return "whatsapp"
 	case strings.Contains(keyLower, ":whatsapp_native:") || strings.Contains(keyLower, "_whatsapp_native_"):
 		return "whatsapp_native"
+
+	case strings.Contains(keyLower, ":main:") || strings.Contains(keyLower, "_main_"):
+		return "main"
+	case strings.Contains(keyLower, ":heartbeat:") || strings.Contains(keyLower, "_heartbeat_"):
+		return "heartbeat"
+
 	default:
 		return "unknown"
 	}
