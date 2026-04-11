@@ -621,6 +621,7 @@ response:
 		"summary":  sess.Summary,
 		"created":  sess.Created.Format(time.RFC3339),
 		"updated":  sess.Updated.Format(time.RFC3339),
+		"channel":  detectChannelFromKey(sess.Key),
 	})
 }
 

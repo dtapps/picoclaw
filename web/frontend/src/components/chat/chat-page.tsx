@@ -58,6 +58,7 @@ export function ChatPage() {
     connectionState,
     isTyping,
     activeSessionId,
+    currentChannel,
     sendMessage,
     switchSession,
     newChat,
@@ -108,9 +109,6 @@ export function ChatPage() {
       syncScrollState(scrollRef.current)
     }
   }, [messages, isTyping, isAtBottom])
-
-  const activeSession = sessions.find((s) => s.id === activeSessionId)
-  const currentChannel = activeSession?.channel || "pico"
 
   const handleSend = () => {
     if ((!input.trim() && attachments.length === 0) || !canSend) return

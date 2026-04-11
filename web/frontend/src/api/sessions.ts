@@ -20,6 +20,7 @@ export interface SessionDetail {
   summary: string
   created: string
   updated: string
+  channel: string
 }
 
 export async function getSessions(

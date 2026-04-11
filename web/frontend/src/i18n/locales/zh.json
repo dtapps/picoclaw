@@ -279,7 +279,9 @@
       "maixcam": "MaixCam",
       "matrix": "Matrix",
       "irc": "IRC",
-      "weixin": "微信"
+      "weixin": "微信",
+      "heartbeat": "心跳",
+      "main": "定时任务"
     },
     "weixin": {
       "bindTitle": "微信账号绑定",
