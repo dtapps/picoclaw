@@ -186,6 +186,7 @@ export function ChatPage() {
   return (
     <div className="bg-background/95 flex h-full flex-col">
       <PageHeader
+        channel={currentChannel ? t(`channels.name.${currentChannel}`) : ""}
         title={t("navigation.chat")}
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
