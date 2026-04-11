@@ -131,7 +131,20 @@ func (t *BrowserTool) Parameters() map[string]any {
 			"action": map[string]any{
 				"type":        "string",
 				"description": "Browser action to perform",
-				"enum":        []string{"navigate", "state", "click", "type", "fill", "select", "screenshot", "get_text", "scroll", "keys", "evaluate", "close"},
+				"enum": []string{
+					"navigate",
+					"state",
+					"click",
+					"type",
+					"fill",
+					"select",
+					"screenshot",
+					"get_text",
+					"scroll",
+					"keys",
+					"evaluate",
+					"close",
+				},
 			},
 			"url": map[string]any{
 				"type":        "string",
@@ -390,7 +403,9 @@ func (t *BrowserTool) executeClick(ctx context.Context, args map[string]any) *To
 		return ErrorResult(result.Error)
 	}
 
-	return SilentResult(fmt.Sprintf("Clicked [%d] <%s> %q. Run 'state' to see updated page.", index, result.Tag, result.Text))
+	return SilentResult(
+		fmt.Sprintf("Clicked [%d] <%s> %q. Run 'state' to see updated page.", index, result.Tag, result.Text),
+	)
 }
 
 func (t *BrowserTool) executeType(ctx context.Context, args map[string]any) *ToolResult {
@@ -422,7 +437,9 @@ func (t *BrowserTool) executeType(ctx context.Context, args map[string]any) *Too
 		return ErrorResult(fmt.Sprintf("failed to parse focus result: %v", err))
 	}
 	if strings.Contains(focusStr, "error") {
-		var result struct{ Error string `json:"error"` }
+		var result struct {
+			Error string `json:"error"`
+		}
 		json.Unmarshal([]byte(focusStr), &result)
 		if result.Error != "" {
 			return ErrorResult(result.Error)
@@ -468,7 +485,9 @@ func (t *BrowserTool) executeFill(ctx context.Context, args map[string]any) *Too
 		return ErrorResult(fmt.Sprintf("failed to parse fill result: %v", err))
 	}
 	if strings.Contains(clearStr, "error") {
-		var result struct{ Error string `json:"error"` }
+		var result struct {
+			Error string `json:"error"`
+		}
 		json.Unmarshal([]byte(clearStr), &result)
 		if result.Error != "" {
 			return ErrorResult(result.Error)
@@ -551,7 +570,7 @@ func (t *BrowserTool) executeScreenshot(ctx context.Context) *ToolResult {
 	// Write to temporary file
 	tmpDir := os.TempDir()
 	tmpFile := filepath.Join(tmpDir, fmt.Sprintf("screenshot-%d.png", time.Now().UnixNano()))
-	if err := os.WriteFile(tmpFile, pngBytes, 0600); err != nil {
+	if err := os.WriteFile(tmpFile, pngBytes, 0o600); err != nil {
 		return ErrorResult(fmt.Sprintf("failed to save screenshot: %v", err))
 	}
 
@@ -585,7 +604,11 @@ func (t *BrowserTool) executeScreenshot(ctx context.Context) *ToolResult {
 	// No MediaStore or store failed — save to disk and return path as artifact
 	// so LLM can reference it and user can access it via send_file if needed
 	return &ToolResult{
-		ForLLM:       fmt.Sprintf("Screenshot saved to %s (%d KB). Use send_file to deliver to user if needed.", tmpFile, len(pngBytes)/1024),
+		ForLLM: fmt.Sprintf(
+			"Screenshot saved to %s (%d KB). Use send_file to deliver to user if needed.",
+			tmpFile,
+			len(pngBytes)/1024,
+		),
 		ArtifactTags: []string{fmt.Sprintf("[file:%s]", tmpFile)},
 	}
 }
@@ -702,7 +725,9 @@ func (t *BrowserTool) executeKeys(_ context.Context, args map[string]any) *ToolR
 
 func (t *BrowserTool) executeEvaluate(ctx context.Context, args map[string]any) *ToolResult {
 	if !t.cfg.AllowEval {
-		return ErrorResult("evaluate action is disabled. Set tools.browser.allow_evaluate=true in config to enable JavaScript execution.")
+		return ErrorResult(
+			"evaluate action is disabled. Set tools.browser.allow_evaluate=true in config to enable JavaScript execution.",
+		)
 	}
 
 	code, _ := args["code"].(string)
