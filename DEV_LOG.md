@@ -13,7 +13,7 @@
 | **UI/会话**   | 仅显示当前渠道            | **实现全渠道会话聚合显示**         | 方便统一管理多平台消息       | [feat/all-channels-view-only](https://github.com/dtapps/picoclaw/tree/feat/all-channels-view-only)           |
 | **模型配置**  | 全局或固定配置            | **支持 per-model `max_tokens`**    | 精细化控制不同模型的输出长度 | [feat/per-model-max-tokens](https://github.com/dtapps/picoclaw/tree/feat/per-model-max-tokens)               |
 | **模型逻辑**  | `thinking_level` 获取异常 | **修复配置读取逻辑**               | 确保思维链等级正确生效       | [fix/thinking-level-default-value](https://github.com/dtapps/picoclaw/tree/fix/thinking-level-default-value) |
-| **工具集**    | 基础搜索工具              | **新增“百度百科”搜索工具**         | 增强中文语境下的知识检索能力 | [feat/search-baidu-baike](https://github.com/dtapps/picoclaw/comtreemit/feat/search-baidu-baike)             |
+| **工具集**    | 基础搜索工具              | **新增“百度百科”搜索工具**         | 增强中文语境下的知识检索能力 | [feat/search-baidu-baike](https://github.com/dtapps/picoclaw/tree/feat/search-baidu-baike)             |
 | **构建/打包** | 标准 Tags                 | **默认启用 `whatsapp_native` Tag** | 原生支持 WhatsApp 功能       | [fix/goreleaser-build](https://github.com/dtapps/picoclaw/tree/fix/goreleaser-build)                         |
 
 ---
