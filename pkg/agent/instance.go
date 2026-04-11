@@ -181,7 +181,7 @@ func NewAgentInstance(
 	}
 
 	var thinkingLevelStr string
-	if mc, err := cfg.GetModelConfig(model); err == nil {
+	if mc, err := cfg.GetModelConfig(defaults.OriginalModelName); err == nil {
 		thinkingLevelStr = mc.ThinkingLevel
 	}
 	thinkingLevel := parseThinkingLevel(thinkingLevelStr)
