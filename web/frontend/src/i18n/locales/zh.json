@@ -282,6 +282,7 @@
       "matrix": "Matrix",
       "irc": "IRC",
       "weixin": "微信",
+      "weibo": "微博",
       "heartbeat": "心跳",
       "main": "定时任务"
     },

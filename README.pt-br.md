@@ -448,7 +448,7 @@ Para detalhes completos de configuração de providers, veja [Providers & Models
 
 ## 💬 Channels (Apps de Chat)
 
-Converse com seu PicoClaw por meio de mais de 17 plataformas de mensagens:
+Converse com seu PicoClaw por meio de mais de 18 plataformas de mensagens:
 
 | Channel | Configuração | Protocolo | Docs |
 |---------|--------------|-----------|------|
@@ -466,6 +466,7 @@ Converse com seu PicoClaw por meio de mais de 17 plataformas de mensagens:
 | **IRC** | Médio (servidor + nick) | Protocolo IRC | [Guia](docs/pt-br/chat-apps.md#irc) |
 | **OneBot** | Médio (WebSocket URL) | OneBot v11 | [Guia](docs/channels/onebot/README.pt-br.md) |
 | **MaixCam** | Fácil (habilitar) | TCP socket | [Guia](docs/channels/maixcam/README.pt-br.md) |
+| **Weibo** | Fácil (App ID + Secret) | WebSocket | [Guia](docs/channels/weibo/README.pt-br.md) |
 | **Pico** | Fácil (habilitar) | Protocolo nativo | Integrado |
 | **Pico Client** | Fácil (WebSocket URL) | WebSocket | Integrado |
 

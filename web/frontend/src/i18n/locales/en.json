@@ -282,6 +282,7 @@
       "matrix": "Matrix",
       "irc": "IRC",
       "weixin": "WeChat",
+      "weibo": "Weibo",
       "heartbeat": "Heartbeat",
       "main": "Cron"
     },
