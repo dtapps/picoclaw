@@ -58,6 +58,7 @@ export function ChatPage() {
     connectionState,
     isTyping,
     activeSessionId,
+    currentChannel,
     sendMessage,
     switchSession,
     newChat,
@@ -185,6 +186,7 @@ export function ChatPage() {
   return (
     <div className="bg-background/95 flex h-full flex-col">
       <PageHeader
+        channel={currentChannel ? t(`channels.name.${currentChannel}`) : ""}
         title={t("navigation.chat")}
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
@@ -280,6 +282,7 @@ export function ChatPage() {
         isConnected={isChatConnected}
         hasDefaultModel={Boolean(defaultModelName)}
         canSend={canSubmit}
+        channel={currentChannel}
       />
     </div>
   )

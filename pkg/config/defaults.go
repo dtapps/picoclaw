@@ -418,6 +418,11 @@ func DefaultConfig() *Config {
 					BaseURL:    "https://qianfan.baidubce.com/v2/ai_search/web_search",
 					MaxResults: 10,
 				},
+				BaiduBaike: BaiduBaikeConfig{
+					Enabled:    false,
+					BaseURL:    "https://appbuilder.baidu.com/v2/baike/lemma/get_content",
+					MaxResults: 10,
+				},
 			},
 			Cron: CronToolsConfig{
 				ToolConfig: ToolConfig{
@@ -512,6 +517,9 @@ func DefaultConfig() *Config {
 				Enabled: true,
 			},
 			WriteFile: ToolConfig{
+				Enabled: true,
+			},
+			WebEncyclopediaSearch: ToolConfig{
 				Enabled: true,
 			},
 		},

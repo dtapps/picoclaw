@@ -12,10 +12,7 @@ import {
   generateSessionId,
   readStoredSessionId,
 } from "@/features/chat/state"
-import {
-  invalidateSocket,
-  isCurrentSocket,
-} from "@/features/chat/websocket"
+import { invalidateSocket, isCurrentSocket } from "@/features/chat/websocket"
 import i18n from "@/i18n"
 import {
   type ChatAttachment,
@@ -287,18 +284,20 @@ export async function hydrateActiveSession() {
       if (currentState.messages.length > 0) {
         updateChatStore({
           messages: mergeHistoryMessages(
-            historyMessages,
+            historyMessages.messages,
             currentState.messages,
           ),
           hasHydratedActiveSession: true,
+          currentChannel: historyMessages.channel,
         })
         return
       }
 
       updateChatStore({
-        messages: historyMessages,
+        messages: historyMessages.messages,
         isTyping: false,
         hasHydratedActiveSession: true,
+        currentChannel: historyMessages.channel,
       })
     })
     .catch((error) => {
@@ -397,7 +396,8 @@ export async function switchChatSession(sessionId: string) {
   }
 
   try {
-    const historyMessages = await loadSessionMessages(sessionId)
+    const { messages: historyMessages, channel } =
+      await loadSessionMessages(sessionId)
 
     disconnectChatInternal({ clearDesiredConnection: false })
     setActiveSessionId(sessionId)
@@ -405,6 +405,7 @@ export async function switchChatSession(sessionId: string) {
       messages: historyMessages,
       isTyping: false,
       hasHydratedActiveSession: true,
+      currentChannel: channel,
     })
 
     if (store.get(gatewayAtom).status === "running") {

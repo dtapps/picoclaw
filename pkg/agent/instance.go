@@ -111,6 +111,16 @@ func NewAgentInstance(
 		}
 	}
 
+	if cfg.Tools.IsToolEnabled("browser") {
+		browserTool, err := tools.NewBrowserTool(cfg.Tools.Browser)
+		if err != nil {
+			logger.WarnCF("agent", "Browser tool unavailable (optional)",
+				map[string]any{"error": err.Error()})
+		} else {
+			toolsRegistry.Register(browserTool)
+		}
+	}
+
 	if cfg.Tools.IsToolEnabled("edit_file") {
 		toolsRegistry.Register(tools.NewEditFileTool(workspace, restrict, allowWritePaths))
 	}
@@ -147,6 +157,9 @@ func NewAgentInstance(
 	}
 
 	maxTokens := defaults.MaxTokens
+	if mc, err := cfg.GetModelConfig(defaults.OriginalModelName); err == nil {
+		maxTokens = mc.MaxTokens
+	}
 	if maxTokens == 0 {
 		maxTokens = 8192
 	}
@@ -168,7 +181,7 @@ func NewAgentInstance(
 	}
 
 	var thinkingLevelStr string
-	if mc, err := cfg.GetModelConfig(model); err == nil {
+	if mc, err := cfg.GetModelConfig(defaults.OriginalModelName); err == nil {
 		thinkingLevelStr = mc.ThinkingLevel
 	}
 	thinkingLevel := parseThinkingLevel(thinkingLevelStr)

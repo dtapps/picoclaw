@@ -7,6 +7,7 @@ export interface SessionSummary {
   message_count: number
   created: string
   updated: string
+  channel: string
 }
 
 export interface SessionDetail {
@@ -19,6 +20,7 @@ export interface SessionDetail {
   summary: string
   created: string
   updated: string
+  channel: string
 }
 
 export async function getSessions(

@@ -914,6 +914,10 @@ type WebSearchToolOptions struct {
 	BaiduSearchBaseURL    string
 	BaiduSearchMaxResults int
 	BaiduSearchEnabled    bool
+	BaiduBaikeAPIKey      string
+	BaiduBaikeBaseURL     string
+	BaiduBaikeMaxResults  int
+	BaiduBaikeEnabled     bool
 	Proxy                 string
 }
 
@@ -1614,4 +1618,184 @@ func isPrivateOrRestrictedIP(ip net.IP) bool {
 	}
 
 	return false
+}
+
+type WebEncyclopediaSearchProvider interface {
+	Search(ctx context.Context, query string) (string, error)
+}
+type WebEncyclopediaSearchTool struct {
+	provider   WebEncyclopediaSearchProvider
+	maxResults int
+}
+
+type WebEncyclopediaSearchToolOptions struct {
+	BaiduBaikeAPIKey     string
+	BaiduBaikeBaseURL    string
+	BaiduBaikeMaxResults int
+	BaiduBaikeEnabled    bool
+	Proxy                string
+}
+
+func NewWebEncyclopediaSearchTool(opts WebEncyclopediaSearchToolOptions) (*WebEncyclopediaSearchTool, error) {
+	var provider WebEncyclopediaSearchProvider
+	maxResults := 10
+	if opts.BaiduBaikeEnabled && opts.BaiduBaikeAPIKey != "" {
+		client, err := utils.CreateHTTPClient(opts.Proxy, perplexityTimeout)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create HTTP client for Baidu Search: %w", err)
+		}
+		provider = &BaiduBaikeProvider{
+			apiKey:  opts.BaiduBaikeAPIKey,
+			baseURL: opts.BaiduBaikeBaseURL,
+			proxy:   opts.Proxy,
+			client:  client,
+		}
+		if opts.BaiduBaikeMaxResults > 0 {
+			maxResults = min(opts.BaiduBaikeMaxResults, 10)
+		}
+	} else {
+		return nil, nil
+	}
+
+	return &WebEncyclopediaSearchTool{
+		provider:   provider,
+		maxResults: maxResults,
+	}, nil
+}
+
+func (t *WebEncyclopediaSearchTool) Name() string {
+	return "web_encyclopedia_search"
+}
+
+func (t *WebEncyclopediaSearchTool) Description() string {
+	return "Search the web for current information. Supports query. Returns titles, URLs, and snippets from search results."
+}
+
+func (t *WebEncyclopediaSearchTool) Parameters() map[string]any {
+	return map[string]any{
+		"type": "object",
+		"properties": map[string]any{
+			"query": map[string]any{
+				"type":        "string",
+				"description": "Search query",
+			},
+		},
+		"required": []string{"query"},
+	}
+}
+
+func (t *WebEncyclopediaSearchTool) Execute(ctx context.Context, args map[string]any) *ToolResult {
+	query, ok := args["query"].(string)
+	if !ok || strings.TrimSpace(query) == "" {
+		return ErrorResult("query is required")
+	}
+	query = strings.TrimSpace(query)
+
+	result, err := t.provider.Search(ctx, query)
+	if err != nil {
+		return ErrorResult(fmt.Sprintf("search failed: %v", err))
+	}
+
+	return &ToolResult{
+		ForLLM:  result,
+		ForUser: result,
+	}
+}
+
+type BaiduBaikeProvider struct {
+	apiKey  string
+	baseURL string
+	proxy   string
+	client  *http.Client
+}
+
+func (p *BaiduBaikeProvider) Search(
+	ctx context.Context,
+	query string,
+) (string, error) {
+	searchURL := p.baseURL
+	if searchURL == "" {
+		searchURL = "https://appbuilder.baidu.com/v2/baike/lemma/get_content"
+	}
+
+	u, err := url.Parse(searchURL)
+	if err != nil {
+		return "", fmt.Errorf("invalid base URL: %w", err)
+	}
+	q := u.Query()
+	q.Set("search_type", "lemmaTitle")
+	q.Set("search_key", query)
+	u.RawQuery = q.Encode()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", u.String(), nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+p.apiKey)
+	req.Header.Set("X-Appbuilder-From", "picoclaw")
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("baidu search request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return "", fmt.Errorf("failed to read response: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("baidu baike API error %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Result struct {
+			LemmaTitle    string `json:"lemma_title"`
+			LemmaDesc     string `json:"lemma_desc"`
+			Summary       string `json:"summary"`
+			AbstractPlain string `json:"abstract_plain"`
+			Relations     []struct {
+				LemmaTitle   string `json:"lemma_title"`
+				RelationName string `json:"relation_name"`
+			} `json:"relations,omitempty"`
+		} `json:"result"`
+	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	if len(result.Result.LemmaTitle) == 0 {
+		return fmt.Sprintf("No results for: %s", query), nil
+	}
+
+	lines := []string{fmt.Sprintf("Results for: %s (via Baidu Baike)", query)}
+
+	item := result.Result
+
+	entry := item.LemmaTitle
+	if item.LemmaDesc != "" {
+		entry += fmt.Sprintf(" (%s)", item.LemmaDesc)
+	}
+	lines = append(lines, entry)
+
+	contentText := item.AbstractPlain
+	if contentText == "" {
+		contentText = item.Summary
+	}
+	if contentText != "" {
+		lines = append(lines, "   "+contentText)
+	}
+
+	if len(item.Relations) > 0 {
+		var rels []string
+		for _, rel := range item.Relations {
+			rels = append(rels, fmt.Sprintf("%s:%s", rel.RelationName, rel.LemmaTitle))
+		}
+		lines = append(lines, "   Relations: "+strings.Join(rels, ", "))
+	}
+
+	return strings.Join(lines, "\n"), nil
 }

@@ -41,6 +41,7 @@ type sessionListItem struct {
 	MessageCount int    `json:"message_count"`
 	Created      string `json:"created"`
 	Updated      string `json:"updated"`
+	Channel      string `json:"channel"`
 }
 
 type sessionChatMessage struct {
@@ -84,6 +85,8 @@ func defaultToolFeedbackMaxArgsLength() int {
 
 // extractPicoSessionID extracts the session UUID from a full session key.
 // Returns the UUID and true if the key matches the Pico session pattern.
+//
+//nolint:unused
 func extractPicoSessionID(key string) (string, bool) {
 	if strings.HasPrefix(key, picoSessionPrefix) {
 		return strings.TrimPrefix(key, picoSessionPrefix), true
@@ -461,39 +464,38 @@ func (h *Handler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		info, err := entry.Info()
+		if err != nil || info.Size() == 0 {
+			continue
+		}
+
 		name := entry.Name()
 		var (
 			sessionID string
 			sess      sessionFile
 			loadErr   error
-			ok        bool
 		)
 
 		switch {
 		case strings.HasSuffix(name, ".jsonl"):
-			sessionID, ok = extractPicoSessionIDFromSanitizedKey(strings.TrimSuffix(name, ".jsonl"))
-			if !ok {
+			baseName := strings.TrimSuffix(name, ".jsonl")
+			sessionID = extractSessionIDFromFilename(baseName)
+			if sessionID == "" {
 				continue
 			}
-			sess, loadErr = h.readJSONLSession(dir, sessionID)
-			if loadErr == nil && isEmptySession(sess) {
-				continue
-			}
+			sess, loadErr = h.readJSONLSessionForAnyChannel(dir, baseName)
 		case strings.HasSuffix(name, ".meta.json"):
 			continue
 		case filepath.Ext(name) == ".json":
 			base := strings.TrimSuffix(name, ".json")
-			if _, statErr := os.Stat(filepath.Join(dir, base+".jsonl")); statErr == nil {
-				if jsonlSessionID, found := extractPicoSessionIDFromSanitizedKey(base); found {
-					if jsonlSess, jsonlErr := h.readJSONLSession(
-						dir,
-						jsonlSessionID,
-					); jsonlErr == nil &&
-						!isEmptySession(jsonlSess) {
-						continue
-					}
-				}
+			sessionID = extractSessionIDFromFilename(base)
+			if sessionID == "" {
+				continue
 			}
+			if _, statErr := os.Stat(filepath.Join(dir, base+".jsonl")); statErr == nil {
+				continue
+			}
+
 			data, err := os.ReadFile(filepath.Join(dir, name))
 			if err != nil {
 				continue
@@ -502,13 +504,6 @@ func (h *Handler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			if isEmptySession(sess) {
-				continue
-			}
-			sessionID, ok = extractPicoSessionID(sess.Key)
-			if !ok {
-				continue
-			}
-			if _, exists := seen[sessionID]; exists {
 				continue
 			}
 		default:
@@ -523,7 +518,9 @@ func (h *Handler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 		}
 
 		seen[sessionID] = struct{}{}
-		items = append(items, buildSessionListItem(sessionID, sess, toolFeedbackMaxArgsLength))
+		item := buildSessionListItem(sessionID, sess, toolFeedbackMaxArgsLength)
+		item.Channel = detectChannelFromKey(sess.Key)
+		items = append(items, item)
 	}
 
 	// Sort by updated descending (most recent first)
@@ -578,26 +575,45 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sess, err := h.readJSONLSession(dir, sessionID)
-	if err == nil && isEmptySession(sess) {
-		err = os.ErrNotExist
+	if err == nil && !isEmptySession(sess) {
+		goto response
 	}
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			sess, err = h.readLegacySession(dir, sessionID)
-			if err == nil && isEmptySession(sess) {
-				err = os.ErrNotExist
+
+	if errors.Is(err, os.ErrNotExist) || isEmptySession(sess) {
+		sess, err = h.readLegacySession(dir, sessionID)
+		if err == nil && !isEmptySession(sess) {
+			goto response
+		}
+	}
+
+	{
+		entries, _ := os.ReadDir(dir)
+		found := false
+		for _, entry := range entries {
+			if entry.IsDir() || strings.HasSuffix(entry.Name(), ".meta.json") {
+				continue
+			}
+			baseName := strings.TrimSuffix(entry.Name(), filepath.Ext(entry.Name()))
+			if extractSessionIDFromFilename(baseName) == sessionID {
+				if strings.HasSuffix(entry.Name(), ".jsonl") {
+					sess, err = h.readJSONLSessionForAnyChannel(dir, baseName)
+				} else {
+					data, _ := os.ReadFile(filepath.Join(dir, entry.Name()))
+					err = json.Unmarshal(data, &sess)
+				}
+				if err == nil && !isEmptySession(sess) {
+					found = true
+					break
+				}
 			}
 		}
-		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				http.Error(w, "session not found", http.StatusNotFound)
-			} else {
-				http.Error(w, "failed to parse session", http.StatusInternalServerError)
-			}
+		if !found {
+			http.Error(w, "session not found", http.StatusNotFound)
 			return
 		}
 	}
 
+response:
 	messages := visibleSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -607,6 +623,7 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		"summary":  sess.Summary,
 		"created":  sess.Created.Format(time.RFC3339),
 		"updated":  sess.Updated.Format(time.RFC3339),
+		"channel":  detectChannelFromKey(sess.Key),
 	})
 }
 
@@ -649,4 +666,108 @@ func (h *Handler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+func detectChannelFromKey(key string) string {
+	keyLower := strings.ToLower(key)
+
+	switch {
+	case strings.Contains(keyLower, ":dingtalk:") || strings.Contains(keyLower, "_dingtalk_"):
+		return "dingtalk"
+	case strings.Contains(keyLower, ":discord:") || strings.Contains(keyLower, "_discord_"):
+		return "discord"
+	case strings.Contains(keyLower, ":feishu:") || strings.Contains(keyLower, "_feishu_"):
+		return "feishu"
+	case strings.Contains(keyLower, ":irc:") || strings.Contains(keyLower, "_irc_"):
+		return "irc"
+	case strings.Contains(keyLower, ":line:") || strings.Contains(keyLower, "_line_"):
+		return "line"
+	case strings.Contains(keyLower, ":maixcam:") || strings.Contains(keyLower, "_maixcam_"):
+		return "maixcam"
+	case strings.Contains(keyLower, ":matrix:") || strings.Contains(keyLower, "_matrix_"):
+		return "matrix"
+	case strings.Contains(keyLower, ":onebot:") || strings.Contains(keyLower, "_onebot_"):
+		return "onebot"
+	case strings.Contains(keyLower, ":pico:") || strings.Contains(keyLower, "_pico_"):
+		return "pico"
+	case strings.Contains(keyLower, ":qq:") || strings.Contains(keyLower, "_qq_"):
+		return "qq"
+	case strings.Contains(keyLower, ":slack:") || strings.Contains(keyLower, "_slack_"):
+		return "slack"
+	case strings.Contains(keyLower, ":teams_webhook:") || strings.Contains(keyLower, "_teams_webhook_"):
+		return "teams_webhook"
+	case strings.Contains(keyLower, ":telegram:") || strings.Contains(keyLower, "_telegram_"):
+		return "telegram"
+	case strings.Contains(keyLower, ":vk:") || strings.Contains(keyLower, "_vk_"):
+		return "vk"
+	case strings.Contains(keyLower, ":wecom:") || strings.Contains(keyLower, "_wecom_"):
+		return "wecom"
+	case strings.Contains(keyLower, ":weixin:") || strings.Contains(keyLower, "_weixin_"):
+		return "weixin"
+	case strings.Contains(keyLower, ":whatsapp:") || strings.Contains(keyLower, "_whatsapp_"):
+		return "whatsapp"
+	case strings.Contains(keyLower, ":whatsapp_native:") || strings.Contains(keyLower, "_whatsapp_native_"):
+		return "whatsapp_native"
+
+	case strings.Contains(keyLower, ":main:") || strings.Contains(keyLower, "_main_"):
+		return "main"
+	case strings.Contains(keyLower, ":heartbeat:") || strings.Contains(keyLower, "_heartbeat_"):
+		return "heartbeat"
+
+	default:
+		return "unknown"
+	}
+}
+
+func extractSessionIDFromFilename(filename string) string {
+	if id, ok := extractPicoSessionIDFromSanitizedKey(filename); ok {
+		return id
+	}
+	parts := strings.Split(filename, "_")
+	if len(parts) > 0 {
+		return parts[len(parts)-1]
+	}
+	return ""
+}
+
+func (h *Handler) readJSONLSessionForAnyChannel(dir, sanitizedBase string) (sessionFile, error) {
+	base := filepath.Join(dir, sanitizedBase)
+	jsonlPath := base + ".jsonl"
+	metaPath := base + ".meta.json"
+
+	meta, err := h.readSessionMeta(metaPath, sanitizedBase)
+	if err != nil {
+		return sessionFile{}, err
+	}
+
+	messages, err := h.readSessionMessages(jsonlPath, meta.Skip)
+	if err != nil {
+		return sessionFile{}, err
+	}
+
+	updated := meta.UpdatedAt
+	created := meta.CreatedAt
+	if created.IsZero() || updated.IsZero() {
+		if info, statErr := os.Stat(jsonlPath); statErr == nil {
+			if created.IsZero() {
+				created = info.ModTime()
+			}
+			if updated.IsZero() {
+				updated = info.ModTime()
+			}
+		}
+	}
+
+	key := sanitizedBase
+	if meta.Key != "" {
+		key = meta.Key
+	}
+
+	return sessionFile{
+		Key:      key,
+		Messages: messages,
+		Summary:  meta.Summary,
+		Created:  created,
+		Updated:  updated,
+	}, nil
 }

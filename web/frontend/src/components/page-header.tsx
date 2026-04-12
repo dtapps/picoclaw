@@ -9,6 +9,7 @@ interface PageHeaderProps {
   titleExtra?: ReactNode
   children?: ReactNode
   className?: string
+  channel?: string
 }
 
 export function PageHeader({
@@ -16,6 +17,7 @@ export function PageHeader({
   titleExtra,
   children,
   className,
+  channel,
 }: PageHeaderProps) {
   return (
     <div
@@ -31,6 +33,11 @@ export function PageHeader({
         <h2 className="text-foreground/90 text-xl font-medium tracking-tight">
           {title}
         </h2>
+        {channel && (
+          <span className="border-border/60 bg-background text-muted-foreground flex h-6 items-center rounded-md border px-2 text-[10px] font-medium tracking-wide shadow-sm">
+            {channel}
+          </span>
+        )}
         {titleExtra}
       </div>
       {children && <div className="flex items-center gap-2">{children}</div>}

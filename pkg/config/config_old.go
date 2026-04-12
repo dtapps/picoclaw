@@ -59,29 +59,30 @@ type configV0 struct {
 }
 
 type toolsConfigV0 struct {
-	AllowReadPaths  []string            `json:"allow_read_paths"  env:"PICOCLAW_TOOLS_ALLOW_READ_PATHS"`
-	AllowWritePaths []string            `json:"allow_write_paths" env:"PICOCLAW_TOOLS_ALLOW_WRITE_PATHS"`
-	Web             webToolsConfigV0    `json:"web"`
-	Cron            CronToolsConfig     `json:"cron"`
-	Exec            ExecConfig          `json:"exec"`
-	Skills          skillsToolsConfigV0 `json:"skills"`
-	MediaCleanup    MediaCleanupConfig  `json:"media_cleanup"`
-	MCP             MCPConfig           `json:"mcp"`
-	AppendFile      ToolConfig          `json:"append_file"                                              envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
-	EditFile        ToolConfig          `json:"edit_file"                                                envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
-	FindSkills      ToolConfig          `json:"find_skills"                                              envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
-	I2C             ToolConfig          `json:"i2c"                                                      envPrefix:"PICOCLAW_TOOLS_I2C_"`
-	InstallSkill    ToolConfig          `json:"install_skill"                                            envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
-	ListDir         ToolConfig          `json:"list_dir"                                                 envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
-	Message         ToolConfig          `json:"message"                                                  envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
-	ReadFile        ReadFileToolConfig  `json:"read_file"                                                envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
-	SendFile        ToolConfig          `json:"send_file"                                                envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
-	Spawn           ToolConfig          `json:"spawn"                                                    envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
-	SpawnStatus     ToolConfig          `json:"spawn_status"                                             envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
-	SPI             ToolConfig          `json:"spi"                                                      envPrefix:"PICOCLAW_TOOLS_SPI_"`
-	Subagent        ToolConfig          `json:"subagent"                                                 envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
-	WebFetch        ToolConfig          `json:"web_fetch"                                                envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
-	WriteFile       ToolConfig          `json:"write_file"                                               envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	AllowReadPaths        []string            `json:"allow_read_paths"        env:"PICOCLAW_TOOLS_ALLOW_READ_PATHS"`
+	AllowWritePaths       []string            `json:"allow_write_paths"       env:"PICOCLAW_TOOLS_ALLOW_WRITE_PATHS"`
+	Web                   webToolsConfigV0    `json:"web"`
+	Cron                  CronToolsConfig     `json:"cron"`
+	Exec                  ExecConfig          `json:"exec"`
+	Skills                skillsToolsConfigV0 `json:"skills"`
+	MediaCleanup          MediaCleanupConfig  `json:"media_cleanup"`
+	MCP                   MCPConfig           `json:"mcp"`
+	AppendFile            ToolConfig          `json:"append_file"                                                    envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
+	EditFile              ToolConfig          `json:"edit_file"                                                      envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
+	FindSkills            ToolConfig          `json:"find_skills"                                                    envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
+	I2C                   ToolConfig          `json:"i2c"                                                            envPrefix:"PICOCLAW_TOOLS_I2C_"`
+	InstallSkill          ToolConfig          `json:"install_skill"                                                  envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
+	ListDir               ToolConfig          `json:"list_dir"                                                       envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
+	Message               ToolConfig          `json:"message"                                                        envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+	ReadFile              ReadFileToolConfig  `json:"read_file"                                                      envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
+	SendFile              ToolConfig          `json:"send_file"                                                      envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
+	Spawn                 ToolConfig          `json:"spawn"                                                          envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
+	SpawnStatus           ToolConfig          `json:"spawn_status"                                                   envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
+	SPI                   ToolConfig          `json:"spi"                                                            envPrefix:"PICOCLAW_TOOLS_SPI_"`
+	Subagent              ToolConfig          `json:"subagent"                                                       envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
+	WebFetch              ToolConfig          `json:"web_fetch"                                                      envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
+	WriteFile             ToolConfig          `json:"write_file"                                                     envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	WebEncyclopediaSearch ToolConfig          `json:"web_encyclopedia_search"                                        envPrefix:"PICOCLAW_TOOLS_WEB_ENCYCLOPEDIA_SEARCH_"`
 }
 
 type channelsConfigV0 struct {
@@ -660,6 +661,7 @@ type modelConfigV0 struct {
 
 	// Optional optimizations
 	RPM            int    `json:"rpm,omitempty"`              // Requests per minute limit
+	MaxTokens      int    `json:"max_tokens,omitempty"`       // Maximum number of tokens per request
 	MaxTokensField string `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
 	RequestTimeout int    `json:"request_timeout,omitempty"`
 	ThinkingLevel  string `json:"thinking_level,omitempty"` // Extended thinking: off|low|medium|high|xhigh|adaptive
@@ -725,6 +727,7 @@ func (c *configV0) Migrate() (*Config, error) {
 	cfg.Tools.SPI = c.Tools.SPI
 	cfg.Tools.Subagent = c.Tools.Subagent
 	cfg.Tools.WebFetch = c.Tools.WebFetch
+	cfg.Tools.WebEncyclopediaSearch = c.Tools.WebEncyclopediaSearch
 	cfg.Tools.AllowReadPaths = c.Tools.AllowReadPaths
 	cfg.Tools.AllowWritePaths = c.Tools.AllowWritePaths
 	cfg.Heartbeat = c.Heartbeat
@@ -745,6 +748,7 @@ func (c *configV0) Migrate() (*Config, error) {
 				ConnectMode:    m.ConnectMode,
 				Workspace:      m.Workspace,
 				RPM:            m.RPM,
+				MaxTokens:      m.MaxTokens,
 				MaxTokensField: m.MaxTokensField,
 				RequestTimeout: m.RequestTimeout,
 				ThinkingLevel:  m.ThinkingLevel,
@@ -817,6 +821,7 @@ type webToolsConfigV0 struct {
 	SearXNG              SearXNGConfig       `                                json:"searxng"`
 	GLMSearch            glmSearchConfigV0   `                                json:"glm_search"`
 	BaiduSearch          baiduSearchConfigV0 `                                json:"baidu_search"`
+	BaiduBaike           baiduBaikeConfigV0  `                                json:"baidu_baike"`
 	PreferNative         bool                `                                json:"prefer_native"                    env:"PICOCLAW_TOOLS_WEB_PREFER_NATIVE"`
 	Proxy                string              `                                json:"proxy,omitempty"                  env:"PICOCLAW_TOOLS_WEB_PROXY"`
 	FetchLimitBytes      int64               `                                json:"fetch_limit_bytes,omitempty"      env:"PICOCLAW_TOOLS_WEB_FETCH_LIMIT_BYTES"`
@@ -911,12 +916,29 @@ func (v *baiduSearchConfigV0) ToBaiduSearchConfig() BaiduSearchConfig {
 	}
 }
 
+type baiduBaikeConfigV0 struct {
+	Enabled    bool   `json:"enabled"     env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_ENABLED"`
+	APIKey     string `json:"api_key"     env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_API_KEY"`
+	BaseURL    string `json:"base_url"    env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_BASE_URL"`
+	MaxResults int    `json:"max_results" env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_MAX_RESULTS"`
+}
+
+func (v *baiduBaikeConfigV0) ToBaiduBaikeConfig() BaiduBaikeConfig {
+	return BaiduBaikeConfig{
+		Enabled:    v.Enabled,
+		APIKey:     *NewSecureString(v.APIKey),
+		BaseURL:    v.BaseURL,
+		MaxResults: v.MaxResults,
+	}
+}
+
 func (v *webToolsConfigV0) ToWebToolsConfig() WebToolsConfig {
 	brave := v.Brave.ToBraveConfig()
 	tavily := v.Tavily.ToTavilyConfig()
 	perplexity := v.Perplexity.ToPerplexityConfig()
 	glmSearch := v.GLMSearch.ToGLMSearchConfig()
 	baiduSearch := v.BaiduSearch.ToBaiduSearchConfig()
+	baiduBaike := v.BaiduBaike.ToBaiduBaikeConfig()
 
 	return WebToolsConfig{
 		ToolConfig:           v.ToolConfig,
@@ -932,6 +954,7 @@ func (v *webToolsConfigV0) ToWebToolsConfig() WebToolsConfig {
 		Format:               v.Format,
 		PrivateHostWhitelist: v.PrivateHostWhitelist,
 		BaiduSearch:          baiduSearch,
+		BaiduBaike:           baiduBaike,
 	}
 }
 
