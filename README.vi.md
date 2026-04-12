@@ -448,7 +448,7 @@ PicoClaw hỗ trợ 30+ Provider LLM thông qua cấu hình `model_list`. Sử d
 
 ## 💬 Channels (Ứng dụng Chat)
 
-Trò chuyện với PicoClaw của bạn qua 17+ nền tảng nhắn tin:
+Trò chuyện với PicoClaw của bạn qua 18+ nền tảng nhắn tin:
 
 | Channel | Thiết lập | Protocol | Tài liệu |
 |---------|-----------|----------|----------|
@@ -466,6 +466,7 @@ Trò chuyện với PicoClaw của bạn qua 17+ nền tảng nhắn tin:
 | **IRC** | Trung bình (server + nick) | IRC protocol | [Hướng dẫn](docs/vi/chat-apps.md#irc) |
 | **OneBot** | Trung bình (WebSocket URL) | OneBot v11 | [Hướng dẫn](docs/channels/onebot/README.vi.md) |
 | **MaixCam** | Dễ (bật) | TCP socket | [Hướng dẫn](docs/channels/maixcam/README.vi.md) |
+| **Weibo** | Dễ (App ID + Secret) | WebSocket | [Hướng dẫn](docs/channels/weibo/README.vi.md) |
 | **Pico** | Dễ (bật) | Native protocol | Tích hợp sẵn |
 | **Pico Client** | Dễ (WebSocket URL) | WebSocket | Tích hợp sẵn |
 

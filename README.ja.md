@@ -448,7 +448,7 @@ Provider の完全な設定詳細は [Provider とモデル](docs/ja/providers.m
 
 ## 💬 Channel（チャットアプリ）
 
-17 以上のメッセージングプラットフォームで PicoClaw と会話できます：
+18 以上のメッセージングプラットフォームで PicoClaw と会話できます：
 
 | Channel | セットアップ | Protocol | ドキュメント |
 |---------|------------|----------|------------|
@@ -466,6 +466,7 @@ Provider の完全な設定詳細は [Provider とモデル](docs/ja/providers.m
 | **IRC** | 中級（サーバー + nick） | IRC protocol | [ガイド](docs/ja/chat-apps.md#irc) |
 | **OneBot** | 中級（WebSocket URL） | OneBot v11 | [ガイド](docs/channels/onebot/README.ja.md) |
 | **MaixCam** | 簡単（有効化） | TCP socket | [ガイド](docs/channels/maixcam/README.ja.md) |
+| **Weibo** | 簡単（App ID + Secret） | WebSocket | [ガイド](docs/channels/weibo/README.ja.md) |
 | **Pico** | 簡単（有効化） | Native protocol | 内蔵 |
 | **Pico Client** | 簡単（WebSocket URL） | WebSocket | 内蔵 |
 

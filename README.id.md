@@ -448,7 +448,7 @@ Untuk detail konfigurasi provider lengkap, lihat [Providers & Models](docs/provi
 
 ## 💬 Channels (Aplikasi Chat)
 
-Bicara dengan PicoClaw Anda melalui 17+ platform pesan:
+Bicara dengan PicoClaw Anda melalui 18+ platform pesan:
 
 | Channel | Pengaturan | Protocol | Dokumentasi |
 |---------|------------|----------|-------------|
@@ -466,6 +466,7 @@ Bicara dengan PicoClaw Anda melalui 17+ platform pesan:
 | **IRC** | Sedang (server + nick) | IRC protocol | [Panduan](docs/chat-apps.md#irc) |
 | **OneBot** | Sedang (WebSocket URL) | OneBot v11 | [Panduan](docs/channels/onebot/README.md) |
 | **MaixCam** | Mudah (aktifkan) | TCP socket | [Panduan](docs/channels/maixcam/README.md) |
+| **Weibo** | Mudah (App ID + Secret) | WebSocket | [Panduan](docs/channels/weibo/README.md) |
 | **Pico** | Mudah (aktifkan) | Native protocol | Bawaan |
 | **Pico Client** | Mudah (WebSocket URL) | WebSocket | Bawaan |
 

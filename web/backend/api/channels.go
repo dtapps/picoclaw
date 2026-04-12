@@ -30,6 +30,7 @@ var channelCatalog = []channelCatalogItem{
 	{Name: "maixcam", ConfigKey: "maixcam"},
 	{Name: "matrix", ConfigKey: "matrix"},
 	{Name: "irc", ConfigKey: "irc"},
+	{Name: "weibo", ConfigKey: "weibo"},
 }
 
 type channelConfigResponse struct {
@@ -211,6 +212,13 @@ func buildChannelConfigResponse(cfg *config.Config, item channelCatalogItem) cha
 		channelCfg.Password = config.SecureString{}
 		channelCfg.NickServPassword = config.SecureString{}
 		channelCfg.SASLPassword = config.SecureString{}
+		resp.Config = channelCfg
+	case "weibo":
+		channelCfg := cfg.Channels.Weibo
+		resp.ConfiguredSecrets = collectConfiguredSecrets(
+			channelSecretPresence{key: "app_secret", configured: channelCfg.AppSecret.String() != ""},
+		)
+		channelCfg.AppSecret = config.SecureString{}
 		resp.Config = channelCfg
 	default:
 		resp.Config = map[string]any{}
