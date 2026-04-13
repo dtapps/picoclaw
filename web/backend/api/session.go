@@ -672,42 +672,46 @@ func detectChannelFromKey(key string) string {
 	keyLower := strings.ToLower(key)
 
 	switch {
-	case strings.Contains(keyLower, ":dingtalk:") || strings.Contains(keyLower, "_dingtalk_"):
-		return "dingtalk"
-	case strings.Contains(keyLower, ":discord:") || strings.Contains(keyLower, "_discord_"):
-		return "discord"
-	case strings.Contains(keyLower, ":feishu:") || strings.Contains(keyLower, "_feishu_"):
-		return "feishu"
-	case strings.Contains(keyLower, ":irc:") || strings.Contains(keyLower, "_irc_"):
-		return "irc"
-	case strings.Contains(keyLower, ":line:") || strings.Contains(keyLower, "_line_"):
-		return "line"
-	case strings.Contains(keyLower, ":maixcam:") || strings.Contains(keyLower, "_maixcam_"):
-		return "maixcam"
-	case strings.Contains(keyLower, ":matrix:") || strings.Contains(keyLower, "_matrix_"):
-		return "matrix"
-	case strings.Contains(keyLower, ":onebot:") || strings.Contains(keyLower, "_onebot_"):
-		return "onebot"
-	case strings.Contains(keyLower, ":pico:") || strings.Contains(keyLower, "_pico_"):
-		return "pico"
-	case strings.Contains(keyLower, ":qq:") || strings.Contains(keyLower, "_qq_"):
-		return "qq"
-	case strings.Contains(keyLower, ":slack:") || strings.Contains(keyLower, "_slack_"):
-		return "slack"
-	case strings.Contains(keyLower, ":teams_webhook:") || strings.Contains(keyLower, "_teams_webhook_"):
-		return "teams_webhook"
 	case strings.Contains(keyLower, ":telegram:") || strings.Contains(keyLower, "_telegram_"):
 		return "telegram"
-	case strings.Contains(keyLower, ":vk:") || strings.Contains(keyLower, "_vk_"):
-		return "vk"
+	case strings.Contains(keyLower, ":discord:") || strings.Contains(keyLower, "_discord_"):
+		return "discord"
+	case strings.Contains(keyLower, ":slack:") || strings.Contains(keyLower, "_slack_"):
+		return "slack"
+	case strings.Contains(keyLower, ":feishu:") || strings.Contains(keyLower, "_feishu_"):
+		return "feishu"
+	case strings.Contains(keyLower, ":dingtalk:") || strings.Contains(keyLower, "_dingtalk_"):
+		return "dingtalk"
+	case strings.Contains(keyLower, ":line:") || strings.Contains(keyLower, "_line_"):
+		return "line"
+	case strings.Contains(keyLower, ":qq:") || strings.Contains(keyLower, "_qq_"):
+		return "qq"
+	case strings.Contains(keyLower, ":onebot:") || strings.Contains(keyLower, "_onebot_"):
+		return "onebot"
 	case strings.Contains(keyLower, ":wecom:") || strings.Contains(keyLower, "_wecom_"):
 		return "wecom"
-	case strings.Contains(keyLower, ":weixin:") || strings.Contains(keyLower, "_weixin_"):
-		return "weixin"
 	case strings.Contains(keyLower, ":whatsapp:") || strings.Contains(keyLower, "_whatsapp_"):
 		return "whatsapp"
 	case strings.Contains(keyLower, ":whatsapp_native:") || strings.Contains(keyLower, "_whatsapp_native_"):
 		return "whatsapp_native"
+	case strings.Contains(keyLower, ":pico:") || strings.Contains(keyLower, "_pico_"):
+		return "pico"
+	case strings.Contains(keyLower, ":maixcam:") || strings.Contains(keyLower, "_maixcam_"):
+		return "maixcam"
+	case strings.Contains(keyLower, ":matrix:") || strings.Contains(keyLower, "_matrix_"):
+		return "matrix"
+	case strings.Contains(keyLower, ":irc:") || strings.Contains(keyLower, "_irc_"):
+		return "irc"
+	case strings.Contains(keyLower, ":weixin:") || strings.Contains(keyLower, "_weixin_"):
+		return "weixin"
+	case strings.Contains(keyLower, ":vk:") || strings.Contains(keyLower, "_vk_"):
+		return "vk"
+	case strings.Contains(keyLower, ":teams_webhook:") || strings.Contains(keyLower, "_teams_webhook_"):
+		return "teams_webhook"
+	case strings.Contains(keyLower, ":weibo:") || strings.Contains(keyLower, "_weibo_"):
+		return "weibo"
+	case strings.Contains(keyLower, ":yuanbao:") || strings.Contains(keyLower, "_yuanbao_"):
+		return "yuanbao"
 
 	case strings.Contains(keyLower, ":main:") || strings.Contains(keyLower, "_main_"):
 		return "main"
