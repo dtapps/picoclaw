@@ -33,6 +33,7 @@ const CHANNEL_SECRET_FIELDS: Record<string, string[]> = {
   pico: ["token"],
   matrix: ["access_token"],
   irc: ["password", "nickserv_password", "sasl_password"],
+  weibo: ["app_secret"],
   yuanbao: ["app_secret"],
 }
 

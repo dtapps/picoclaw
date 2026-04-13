@@ -110,6 +110,7 @@ Este design também permite **suporte multi-agente** com seleção flexível de 
 | `proxy` | string | Não | URL do proxy HTTP para esta entrada de modelo |
 | `user_agent` | string | Não | Cabeçalho `User-Agent` personalizado enviado com requisições API (suportado por providers OpenAI-compatible, Anthropic e Azure) |
 | `request_timeout` | int | Não | Timeout de requisição em segundos (o padrão varia por provider) |
+| `max_tokens` | int | Não |Número de Token máximo |
 | `max_tokens_field` | string | Não | Substitui o nome do campo max tokens no corpo da requisição (ex: `max_completion_tokens` para modelos o1) |
 | `thinking_level` | string | Não | Nível de pensamento estendido: `off`, `low`, `medium`, `high`, `xhigh` ou `adaptive` |
 | `extra_body` | object | Não | Campos adicionais para injetar em cada corpo de requisição |

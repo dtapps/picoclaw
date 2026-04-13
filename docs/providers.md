@@ -119,6 +119,7 @@ This design also enables **multi-agent support** with flexible provider selectio
 | `proxy` | string | No | HTTP proxy URL for this model entry |
 | `user_agent` | string | No | Custom `User-Agent` header sent with API requests (supported by OpenAI-compatible, Anthropic, and Azure providers) |
 | `request_timeout` | int | No | Request timeout in seconds (default varies by provider) |
+| `max_tokens` | int | No | Maximum Token count |
 | `max_tokens_field` | string | No | Override the max tokens field name in request body (e.g., `max_completion_tokens` for o1 models) |
 | `thinking_level` | string | No | Extended thinking level: `off`, `low`, `medium`, `high`, `xhigh`, or `adaptive` |
 | `extra_body` | object | No | Additional fields to inject into every request body |

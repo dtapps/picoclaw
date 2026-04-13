@@ -443,6 +443,10 @@ func (m *Manager) initChannels(channels *config.ChannelsConfig) error {
 		}
 	}
 
+	if channels.Weibo.Enabled {
+		m.initChannel("weibo", "Weibo")
+	}
+
 	if channels.Yuanbao.Enabled {
 		m.initChannel("yuanbao", "Yuanbao")
 	}

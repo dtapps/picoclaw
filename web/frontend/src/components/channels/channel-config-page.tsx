@@ -146,6 +146,8 @@ function isConfigured(
       )
     case "irc":
       return hasValue("server")
+    case "weibo":
+      return hasValue("app_id") && hasValue("app_secret")
     case "yuanbao":
       return hasValue("app_id") && hasValue("app_secret")
     default:
@@ -183,6 +185,8 @@ function getRequiredFieldKeys(channelName: string): string[] {
       return ["homeserver", "user_id", "access_token"]
     case "irc":
       return ["server"]
+    case "weibo":
+      return ["app_id", "app_secret"]
     case "yuanbao":
       return ["app_id", "app_secret"]
     default:

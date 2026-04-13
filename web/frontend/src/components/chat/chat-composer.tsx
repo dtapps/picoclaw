@@ -17,6 +17,7 @@ interface ChatComposerProps {
   isConnected: boolean
   hasDefaultModel: boolean
   canSend: boolean
+  channel?: string
 }
 
 export function ChatComposer({
@@ -29,9 +30,13 @@ export function ChatComposer({
   isConnected,
   hasDefaultModel,
   canSend,
+  channel,
 }: ChatComposerProps) {
   const { t } = useTranslation()
-  const canInput = isConnected && hasDefaultModel
+
+  const isPico = channel === "pico"
+
+  const canInput = isConnected && hasDefaultModel && isPico
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing) return

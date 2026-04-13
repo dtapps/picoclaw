@@ -77,6 +77,31 @@ Web 工具用于网页搜索和抓取。
 }
 ```
 
+### 百度百科
+
+使用[千帆 AI 搜索 API](https://cloud.baidu.com/doc/qianfan/s/bmh4stpbh)，国内访问稳定，中文百科效果好。
+
+| 配置项        | 类型   | 默认值                                                          | 描述                  |
+|---------------|--------|----------------------------------------------------------------|-----------------------|
+| `enabled`     | bool   | false                                                          | 启用百度百科          |
+| `api_key`     | string | -                                                              | 千帆 API 密钥         |
+| `base_url`    | string | `https://appbuilder.baidu.com/v2/baike/lemma/get_content`        | 百度百科 API URL      |
+| `max_results` | int    | 10                                                             | 最大结果数            |
+
+```json
+{
+  "tools": {
+    "web": {
+      "baidu_baike": {
+        "enabled": true,
+        "api_key": "YOUR_BAIDU_QIANFAN_API_KEY",
+        "max_results": 10
+      }
+    }
+  }
+}
+```
+
 ### Tavily
 
 | 配置项        | 类型   | 默认值 | 描述                              |

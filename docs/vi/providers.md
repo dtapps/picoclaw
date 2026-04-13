@@ -110,6 +110,7 @@ Thiết kế này cũng cho phép **hỗ trợ đa agent** với lựa chọn pr
 | `proxy` | string | Không | URL proxy HTTP cho entry model này |
 | `user_agent` | string | Không | Header `User-Agent` tùy chỉnh gửi với yêu cầu API (được hỗ trợ bởi provider OpenAI-compatible, Anthropic và Azure) |
 | `request_timeout` | int | Không | Timeout yêu cầu tính bằng giây (mặc định khác nhau tùy provider) |
+| `max_tokens` | int | Không | Số Token tối đa |
 | `max_tokens_field` | string | Không | Ghi đè tên trường max tokens trong request body (ví dụ: `max_completion_tokens` cho model o1) |
 | `thinking_level` | string | Không | Mức độ tư duy mở rộng: `off`, `low`, `medium`, `high`, `xhigh` hoặc `adaptive` |
 | `extra_body` | object | Không | Các trường bổ sung để chèn vào mỗi request body |

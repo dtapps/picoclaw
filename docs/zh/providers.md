@@ -115,6 +115,7 @@
 | `proxy` | string | 否 | 此模型条目的 HTTP 代理 URL |
 | `user_agent` | string | 否 | 自定义 `User-Agent` 请求头（支持 OpenAI 兼容、Anthropic 和 Azure provider） |
 | `request_timeout` | int | 否 | 请求超时时间（秒），默认值因 provider 而异 |
+| `max_tokens` | int | 否 | 最大 Token 数 |
 | `max_tokens_field` | string | 否 | 覆盖请求体中 max tokens 的字段名（如 o1 模型使用 `max_completion_tokens`） |
 | `thinking_level` | string | 否 | 扩展思考级别：`off`、`low`、`medium`、`high`、`xhigh` 或 `adaptive` |
 | `extra_body` | object | 否 | 注入到每个请求体中的额外字段 |

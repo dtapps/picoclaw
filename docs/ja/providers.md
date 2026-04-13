@@ -110,6 +110,7 @@
 | `proxy` | string | いいえ | このモデルエントリの HTTP プロキシ URL |
 | `user_agent` | string | いいえ | カスタム `User-Agent` リクエストヘッダー（OpenAI 互換、Anthropic、Azure provider で対応） |
 | `request_timeout` | int | いいえ | リクエストタイムアウト（秒）。デフォルト値は provider により異なる |
+| `max_tokens` | int | いいえ | 最大 Token 数を上書き |
 | `max_tokens_field` | string | いいえ | リクエストボディの max tokens フィールド名を上書き（例：o1 モデルでは `max_completion_tokens`） |
 | `thinking_level` | string | いいえ | 拡張思考レベル：`off`、`low`、`medium`、`high`、`xhigh`、`adaptive` |
 | `extra_body` | object | いいえ | 各リクエストボディに注入する追加フィールド |

@@ -31,6 +31,7 @@ export interface ChatStoreState {
   isTyping: boolean
   activeSessionId: string
   hasHydratedActiveSession: boolean
+  currentChannel: string
 }
 
 type ChatStorePatch = Partial<ChatStoreState>
@@ -41,6 +42,7 @@ const DEFAULT_CHAT_STATE: ChatStoreState = {
   isTyping: false,
   activeSessionId: getInitialActiveSessionId(),
   hasHydratedActiveSession: false,
+  currentChannel: "",
 }
 
 export const chatAtom = atom<ChatStoreState>(DEFAULT_CHAT_STATE)
