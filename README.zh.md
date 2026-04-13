@@ -467,6 +467,7 @@ PicoClaw 通过 `model_list` 配置支持 30+ LLM Provider，使用 `协议/模�
 | **IRC** | 中等（server + nick） | IRC 协议 | [指南](docs/zh/chat-apps.md#irc) |
 | **OneBot** | 中等（WebSocket URL） | OneBot v11 | [指南](docs/channels/onebot/README.zh.md) |
 | **MaixCam** | 简单（启用即可） | TCP socket | [指南](docs/channels/maixcam/README.zh.md) |
+| **Yuanbao** | 简单（AppID + AppSecret） | WebSocket | [指南](docs/channels/yuanbao/README.zh.md) |
 | **Pico** | 简单（启用即可） | 原生协议 | 内置 |
 | **Pico Client** | 简单（WebSocket URL） | WebSocket | 内置 |
 

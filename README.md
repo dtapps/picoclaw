@@ -473,6 +473,7 @@ Talk to your PicoClaw through 18+ messaging platforms:
 | **IRC** | Medium (server + nick) | IRC protocol | [Guide](docs/chat-apps.md#irc) |
 | **OneBot** | Medium (WebSocket URL) | OneBot v11 | [Guide](docs/channels/onebot/README.md) |
 | **MaixCam** | Easy (enable) | TCP socket | [Guide](docs/channels/maixcam/README.md) |
+| **Yuanbao** | Easy (AppID + AppSecret) | WebSocket | [Guide](docs/channels/yuanbao/README.md) |
 | **Pico** | Easy (enable) | Native protocol | Built-in |
 | **Pico Client** | Easy (WebSocket URL) | WebSocket | Built-in |
 

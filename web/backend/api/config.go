@@ -465,6 +465,11 @@ func applyConfigSecretsFromMap(cfg *config.Config, raw map[string]any) {
 				cfg.Channels.IRC.SASLPassword.Set(saslPassword)
 			}
 		}
+		if yuanbao, hasYuanbao := asMapField(channels, "yuanbao"); hasYuanbao {
+			if appSecret, hasAppSecret := getSecretString(yuanbao, "app_secret"); hasAppSecret {
+				cfg.Channels.Yuanbao.AppSecret.Set(appSecret)
+			}
+		}
 	}
 
 	tools, hasTools := asMapField(raw, "tools")

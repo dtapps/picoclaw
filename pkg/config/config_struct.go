@@ -95,6 +95,17 @@ func (f *FlexibleStringSlice) UnmarshalText(text []byte) error {
 	return nil
 }
 
+func (f *FlexibleStringSlice) FilterEmpty() []string {
+	result := make([]string, 0, len(*f))
+	for _, s := range *f {
+		trimmed := strings.TrimSpace(s)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
+}
+
 const (
 	notHere = `"[NOT_HERE]"`
 )

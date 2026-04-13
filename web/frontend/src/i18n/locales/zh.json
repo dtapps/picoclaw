@@ -279,7 +279,8 @@
       "maixcam": "MaixCam",
       "matrix": "Matrix",
       "irc": "IRC",
-      "weixin": "微信"
+      "weixin": "微信",
+      "yuanbao": "元宝"
     },
     "weixin": {
       "bindTitle": "微信账号绑定",

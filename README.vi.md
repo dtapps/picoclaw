@@ -466,6 +466,7 @@ Trò chuyện với PicoClaw của bạn qua 17+ nền tảng nhắn tin:
 | **IRC** | Trung bình (server + nick) | IRC protocol | [Hướng dẫn](docs/vi/chat-apps.md#irc) |
 | **OneBot** | Trung bình (WebSocket URL) | OneBot v11 | [Hướng dẫn](docs/channels/onebot/README.vi.md) |
 | **MaixCam** | Dễ (bật) | TCP socket | [Hướng dẫn](docs/channels/maixcam/README.vi.md) |
+| **Yuanbao** | Dễ (AppID + AppSecret) | WebSocket | [Hướng dẫn](docs/channels/yuanbao/README.vi.md) |
 | **Pico** | Dễ (bật) | Native protocol | Tích hợp sẵn |
 | **Pico Client** | Dễ (WebSocket URL) | WebSocket | Tích hợp sẵn |
 

@@ -443,6 +443,10 @@ func (m *Manager) initChannels(channels *config.ChannelsConfig) error {
 		}
 	}
 
+	if channels.Yuanbao.Enabled {
+		m.initChannel("yuanbao", "Yuanbao")
+	}
+
 	logger.InfoCF("channels", "Channel initialization completed", map[string]any{
 		"enabled_channels": len(m.channels),
 	})
