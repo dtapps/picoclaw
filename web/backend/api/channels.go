@@ -216,6 +216,11 @@ func buildChannelConfigResponse(cfg *config.Config, item channelCatalogItem) cha
 		resp.Config = channelCfg
 	case "yuanbao":
 		channelCfg := cfg.Channels.Yuanbao
+		resp.ConfiguredSecrets = collectConfiguredSecrets(
+			channelSecretPresence{key: "app_secret", configured: channelCfg.AppSecret.String() != ""},
+		)
+		channelCfg.AppSecret = config.SecureString{}
+		resp.Config = channelCfg
 	case "weibo":
 		channelCfg := cfg.Channels.Weibo
 		resp.ConfiguredSecrets = collectConfiguredSecrets(

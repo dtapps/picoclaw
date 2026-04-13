@@ -626,6 +626,7 @@ type YuanbaoConfig struct {
 func (c *YuanbaoConfig) SetAppSecret(appSecret string) {
 	c.AppSecret = *NewSecureString(appSecret)
 }
+
 type HeartbeatConfig struct {
 	Enabled  bool `json:"enabled"  env:"PICOCLAW_HEARTBEAT_ENABLED"`
 	Interval int  `json:"interval" env:"PICOCLAW_HEARTBEAT_INTERVAL"` // minutes, min 5
