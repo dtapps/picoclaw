@@ -467,6 +467,7 @@ Converse com seu PicoClaw por meio de mais de 18 plataformas de mensagens:
 | **OneBot** | Médio (WebSocket URL) | OneBot v11 | [Guia](docs/channels/onebot/README.pt-br.md) |
 | **MaixCam** | Fácil (habilitar) | TCP socket | [Guia](docs/channels/maixcam/README.pt-br.md) |
 | **Weibo** | Fácil (App ID + Secret) | WebSocket | [Guia](docs/channels/weibo/README.pt-br.md) |
+| **Yuanbao** | Fácil (AppID + AppSecret) | WebSocket | [Guia](docs/channels/yuanbao/README.pt-br.md) |
 | **Pico** | Fácil (habilitar) | Protocolo nativo | Integrado |
 | **Pico Client** | Fácil (WebSocket URL) | WebSocket | Integrado |
 

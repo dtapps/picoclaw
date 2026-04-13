@@ -473,6 +473,7 @@ PicoClaw는 `model_list` 설정을 통해 30개 이상의 LLM 프로바이더를
 | **OneBot** | 중간(WebSocket URL) | OneBot v11 | [가이드](docs/channels/onebot/README.md) |
 | **MaixCam** | 쉬움(활성화) | TCP socket | [가이드](docs/channels/maixcam/README.md) |
 | **Weibo** | 쉬움(App ID + Secret) | WebSocket | [가이드](docs/channels/weibo/README.md) |
+| **Yuanbao** | 쉬움(AppID + AppSecret) | WebSocket | [가이드](docs/channels/yuanbao/README.md) |
 | **Pico** | 쉬움(활성화) | 네이티브 프로토콜 | 내장 |
 | **Pico Client** | 쉬움(WebSocket URL) | WebSocket | 내장 |
 

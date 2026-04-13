@@ -467,6 +467,7 @@ Bicara dengan PicoClaw Anda melalui 18+ platform pesan:
 | **OneBot** | Sedang (WebSocket URL) | OneBot v11 | [Panduan](docs/channels/onebot/README.md) |
 | **MaixCam** | Mudah (aktifkan) | TCP socket | [Panduan](docs/channels/maixcam/README.md) |
 | **Weibo** | Mudah (App ID + Secret) | WebSocket | [Panduan](docs/channels/weibo/README.md) |
+| **Yuanbao** | Mudah (AppID + AppSecret) | WebSocket | [Panduan](docs/channels/yuanbao/README.md) |
 | **Pico** | Mudah (aktifkan) | Native protocol | Bawaan |
 | **Pico Client** | Mudah (WebSocket URL) | WebSocket | Bawaan |
 

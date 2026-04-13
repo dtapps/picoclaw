@@ -283,6 +283,7 @@
       "irc": "IRC",
       "weixin": "微信",
       "weibo": "微博",
+      "yuanbao": "元宝",
       "heartbeat": "心跳",
       "main": "定时任务"
     },

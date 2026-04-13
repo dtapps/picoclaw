@@ -465,11 +465,20 @@ func applyConfigSecretsFromMap(cfg *config.Config, raw map[string]any) {
 				cfg.Channels.IRC.SASLPassword.Set(saslPassword)
 			}
 		}
-		if weibo, hasWeibo := asMapField(channels, "weibo"); hasWeibo {
-			if appSecret, hasAppSecret := getSecretString(weibo, "app_secret"); hasAppSecret {
-				cfg.Channels.Weibo.AppSecret.Set(appSecret)
-			}
-		}
+	case "weibo":
+		channelCfg := cfg.Channels.Weibo
+		resp.ConfiguredSecrets = collectConfiguredSecrets(
+			channelSecretPresence{key: "app_secret", configured: channelCfg.AppSecret.String() != ""},
+		)
+		channelCfg.AppSecret = config.SecureString{}
+		resp.Config = channelCfg
+	case "yuanbao":
+		channelCfg := cfg.Channels.Yuanbao
+		resp.ConfiguredSecrets = collectConfiguredSecrets(
+			channelSecretPresence{key: "app_secret", configured: channelCfg.AppSecret.String() != ""},
+		)
+		channelCfg.AppSecret = config.SecureString{}
+		resp.Config = channelCfg
 	}
 
 	tools, hasTools := asMapField(raw, "tools")

@@ -36,6 +36,7 @@ import (
 	_ "github.com/sipeed/picoclaw/pkg/channels/weixin"
 	_ "github.com/sipeed/picoclaw/pkg/channels/whatsapp"
 	_ "github.com/sipeed/picoclaw/pkg/channels/whatsapp_native"
+	_ "github.com/sipeed/picoclaw/pkg/channels/yuanbao"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/cron"
 	"github.com/sipeed/picoclaw/pkg/devices"

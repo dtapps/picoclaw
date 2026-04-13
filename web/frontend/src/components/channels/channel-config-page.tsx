@@ -148,6 +148,8 @@ function isConfigured(
       return hasValue("server")
     case "weibo":
       return hasValue("app_id") && hasValue("app_secret")
+    case "yuanbao":
+      return hasValue("app_id") && hasValue("app_secret")
     default:
       return false
   }
@@ -184,6 +186,8 @@ function getRequiredFieldKeys(channelName: string): string[] {
     case "irc":
       return ["server"]
     case "weibo":
+      return ["app_id", "app_secret"]
+    case "yuanbao":
       return ["app_id", "app_secret"]
     default:
       return []

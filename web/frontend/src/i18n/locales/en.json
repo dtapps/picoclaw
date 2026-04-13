@@ -283,6 +283,7 @@
       "irc": "IRC",
       "weixin": "WeChat",
       "weibo": "Weibo",
+      "yuanbao": "Yuanbao",
       "heartbeat": "Heartbeat",
       "main": "Cron"
     },

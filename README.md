@@ -474,6 +474,7 @@ Talk to your PicoClaw through 19+ messaging platforms:
 | **OneBot** | Medium (WebSocket URL) | OneBot v11 | [Guide](docs/channels/onebot/README.md) |
 | **MaixCam** | Easy (enable) | TCP socket | [Guide](docs/channels/maixcam/README.md) |
 | **Weibo** | Easy (App ID + Secret) | WebSocket | [Guide](docs/channels/weibo/README.md) |
+| **Yuanbao** | Easy (AppID + AppSecret) | WebSocket | [Guide](docs/channels/yuanbao/README.md) |
 | **Pico** | Easy (enable) | Native protocol | Built-in |
 | **Pico Client** | Easy (WebSocket URL) | WebSocket | Built-in |
 

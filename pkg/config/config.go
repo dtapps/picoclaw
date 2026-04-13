@@ -318,6 +318,7 @@ type ChannelsConfig struct {
 	VK           VKConfig           `json:"vk"            yaml:"vk,omitempty"`
 	TeamsWebhook TeamsWebhookConfig `json:"teams_webhook" yaml:"teams_webhook,omitempty"`
 	Weibo        WeiboConfig        `json:"weibo"         yaml:"weibo,omitempty"`
+	Yuanbao      YuanbaoConfig      `json:"yuanbao"       yaml:"yuanbao,omitempty"`
 }
 
 // GroupTriggerConfig controls when the bot responds in group chats.
@@ -613,6 +614,18 @@ func (c *WeiboConfig) SetAppSecret(appSecret string) {
 	c.AppSecret = *NewSecureString(appSecret)
 }
 
+type YuanbaoConfig struct {
+	Enabled            bool                `json:"enabled"                 yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_ENABLED"`
+	AppID              string              `json:"app_id"                  yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_APP_ID"`
+	AppSecret          SecureString        `json:"app_secret,omitzero"     yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_YUANBAO_APP_SECRET"`
+	AllowFrom          FlexibleStringSlice `json:"allow_from"              yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_ALLOW_FROM"`
+	GroupTrigger       GroupTriggerConfig  `json:"group_trigger,omitempty" yaml:"-"`
+	ReasoningChannelID string              `json:"reasoning_channel_id"    yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_REASONING_CHANNEL_ID"`
+}
+
+func (c *YuanbaoConfig) SetAppSecret(appSecret string) {
+	c.AppSecret = *NewSecureString(appSecret)
+}
 type HeartbeatConfig struct {
 	Enabled  bool `json:"enabled"  env:"PICOCLAW_HEARTBEAT_ENABLED"`
 	Interval int  `json:"interval" env:"PICOCLAW_HEARTBEAT_INTERVAL"` // minutes, min 5

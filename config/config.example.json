@@ -248,6 +248,14 @@
         "enabled": false
       },
       "reasoning_channel_id": ""
+    },
+    "yuanbao": {
+      "enabled": false,
+      "app_id": "",
+      "app_secret": "",
+      "allow_from": [],
+      "group_trigger": {},
+      "reasoning_channel_id": ""
     }
   },
   "tools": {
