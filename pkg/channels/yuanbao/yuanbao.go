@@ -43,7 +43,7 @@ func NewYuanbaoChannel(
 	yuanbaoLogger.SetLevelByName(logLevel)
 
 	base := channels.NewBaseChannel(
-		"yuanbao",
+		config.ChannelYuanbao,
 		cfg,
 		messageBus,
 		bc.AllowFrom.FilterEmpty(),
@@ -60,7 +60,7 @@ func NewYuanbaoChannel(
 }
 
 func (c *YuanbaoChannel) Start(ctx context.Context) error {
-	logger.InfoC("yuanbao", "Yuanbao channel started...")
+	logger.InfoC(config.ChannelYuanbao, "Yuanbao channel started...")
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -77,12 +77,12 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 	}
 
 	c.yuanbaoClient.OnConnected(func() {
-		logger.InfoC("yuanbao", "Yuanbao channel connected...")
+		logger.InfoC(config.ChannelYuanbao, "Yuanbao channel connected...")
 		c.SetRunning(true)
 	})
 
 	c.yuanbaoClient.OnDisconnected(func() {
-		logger.InfoC("yuanbao", "Yuanbao channel disconnected...")
+		logger.InfoC(config.ChannelYuanbao, "Yuanbao channel disconnected...")
 		c.SetRunning(false)
 	})
 
@@ -104,31 +104,24 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 			return // 忽略空消息
 		}
 
-		// 2. 确定聊天类型和 ID
-		var ctxChatType string
-		var chatID string
-		var senderID string
-		var displayName string
-
-		senderID = msg.FromAccount
-
+		// 聊天类型
+		var icChatType = "direct"
 		if chatType == "group" {
-			ctxChatType = "group"
-			chatID = msg.GroupCode
-			displayName = msg.GroupName // 群聊显示群名，或者你可以选择显示 sender 昵称
-		} else {
-			ctxChatType = "direct"
-			chatID = msg.FromAccount // 私聊 ChatID 通常为对方账号
-			displayName = msg.SenderNickname
+			icChatType = "group"
 		}
 
 		// 构建发送者信息
 		sender := bus.SenderInfo{
-			Platform:    "yuanbao",
-			PlatformID:  senderID,
-			CanonicalID: identity.BuildCanonicalID("yuanbao", senderID),
-			Username:    msg.SenderNickname,
-			DisplayName: displayName,
+			Platform:    config.ChannelYuanbao,                                             // 平台名称
+			PlatformID:  msg.FromAccount,                                                   // 原始 ID
+			CanonicalID: identity.BuildCanonicalID(config.ChannelYuanbao, msg.FromAccount), // 规范化 ID
+			Username:    msg.SenderNickname,                                                // 用户名
+			DisplayName: msg.SenderNickname,                                                // 显示名称
+		}
+		if chatType == "group" {
+			sender.PlatformID = msg.GroupCode
+			sender.CanonicalID = identity.BuildCanonicalID(config.ChannelYuanbao, msg.GroupCode)
+			sender.DisplayName = msg.GroupName
 		}
 
 		// 权限校验
@@ -136,29 +129,28 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 			return
 		}
 
-		// 构建标准化上下文
-		inboundCtx := bus.InboundContext{
-			Channel:   "yuanbao",
-			ChatID:    chatID,
-			ChatType:  ctxChatType,
-			SenderID:  senderID,
-			MessageID: msg.MsgID,
-			Mentioned: false, // 如果需要支持 @机器人，需解析 msg.MsgBody 中的 TIMAtElem
-			Raw: map[string]string{
-				"platform":      "yuanbao",
-				"group_code":    msg.GroupCode,
-				"sender_nick":   msg.SenderNickname,
-				"chat_type_raw": chatType,
-			},
+		// 记录会话类型
+		if chatType == "group" {
+			c.chatType.Store(sender.PlatformID, "group")
+		} else {
+			c.chatType.Store(sender.PlatformID, "direct")
 		}
 
-		// 设置回复句柄
-		inboundCtx.ReplyHandles = map[string]string{
-			"message_id":   msg.MsgID,
-			"from_account": msg.FromAccount,
-		}
-		if chatType == "group" {
-			inboundCtx.ReplyHandles["group_code"] = msg.GroupCode
+		// 构建标准化上下文
+		inboundCtx := bus.InboundContext{
+			Channel:          config.ChannelYuanbao, // 来源渠道
+			Account:          "",                    // 机器人账号
+			ChatID:           sender.PlatformID,     // 会话 ID / 用户 ID
+			ChatType:         icChatType,            // 会话类型 direct / group
+			TopicID:          "",                    // 话题 ID
+			SpaceID:          "",                    // 空间 ID
+			SpaceType:        "",                    // 空间类型
+			SenderID:         msg.FromAccount,       // 发送者 ID
+			MessageID:        msg.MsgID,             // 消息 ID
+			Mentioned:        msg.IsAtBot,           // 是否被提及其
+			ReplyToMessageID: "",                    // 回复消息 ID
+			ReplyHandles:     map[string]string{},   // 回复句柄
+			Raw:              map[string]string{},   // 原始数据
 		}
 
 		// 媒体处理
@@ -179,7 +171,7 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 }
 
 func (c *YuanbaoChannel) Stop(ctx context.Context) error {
-	logger.InfoC("yuanbao", "Stopping Yuanbao channel...")
+	logger.InfoC(config.ChannelYuanbao, "Stopping Yuanbao channel...")
 
 	if c.cancel != nil {
 		c.cancel()
@@ -223,7 +215,7 @@ func (c *YuanbaoChannel) getChatKind(chatID string) string {
 			return k
 		}
 	}
-	logger.DebugCF("yuanbao", "Unknown chat type for chatID, defaulting to group", map[string]any{
+	logger.DebugCF(config.ChannelYuanbao, "Unknown chat type for chatID, defaulting to group", map[string]any{
 		"chat_id": chatID,
 	})
 	return ""
