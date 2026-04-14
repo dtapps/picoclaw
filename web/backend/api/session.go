@@ -943,7 +943,7 @@ func detectChannelFromKey(key string) string {
 		ConfigKey: "heartbeat",
 	})
 
-	for _, channel := range channelCatalog {
+	for _, channel := range newChannelCatalog {
 		if strings.Contains(keyLower, ":"+channel.Name+":") || strings.Contains(keyLower, "_"+channel.Name+"_") {
 			return channel.ConfigKey
 		}

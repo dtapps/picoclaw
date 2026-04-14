@@ -105,7 +105,7 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 		}
 
 		// 聊天类型
-		var icChatType = "direct"
+		icChatType := "direct"
 		if chatType == "group" {
 			icChatType = "group"
 		}
