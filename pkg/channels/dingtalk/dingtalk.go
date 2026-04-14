@@ -44,7 +44,7 @@ func NewDingTalkChannel(cfg config.DingTalkConfig, messageBus *bus.MessageBus) (
 	// Set the logger for the Stream SDK
 	dinglog.SetLogger(logger.NewLogger("dingtalk"))
 
-	base := channels.NewBaseChannel("dingtalk", cfg, messageBus, cfg.AllowFrom,
+	base := channels.NewBaseChannel("dingtalk", cfg, messageBus, cfg.AllowFrom.FilterEmpty(),
 		channels.WithMaxMessageLength(20000),
 		channels.WithGroupTrigger(cfg.GroupTrigger),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
