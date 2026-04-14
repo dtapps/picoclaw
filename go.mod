@@ -15,7 +15,8 @@ require (
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/creack/pty v1.1.24
-	github.com/dtapps/weibo-go v1.0.0
+	github.com/dtapps/weibo-go v1.0.1
+	github.com/dtapps/yuanbao-go v1.0.1
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
 	github.com/gdamore/tcell/v2 v2.13.8
@@ -70,7 +71,6 @@ require (
 	github.com/cloudflare/circl v1.6.3 // indirect
 	github.com/coder/websocket v1.8.14 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/dtapps/yuanbao-go v1.0.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
 	github.com/gdamore/encoding v1.0.1 // indirect
