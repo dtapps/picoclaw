@@ -1,4 +1,5 @@
 const LAST_SESSION_STORAGE_KEY = "picoclaw:last-session-id"
+const LAST_CHANNEL_STORAGE_KEY = "picoclaw:last-channel"
 const UNIX_MS_THRESHOLD = 1e12
 
 function readStorageValue() {
@@ -22,6 +23,18 @@ export function writeStoredSessionId(sessionId: string) {
 
 export function clearStoredSessionId() {
   globalThis.localStorage?.removeItem(LAST_SESSION_STORAGE_KEY)
+}
+
+export function readStoredChannel(): string {
+  return globalThis.localStorage?.getItem(LAST_CHANNEL_STORAGE_KEY)?.trim() || ""
+}
+
+export function writeStoredChannel(channel: string) {
+  if (channel) {
+    globalThis.localStorage?.setItem(LAST_CHANNEL_STORAGE_KEY, channel)
+    return
+  }
+  globalThis.localStorage?.removeItem(LAST_CHANNEL_STORAGE_KEY)
 }
 
 export function generateSessionId(): string {

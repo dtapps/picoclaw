@@ -2,6 +2,8 @@ import { atom, getDefaultStore } from "jotai"
 
 import {
   getInitialActiveSessionId,
+  readStoredChannel,
+  writeStoredChannel,
   writeStoredSessionId,
 } from "@/features/chat/state"
 
@@ -45,7 +47,7 @@ const DEFAULT_CHAT_STATE: ChatStoreState = {
   isTyping: false,
   activeSessionId: getInitialActiveSessionId(),
   hasHydratedActiveSession: false,
-  currentChannel: "",
+  currentChannel: readStoredChannel(),
 }
 
 export const chatAtom = atom<ChatStoreState>(DEFAULT_CHAT_STATE)
@@ -67,6 +69,10 @@ export function updateChatStore(
 
     if (next.activeSessionId !== prev.activeSessionId) {
       writeStoredSessionId(next.activeSessionId)
+    }
+
+    if (next.currentChannel !== prev.currentChannel) {
+      writeStoredChannel(next.currentChannel)
     }
 
     return next
