@@ -8,6 +8,6 @@ import (
 
 func init() {
 	channels.RegisterFactory("weibo", func(cfg *config.Config, b *bus.MessageBus) (channels.Channel, error) {
-		return NewWeiboChannel(cfg.Channels.Weibo, b)
+		return NewWeiboChannel(cfg.Channels.Weibo, b, cfg.Gateway.LogLevel)
 	})
 }
