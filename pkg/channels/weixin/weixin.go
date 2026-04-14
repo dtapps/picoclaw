@@ -52,7 +52,7 @@ func NewWeixinChannel(cfg config.WeixinConfig, messageBus *bus.MessageBus) (*Wei
 		"weixin",
 		cfg,
 		messageBus,
-		cfg.AllowFrom,
+		cfg.AllowFrom.FilterEmpty(),
 		channels.WithMaxMessageLength(4000),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
 	)

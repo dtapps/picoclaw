@@ -37,7 +37,7 @@ func NewMaixCamChannel(cfg config.MaixCamConfig, bus *bus.MessageBus) (*MaixCamC
 		"maixcam",
 		cfg,
 		bus,
-		cfg.AllowFrom,
+		cfg.AllowFrom.FilterEmpty(),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
 	)
 

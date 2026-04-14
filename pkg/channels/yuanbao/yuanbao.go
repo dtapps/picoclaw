@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	yuanbao "github.com/dtapps/yuanbao-go"
-	yuanbaoConfig "github.com/dtapps/yuanbao-go/config"
 	yuanbaoLogger "github.com/dtapps/yuanbao-go/logger"
 	yuanbaoTypes "github.com/dtapps/yuanbao-go/types"
 
@@ -67,8 +66,8 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	var err error
-	c.yuanbaoClient, err = yuanbao.NewClient("default", &yuanbaoConfig.Config{
-		Yuanbao: &yuanbaoConfig.YuanbaoConfig{
+	c.yuanbaoClient, err = yuanbao.NewClient("default", &yuanbaoTypes.Config{
+		Yuanbao: &yuanbaoTypes.YuanbaoConfig{
 			AppKey:         c.clientID,
 			AppSecret:      c.clientSecret,
 			RequireMention: &c.clientRequireMention,

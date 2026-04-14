@@ -120,7 +120,7 @@ func NewChannel(cfg config.WeComConfig, messageBus *bus.MessageBus) (*WeComChann
 		"wecom",
 		cfg,
 		messageBus,
-		cfg.AllowFrom,
+		cfg.AllowFrom.FilterEmpty(),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
 	)
 

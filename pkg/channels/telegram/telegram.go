@@ -93,7 +93,7 @@ func NewTelegramChannel(cfg *config.Config, bus *bus.MessageBus) (*TelegramChann
 		"telegram",
 		telegramCfg,
 		bus,
-		telegramCfg.AllowFrom,
+		telegramCfg.AllowFrom.FilterEmpty(),
 		channels.WithMaxMessageLength(4000),
 		channels.WithGroupTrigger(telegramCfg.GroupTrigger),
 		channels.WithReasoningChannelID(telegramCfg.ReasoningChannelID),

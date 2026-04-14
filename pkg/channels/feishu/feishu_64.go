@@ -56,7 +56,7 @@ type cachedMessage struct {
 }
 
 func NewFeishuChannel(cfg config.FeishuConfig, bus *bus.MessageBus) (*FeishuChannel, error) {
-	base := channels.NewBaseChannel("feishu", cfg, bus, cfg.AllowFrom,
+	base := channels.NewBaseChannel("feishu", cfg, bus, cfg.AllowFrom.FilterEmpty(),
 		channels.WithGroupTrigger(cfg.GroupTrigger),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
 	)

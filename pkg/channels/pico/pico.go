@@ -78,7 +78,7 @@ func NewPicoChannel(cfg config.PicoConfig, messageBus *bus.MessageBus) (*PicoCha
 		return nil, fmt.Errorf("pico token is required")
 	}
 
-	base := channels.NewBaseChannel("pico", cfg, messageBus, cfg.AllowFrom)
+	base := channels.NewBaseChannel("pico", cfg, messageBus, cfg.AllowFrom.FilterEmpty())
 
 	allowOrigins := cfg.AllowOrigins
 	checkOrigin := func(r *http.Request) bool {

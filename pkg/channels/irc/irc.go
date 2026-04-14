@@ -33,7 +33,7 @@ func NewIRCChannel(cfg config.IRCConfig, messageBus *bus.MessageBus) (*IRCChanne
 		return nil, fmt.Errorf("irc nick is required")
 	}
 
-	base := channels.NewBaseChannel("irc", cfg, messageBus, cfg.AllowFrom,
+	base := channels.NewBaseChannel("irc", cfg, messageBus, cfg.AllowFrom.FilterEmpty(),
 		channels.WithMaxMessageLength(400),
 		channels.WithGroupTrigger(cfg.GroupTrigger),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),

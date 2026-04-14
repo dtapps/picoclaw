@@ -66,7 +66,7 @@ func NewLINEChannel(cfg config.LINEConfig, messageBus *bus.MessageBus) (*LINECha
 		return nil, fmt.Errorf("line channel_secret and channel_access_token are required")
 	}
 
-	base := channels.NewBaseChannel("line", cfg, messageBus, cfg.AllowFrom,
+	base := channels.NewBaseChannel("line", cfg, messageBus, cfg.AllowFrom.FilterEmpty(),
 		channels.WithMaxMessageLength(5000),
 		channels.WithGroupTrigger(cfg.GroupTrigger),
 		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
