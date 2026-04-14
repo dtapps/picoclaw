@@ -11,8 +11,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +48,7 @@ const (
 // WhatsAppNativeChannel implements the WhatsApp channel using whatsmeow (in-process, no external bridge).
 type WhatsAppNativeChannel struct {
 	*channels.BaseChannel
-	config       config.WhatsAppConfig
+	config       *config.WhatsAppSettings
 	storePath    string
 	client       *whatsmeow.Client
 	container    *sqlstore.Container
@@ -66,17 +64,13 @@ type WhatsAppNativeChannel struct {
 // NewWhatsAppNativeChannel creates a WhatsApp channel that uses whatsmeow for connection.
 // storePath is the directory for the SQLite session store (e.g. workspace/whatsapp).
 func NewWhatsAppNativeChannel(
-	cfg config.WhatsAppConfig,
+	bc *config.Channel,
+	name string,
+	cfg *config.WhatsAppSettings,
 	bus *bus.MessageBus,
 	storePath string,
 ) (channels.Channel, error) {
-	base := channels.NewBaseChannel(
-		"whatsapp_native",
-		cfg,
-		bus,
-		cfg.AllowFrom.FilterEmpty(),
-		channels.WithMaxMessageLength(65536),
-	)
+	base := channels.NewBaseChannel(name, cfg, bus, bc.AllowFrom.FilterEmpty(), channels.WithMaxMessageLength(65536))
 	if storePath == "" {
 		storePath = "whatsapp"
 	}
@@ -131,16 +125,6 @@ func (c *WhatsAppNativeChannel) Start(ctx context.Context) error {
 	}
 
 	client := whatsmeow.NewClient(deviceStore, waLogger)
-
-	if c.config.Proxy != "" {
-		proxyURL, parseErr := url.Parse(c.config.Proxy)
-		if parseErr != nil {
-			return fmt.Errorf("invalid proxy URL %q: %w", c.config.Proxy, parseErr)
-		}
-		client.SetProxy(http.ProxyURL(proxyURL))
-	} else if os.Getenv("HTTP_PROXY") != "" || os.Getenv("HTTPS_PROXY") != "" {
-		client.SetProxy(http.ProxyFromEnvironment)
-	}
 
 	// Create runCtx/runCancel BEFORE registering event handler and starting
 	// goroutines so that Stop() can cancel them at any time, including during
@@ -393,7 +377,6 @@ func (c *WhatsAppNativeChannel) handleIncoming(evt *events.Message) {
 	if evt.Info.Chat.Server == types.GroupServer {
 		peerKind = "group"
 	}
-	peer := bus.Peer{Kind: peerKind, ID: chatID}
 	messageID := evt.Info.ID
 	sender := bus.SenderInfo{
 		Platform:    "whatsapp",
@@ -411,7 +394,17 @@ func (c *WhatsAppNativeChannel) handleIncoming(evt *events.Message) {
 		"WhatsApp message received",
 		map[string]any{"sender_id": senderID, "content_preview": utils.Truncate(content, 50)},
 	)
-	c.HandleMessage(c.runCtx, peer, messageID, senderID, chatID, content, mediaPaths, metadata, sender)
+
+	inboundCtx := bus.InboundContext{
+		Channel:   "whatsapp",
+		ChatID:    chatID,
+		SenderID:  senderID,
+		MessageID: messageID,
+		ChatType:  peerKind,
+		Raw:       metadata,
+	}
+
+	c.HandleInboundContext(c.runCtx, chatID, content, mediaPaths, inboundCtx, sender)
 }
 
 func (c *WhatsAppNativeChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]string, error) {

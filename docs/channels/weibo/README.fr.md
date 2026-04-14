@@ -36,13 +36,14 @@ AppSecret: your-app-secret
 
 ### Configuration
 
-Ajoutez ce qui suit à votre `config.json` sous `channels` :
+Ajoutez ce qui suit à votre `config.json` sous `channel_list` :
 
 ```json
 {
-  "channels": {
+  "channel_list": {
     "weibo": {
       "enabled": true,
+      "type": "weibo",
       "app_id": "YOUR_APP_ID",
       "app_secret": "YOUR_APP_SECRET",
       "allow_from": [],

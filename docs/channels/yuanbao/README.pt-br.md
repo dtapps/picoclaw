@@ -27,13 +27,14 @@ Você precisa obter as credenciais do seu bot Yuanbao:
 
 ### Configuração
 
-Adicione o seguinte ao seu `config.json` sob `channels`:
+Adicione o seguinte ao seu `config.json` sob `channel_list`:
 
 ```json
 {
-  "channels": {
+  "channel_list": {
     "yuanbao": {
       "enabled": true,
+      "type": "yuanbao",
       "app_id": "YOUR_APP_ID",
       "app_secret": "YOUR_APP_SECRET",
       "allow_from": [],

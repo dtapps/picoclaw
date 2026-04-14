@@ -27,13 +27,14 @@ Bạn cần lấy thông tin xác thực cho bot Yuanbao của mình:
 
 ### Cấu Hình
 
-Thêm phần sau vào `config.json` của bạn dưới `channels`:
+Thêm phần sau vào `config.json` của bạn dưới `channel_list`:
 
 ```json
 {
-  "channels": {
+  "channel_list": {
     "yuanbao": {
       "enabled": true,
+      "type": "yuanbao",
       "app_id": "YOUR_APP_ID",
       "app_secret": "YOUR_APP_SECRET",
       "allow_from": [],

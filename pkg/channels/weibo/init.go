@@ -7,7 +7,19 @@ import (
 )
 
 func init() {
-	channels.RegisterFactory("weibo", func(cfg *config.Config, b *bus.MessageBus) (channels.Channel, error) {
-		return NewWeiboChannel(cfg.Channels.Weibo, b, cfg.Gateway.LogLevel)
-	})
+	channels.RegisterFactory(
+		config.ChannelWeibo,
+		func(channelName, channelType string, cfg *config.Config, b *bus.MessageBus) (channels.Channel, error) {
+			bc := cfg.Channels[channelName]
+			decoded, err := bc.GetDecoded()
+			if err != nil {
+				return nil, err
+			}
+			c, ok := decoded.(*config.WeiboSettings)
+			if !ok {
+				return nil, channels.ErrSendFailed
+			}
+			return NewWeiboChannel(bc, c, b, cfg.Gateway.LogLevel)
+		},
+	)
 }

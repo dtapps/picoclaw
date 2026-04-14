@@ -7,7 +7,19 @@ import (
 )
 
 func init() {
-	channels.RegisterFactory("yuanbao", func(cfg *config.Config, b *bus.MessageBus) (channels.Channel, error) {
-		return NewYuanbaoChannel(cfg.Channels.Yuanbao, b, cfg.Gateway.LogLevel)
-	})
+	channels.RegisterFactory(
+		config.ChannelYuanbao,
+		func(channelName, channelType string, cfg *config.Config, b *bus.MessageBus) (channels.Channel, error) {
+			bc := cfg.Channels[channelName]
+			decoded, err := bc.GetDecoded()
+			if err != nil {
+				return nil, err
+			}
+			c, ok := decoded.(*config.YuanbaoSettings)
+			if !ok {
+				return nil, channels.ErrSendFailed
+			}
+			return NewYuanbaoChannel(bc, c, b, cfg.Gateway.LogLevel)
+		},
+	)
 }

@@ -249,6 +249,7 @@ export function ChatPage() {
               {msg.role === "assistant" ? (
                 <AssistantMessage
                   content={msg.content}
+                  isThought={msg.kind === "thought"}
                   timestamp={msg.timestamp}
                 />
               ) : (

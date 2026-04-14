@@ -3,6 +3,7 @@ package weibo
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	weibo "github.com/dtapps/weibo-go"
 	weiboLogger "github.com/dtapps/weibo-go/logger"
@@ -17,15 +18,21 @@ import (
 
 type WeiboChannel struct {
 	*channels.BaseChannel
-	config       config.WeiboConfig
-	clientID     string
-	clientSecret string
-	weiboClient  *weibo.Client
-	ctx          context.Context
-	cancel       context.CancelFunc
+	bc     *config.Channel
+	config *config.WeiboSettings
+
+	weiboClient *weibo.Client
+
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
-func NewWeiboChannel(cfg config.WeiboConfig, messageBus *bus.MessageBus, logLevel string) (*WeiboChannel, error) {
+func NewWeiboChannel(
+	bc *config.Channel,
+	cfg *config.WeiboSettings,
+	messageBus *bus.MessageBus,
+	logLevel string,
+) (*WeiboChannel, error) {
 	if cfg.AppID == "" || cfg.AppSecret.String() == "" {
 		return nil, fmt.Errorf("weibo app_id and app_secret are required")
 	}
@@ -36,19 +43,16 @@ func NewWeiboChannel(cfg config.WeiboConfig, messageBus *bus.MessageBus, logLeve
 		"weibo",
 		cfg,
 		messageBus,
-		cfg.AllowFrom.FilterEmpty(),
-		channels.WithReasoningChannelID(cfg.ReasoningChannelID),
+		bc.AllowFrom.FilterEmpty(),
+		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)
 
 	return &WeiboChannel{
-		BaseChannel:  base,
-		config:       cfg,
-		clientID:     cfg.AppID,
-		clientSecret: cfg.AppSecret.String(),
+		BaseChannel: base,
+		bc:          bc,
+		config:      cfg,
 	}, nil
 }
-
-func (c *WeiboChannel) Name() string { return "weibo" }
 
 func (c *WeiboChannel) Start(ctx context.Context) error {
 	logger.InfoC("weibo", "Weibo channel started...")
@@ -58,8 +62,8 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	var err error
 	c.weiboClient, err = weibo.NewClient("picoclaw", &weiboTypes.Config{
 		Weibo: &weiboTypes.WeiboConfig{
-			AppId:     c.clientID,
-			AppSecret: c.clientSecret,
+			AppId:     c.config.AppID,
+			AppSecret: c.config.AppSecret.String(),
 		},
 	})
 	if err != nil {
@@ -77,34 +81,63 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	})
 
 	c.weiboClient.OnMessage(func(msg *weiboTypes.WsMessageMsg) {
-		content := msg.Payload.Text
+		if msg == nil {
+			return
+		}
 
+		content := strings.TrimSpace(msg.Payload.Text)
+		if content == "" {
+			return // 忽略空消息
+		}
+
+		senderID := msg.Payload.FromUserId
+		messageID := msg.Payload.MessageId
+
+		// 构建发送者信息
 		sender := bus.SenderInfo{
 			Platform:    "weibo",
-			PlatformID:  msg.Payload.FromUserId,
-			CanonicalID: identity.BuildCanonicalID("weibo", msg.Payload.FromUserId),
-			Username:    msg.Payload.FromUserId,
-			DisplayName: msg.Payload.FromUserId,
+			PlatformID:  senderID,
+			CanonicalID: identity.BuildCanonicalID("weibo", senderID),
+			Username:    senderID,
+			DisplayName: senderID,
 		}
 
-		peer := bus.Peer{
-			Kind: "direct",
-			ID:   msg.Payload.FromUserId,
+		// 权限校验
+		if !c.IsAllowedSender(sender) {
+			return
 		}
 
+		// 构建标准化上下文
+		inboundCtx := bus.InboundContext{
+			Channel:   "weibo",
+			ChatID:    senderID, // 微博私信中，ChatID 通常等同于 SenderID (一对一)
+			ChatType:  "direct", // 微博私信默认为单聊
+			SenderID:  senderID,
+			MessageID: messageID,
+			Mentioned: false, // 私信不涉及 @
+			Raw: map[string]string{
+				"platform": "weibo",
+			},
+		}
+
+		// 设置回复句柄
+		if messageID != "" {
+			inboundCtx.ReplyHandles = map[string]string{
+				"message_id": messageID,
+				"chat_id":    senderID,
+			}
+		}
+
+		// 媒体处理
 		mediaRefs := []string{}
 
-		metadata := map[string]string{}
-
-		c.HandleMessage(
+		// 调用统一处理入口
+		c.HandleInboundContext(
 			c.ctx,
-			peer,
-			msg.Payload.MessageId,
-			msg.Payload.FromUserId,
-			peer.ID,
+			inboundCtx.ChatID,
 			content,
 			mediaRefs,
-			metadata,
+			inboundCtx,
 			sender,
 		)
 	})

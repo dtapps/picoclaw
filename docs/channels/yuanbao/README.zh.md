@@ -27,13 +27,14 @@ PicoClaw 支持通过腾讯官方元宝 Bot API over WebSocket 连接元宝作�
 
 ### 配置
 
-在 `config.json` 的 `channels` 部分添加以下内容：
+在 `config.json` 的 `channel_list` 部分添加以下内容：
 
 ```json
 {
-  "channels": {
+  "channel_list": {
     "yuanbao": {
       "enabled": true,
+      "type": "yuanbao",
       "app_id": "YOUR_APP_ID",
       "app_secret": "YOUR_APP_SECRET",
       "allow_from": [],

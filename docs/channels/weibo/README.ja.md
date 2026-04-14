@@ -36,13 +36,14 @@ AppSecret: your-app-secret
 
 ### 設定
 
-`config.json`の`channels`セクションに以下を追加します：
+`config.json`の`channel_list`セクションに以下を追加します：
 
 ```json
 {
-  "channels": {
+  "channel_list": {
     "weibo": {
       "enabled": true,
+      "type": "weibo",
       "app_id": "YOUR_APP_ID",
       "app_secret": "YOUR_APP_SECRET",
       "allow_from": [],
