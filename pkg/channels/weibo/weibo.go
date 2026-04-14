@@ -40,7 +40,7 @@ func NewWeiboChannel(
 	weiboLogger.SetLevelByName(logLevel)
 
 	base := channels.NewBaseChannel(
-		"weibo",
+		config.ChannelWeibo,
 		cfg,
 		messageBus,
 		bc.AllowFrom.FilterEmpty(),
@@ -55,7 +55,7 @@ func NewWeiboChannel(
 }
 
 func (c *WeiboChannel) Start(ctx context.Context) error {
-	logger.InfoC("weibo", "Weibo channel started...")
+	logger.InfoC(config.ChannelWeibo, "Weibo channel started...")
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -71,12 +71,12 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	}
 
 	c.weiboClient.OnConnected(func() {
-		logger.InfoC("weibo", "Weibo channel connected...")
+		logger.InfoC(config.ChannelWeibo, "Weibo channel connected...")
 		c.SetRunning(true)
 	})
 
 	c.weiboClient.OnDisconnected(func() {
-		logger.InfoC("weibo", "Weibo channel disconnected...")
+		logger.InfoC(config.ChannelWeibo, "Weibo channel disconnected...")
 		c.SetRunning(false)
 	})
 
@@ -90,16 +90,13 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 			return // 忽略空消息
 		}
 
-		senderID := msg.Payload.FromUserId
-		messageID := msg.Payload.MessageId
-
 		// 构建发送者信息
 		sender := bus.SenderInfo{
-			Platform:    "weibo",
-			PlatformID:  senderID,
-			CanonicalID: identity.BuildCanonicalID("weibo", senderID),
-			Username:    senderID,
-			DisplayName: senderID,
+			Platform:    config.ChannelWeibo,                                                    // 平台名称
+			PlatformID:  msg.Payload.FromUserId,                                                 // 原始 ID
+			CanonicalID: identity.BuildCanonicalID(config.ChannelWeibo, msg.Payload.FromUserId), // 规范化 ID
+			Username:    msg.Payload.FromUserId,                                                 // 用户名
+			DisplayName: msg.Payload.FromUserId,                                                 // 显示名称
 		}
 
 		// 权限校验
@@ -109,23 +106,19 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 
 		// 构建标准化上下文
 		inboundCtx := bus.InboundContext{
-			Channel:   "weibo",
-			ChatID:    senderID, // 微博私信中，ChatID 通常等同于 SenderID (一对一)
-			ChatType:  "direct", // 微博私信默认为单聊
-			SenderID:  senderID,
-			MessageID: messageID,
-			Mentioned: false, // 私信不涉及 @
-			Raw: map[string]string{
-				"platform": "weibo",
-			},
-		}
-
-		// 设置回复句柄
-		if messageID != "" {
-			inboundCtx.ReplyHandles = map[string]string{
-				"message_id": messageID,
-				"chat_id":    senderID,
-			}
+			Channel:          config.ChannelWeibo,    // 来源渠道
+			Account:          "",                     // 机器人账号
+			ChatID:           msg.Payload.FromUserId, // 会话 ID / 用户 ID
+			ChatType:         "direct",               // 会话类型 direct / group
+			TopicID:          "",                     // 话题 ID
+			SpaceID:          "",                     // 空间 ID
+			SpaceType:        "",                     // 空间类型
+			SenderID:         msg.Payload.FromUserId, // 发送者 ID
+			MessageID:        msg.Payload.MessageId,  // 消息 ID
+			Mentioned:        false,                  // 是否被提及其
+			ReplyToMessageID: "",                     // 回复消息 ID
+			ReplyHandles:     map[string]string{},    // 回复句柄
+			Raw:              map[string]string{},    // 原始数据
 		}
 
 		// 媒体处理
@@ -146,7 +139,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 }
 
 func (c *WeiboChannel) Stop(ctx context.Context) error {
-	logger.InfoC("weibo", "Stopping Weibo channel...")
+	logger.InfoC(config.ChannelWeibo, "Stopping Weibo channel...")
 
 	if c.cancel != nil {
 		c.cancel()
