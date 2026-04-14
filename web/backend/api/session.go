@@ -192,8 +192,9 @@ func (h *Handler) readJSONLSession(dir, sessionKey string) (sessionFile, error) 
 }
 
 type picoJSONLSessionRef struct {
-	ID  string
-	Key string
+	ID      string
+	Key     string
+	Channel string
 }
 
 type picoLegacySessionRef struct {
@@ -676,7 +677,7 @@ func (h *Handler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 			}
 			seen[ref.ID] = struct{}{}
 			item := buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength)
-			item.Channel = detectChannelFromKey(sess.Key)
+			item.Channel = ref.Channel
 			items = append(items, item)
 		}
 	}
@@ -784,7 +785,7 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		"summary":  sess.Summary,
 		"created":  sess.Created.Format(time.RFC3339),
 		"updated":  sess.Updated.Format(time.RFC3339),
-		"channel":  detectChannelFromKey(sess.Key),
+		"channel":  ref.Channel,
 	})
 }
 
@@ -838,23 +839,31 @@ func (h *Handler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+// 定义局部结构体，用于解析 meta.json 里的 scope 字段
+type picoScopeInternal struct {
+	Channel string            `json:"channel"`
+	Values  map[string]string `json:"values"`
+}
+
 func (h *Handler) findAllJSONLSessions(dir string) ([]picoJSONLSessionRef, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
 	}
 
-	refs := make([]picoJSONLSessionRef, 0)
-	seen := make(map[string]struct{})
+	// 使用 map 存储，ID 作为 Key，方便实现覆盖逻辑
+	sessionMap := make(map[string]picoJSONLSessionRef)
 	metaBackedBases := make(map[string]struct{})
 
-	// 扫描 .meta.json
+	// 第一轮：扫描 .meta.json
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".meta.json") {
 			continue
 		}
+
 		name := entry.Name()
 		metaPath := filepath.Join(dir, name)
+
 		meta, err := h.readSessionMeta(metaPath, "")
 		if err != nil || meta.Key == "" {
 			continue
@@ -863,33 +872,76 @@ func (h *Handler) findAllJSONLSessions(dir string) ([]picoJSONLSessionRef, error
 		base := strings.TrimSuffix(name, ".meta.json")
 		metaBackedBases[base] = struct{}{}
 
-		// id := meta.Key	// 这里的 ID 直接用原始 Key 保证全渠道唯一
-		id := extractGeneralSessionID(meta.Key) // 从 meta.Key 中提取通用 ID
-		if _, exists := seen[id]; exists {
+		var id string
+		var channel string
+
+		// 解析新版 Scope 结构
+		if len(meta.Scope) > 0 {
+			var sc picoScopeInternal
+			if err := json.Unmarshal(meta.Scope, &sc); err == nil {
+				channel = sc.Channel
+				// 从 values.chat 获取原始 ID (如 direct:pico:7028...)
+				if chatVal, ok := sc.Values["chat"]; ok && chatVal != "" {
+					id = extractGeneralSessionID(chatVal)
+				}
+			}
+		}
+
+		// 兜底识别
+		if id == "" {
+			id = extractGeneralSessionID(meta.Key)
+		}
+		if channel == "" {
+			channel = detectChannelFromKey(meta.Key)
+		}
+
+		// 过滤无效 ID
+		if id == "" || id == "unknown" || id == "sk" || id == "v1" {
 			continue
 		}
-		seen[id] = struct{}{}
-		refs = append(refs, picoJSONLSessionRef{ID: id, Key: meta.Key})
+
+		// 优先使用 sk_ 开头的最新文件 ---
+		_, exists := sessionMap[id]
+		isNewFormat := strings.HasPrefix(meta.Key, "sk_")
+
+		// 如果该 ID 还没存过，或者当前文件是 sk_ 开头的新格式，则存入（覆盖旧的）
+		if !exists || isNewFormat {
+			sessionMap[id] = picoJSONLSessionRef{
+				ID:      id,
+				Key:     meta.Key, // 保持为 sk_v1_... 以便读文件
+				Channel: channel,
+			}
+		}
 	}
 
-	// 扫描独立的 .jsonl
+	// 第二轮：处理孤立的 .jsonl (没有 meta 的优先级最低)
 	for _, entry := range entries {
 		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") {
 			continue
 		}
-		name := entry.Name()
-		base := strings.TrimSuffix(name, ".jsonl")
+		base := strings.TrimSuffix(entry.Name(), ".jsonl")
 		if _, ok := metaBackedBases[base]; ok {
 			continue
 		}
 
-		// id := base // 使用文件名作为 Key
-		id := extractGeneralSessionID(base) // 从文件名中提取通用 ID，确保全渠道唯一
-		if _, exists := seen[id]; exists {
+		id := extractGeneralSessionID(base)
+		if id == "" || id == "unknown" || id == "sk" {
 			continue
 		}
-		seen[id] = struct{}{}
-		refs = append(refs, picoJSONLSessionRef{ID: id, Key: base})
+
+		if _, exists := sessionMap[id]; !exists {
+			sessionMap[id] = picoJSONLSessionRef{
+				ID:      id,
+				Key:     base,
+				Channel: detectChannelFromKey(base),
+			}
+		}
+	}
+
+	// 转换回 slice 返回
+	refs := make([]picoJSONLSessionRef, 0, len(sessionMap))
+	for _, ref := range sessionMap {
+		refs = append(refs, ref)
 	}
 	return refs, nil
 }

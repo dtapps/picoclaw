@@ -288,7 +288,14 @@ export async function hydrateActiveSession() {
             currentState.messages,
           ),
           hasHydratedActiveSession: true,
-          currentChannel: historyMessages.channel,
+          ...(historyMessages.channel && { currentChannel: historyMessages.channel }),
+        })
+        return
+      }
+
+      if (historyMessages.messages.length === 0 && !historyMessages.channel) {
+        updateChatStore({
+          hasHydratedActiveSession: true,
         })
         return
       }
@@ -297,7 +304,7 @@ export async function hydrateActiveSession() {
         messages: historyMessages.messages,
         isTyping: false,
         hasHydratedActiveSession: true,
-        currentChannel: historyMessages.channel,
+        ...(historyMessages.channel && { currentChannel: historyMessages.channel }),
       })
     })
     .catch((error) => {
@@ -429,6 +436,7 @@ export async function newChatSession() {
     messages: [],
     isTyping: false,
     hasHydratedActiveSession: true,
+    currentChannel: "pico",
   })
 
   if (store.get(gatewayAtom).status === "running") {
