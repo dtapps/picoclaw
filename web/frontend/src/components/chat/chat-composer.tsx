@@ -48,15 +48,17 @@ export function ChatComposer({
   // 最终的有效禁用原因
   let effectiveReason: ChatInputDisabledReason | null = inputDisabledReason
 
-  // 如果网关/连接状态正常 (reason 为 null)，但渠道不是 pico，则禁用输入
+  // 如果其他状态都正常 (null)，但渠道不是 pico，则标记为不支持
   if (effectiveReason === null && channel !== "pico") {
     effectiveReason = "unsupportedChannel"
   }
 
   const canInput = effectiveReason === null
-  const placeholder = canInput
-    ? t("chat.placeholder")
-    : t(`chat.disabledPlaceholder.${effectiveReason}`)
+  const disabledMessage =
+    effectiveReason === null
+      ? null
+      : t(`chat.disabledPlaceholder.${effectiveReason}`)
+  const placeholder = disabledMessage ?? t("chat.placeholder")
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing) return
@@ -101,6 +103,7 @@ export function ChatComposer({
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           disabled={!canInput}
+          title={disabledMessage || undefined}
           className={cn(
             "placeholder:text-muted-foreground/50 max-h-[200px] min-h-[60px] resize-none border-0 bg-transparent px-2 py-1 text-[15px] shadow-none transition-colors focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent",
             !canInput && "cursor-not-allowed",
@@ -108,6 +111,11 @@ export function ChatComposer({
           minRows={1}
           maxRows={8}
         />
+        {!canInput && disabledMessage && (
+          <div className="text-muted-foreground px-3 py-1 text-xs">
+            {disabledMessage}
+          </div>
+        )}
 
         <div className="mt-2 flex items-center justify-between px-1">
           <div className="flex items-center gap-1">
