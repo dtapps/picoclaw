@@ -3,6 +3,7 @@ import { PRESET_MODELS_ANTHROPIC } from "./anthropic"
 import { PRESET_MODELS_DEEPSEEK } from "./deepseek"
 import { PRESET_MODELS_GEMINI } from "./gemini"
 import { PRESET_MODELS_GROQ } from "./groq"
+import { PRESET_MODELS_MINIMAX } from "./minimax"
 import { PRESET_MODELS_MOONSHOT } from "./moonshot"
 import { PRESET_MODELS_NVIDIA, PRESET_MODELS_NVIDIA_FREE } from "./nvidia"
 import { PRESET_MODELS_OPENAI } from "./openai"
@@ -27,6 +28,7 @@ export { PRESET_MODELS_QWEN } from "./qwen"
 export { PRESET_MODELS_MOONSHOT } from "./moonshot"
 export { PRESET_MODELS_ZHIPU } from "./zhipu"
 export { PRESET_MODELS_OTHERS } from "./others"
+export { PRESET_MODELS_MINIMAX } from "./minimax"
 export { PRESET_MODELS_NVIDIA, PRESET_MODELS_NVIDIA_FREE } from "./nvidia"
 
 export const PRESET_MODELS: ModelTemplate[] = [
@@ -40,6 +42,7 @@ export const PRESET_MODELS: ModelTemplate[] = [
   ...PRESET_MODELS_MOONSHOT,
   ...PRESET_MODELS_ZHIPU,
   ...PRESET_MODELS_OTHERS,
+  ...PRESET_MODELS_MINIMAX,
   ...PRESET_MODELS_NVIDIA,
   ...PRESET_MODELS_NVIDIA_FREE,
   ...PRESET_MODELS_OPENROUTER_FREE,

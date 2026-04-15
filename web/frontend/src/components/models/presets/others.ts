@@ -26,8 +26,6 @@ export const PRESET_MODELS_OTHERS: ModelTemplate[] = [
     model: "mistral/mixtral-8x22b-instruct",
     name: "Mixtral 8x22B",
   },
-  { provider: "minimax", model: "minimax/minimax-01", name: "Minimax 01" },
-  { provider: "minimax", model: "minimax/abab6.5s-chat", name: "ABAB 6.5S" },
   { provider: "vivgrid", model: "vivgrid/vivgrid-1", name: "Vivgrid 1" },
   {
     provider: "vivgrid",

@@ -5,8 +5,8 @@ export const PROVIDER_API_BASES: Record<string, string> = {
   deepseek: "https://api.deepseek.com/v1",
   groq: "https://api.groq.com/openai/v1",
   qwen: "https://dashscope.aliyuncs.com/compatible-mode/v1",
-  moonshot: "https://api.moonshot.cn/v1",
-  zhipu: "https://open.bigmodel.cn/api/paas/v4",
+  moonshot: "https://api.moonshot.cn/v1", // https://platform.kimi.com/docs/models
+  zhipu: "https://open.bigmodel.cn/api/paas/v4", // https://docs.bigmodel.cn/cn/guide/start/model-overview
   openrouter: "https://openrouter.ai/api/v1", // https://openrouter.ai/models
   nvidia: "https://integrate.api.nvidia.com/v1", // https://build.nvidia.com/models
   cerebras: "https://api.cerebras.ai/v1",
@@ -15,7 +15,7 @@ export const PROVIDER_API_BASES: Record<string, string> = {
   vivgrid: "https://api.vivgrid.com/v1",
   volcengine: "https://ark.cn-beijing.volces.com/api/v3",
   venice: "https://api.venice.ai/api/v1",
-  minimax: "https://api.minimaxi.com/v1",
+  minimax: "https://api.minimaxi.com/v1", // https://platform.minimaxi.com/docs/api-reference/api-overview
   longcat: "https://api.longcat.chat/openai",
   modelscope: "https://api-inference.modelscope.cn/v1",
   novita: "https://api.novita.ai/openai",
