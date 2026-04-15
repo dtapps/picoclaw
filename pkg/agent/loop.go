@@ -2378,6 +2378,8 @@ turnLoop:
 		var response *providers.LLMResponse
 		var err error
 		maxRetries := 2
+		callHasMedia := messagesContainMedia(callMessages)
+		didStripMedia := false
 		for retry := 0; retry <= maxRetries; retry++ {
 			response, err = callLLM(callMessages, providerToolDefs)
 			if err == nil {
@@ -2386,6 +2388,45 @@ turnLoop:
 			if ts.hardAbortRequested() && errors.Is(err, context.Canceled) {
 				turnStatus = TurnEndStatusAborted
 				return al.abortTurn(ts)
+			}
+
+			// If the provider/model doesn't support multimodal inputs, retry once with media stripped
+			// so the session doesn't get "stuck" after a user sends an image.
+			if callHasMedia && !didStripMedia && isVisionUnsupportedError(err) {
+				didStripMedia = true
+				if !ts.opts.NoHistory {
+					history = ts.agent.Sessions.GetHistory(ts.sessionKey)
+					ts.agent.Sessions.SetHistory(ts.sessionKey, stripMessageMedia(history))
+
+					// Keep persistedMessages aligned so abort restore-point trimming remains correct.
+					ts.mu.Lock()
+					for i := range ts.persistedMessages {
+						ts.persistedMessages[i].Media = nil
+					}
+					ts.mu.Unlock()
+
+					ts.refreshRestorePointFromSession(ts.agent)
+				}
+
+				messages = stripMessageMedia(messages)
+				callMessages = stripMessageMedia(callMessages)
+				callHasMedia = false
+
+				al.emitEvent(
+					EventKindLLMRetry,
+					ts.eventMeta("runTurn", "turn.llm.retry"),
+					LLMRetryPayload{
+						Attempt:    1,
+						MaxRetries: 1,
+						Reason:     "vision_unsupported",
+						Error:      err.Error(),
+						Backoff:    0,
+					},
+				)
+				response, err = callLLM(callMessages, providerToolDefs)
+				if err == nil {
+					break
+				}
 			}
 
 			errMsg := strings.ToLower(err.Error())
