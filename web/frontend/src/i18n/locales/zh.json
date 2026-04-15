@@ -39,6 +39,19 @@
     "welcome": "今天我能为您做些什么？",
     "welcomeDesc": "您可以询问我天气、设置或其他任何任务，我随时为您效劳。",
     "placeholder": "输入新消息...\n按 Enter 发送，Shift + Enter 换行",
+    "disabledPlaceholder": {
+      "gatewayUnknown": "无法对话：网关状态仍在检测中。请稍候重试，如仍无效请刷新页面或重启 Launcher。",
+      "gatewayStarting": "无法对话：网关正在启动。请等待启动完成后重试。",
+      "gatewayRestarting": "无法对话：网关正在重启。请等待重启完成。",
+      "gatewayStopping": "无法对话：网关正在停止。请等待停止完成后重新启动服务。",
+      "gatewayStopped": "无法对话：网关服务未启动。请点击顶部栏的“启动服务”后重试。",
+      "gatewayError": "无法对话：网关处于错误状态。请检查日志后重启网关或 Launcher。",
+      "websocketConnecting": "正在连接聊天服务，请稍候。",
+      "websocketDisconnected": "无法对话：WebSocket 连接已断开。请检查网络与服务状态，然后刷新页面或重启 Launcher。",
+      "websocketError": "无法对话：WebSocket 连接失败。请检查网络与服务状态后重试。",
+      "noDefaultModel": "无法对话：尚未设置默认模型。请前往模型页面设置默认模型。",
+      "unsupportedChannel": "当前渠道暂不支持直接对话。请切换到 Pico 通道。"
+    },
     "newChat": "新建对话",
     "notConnected": "服务未运行，请先启动以进行对话。",
     "thinking": {

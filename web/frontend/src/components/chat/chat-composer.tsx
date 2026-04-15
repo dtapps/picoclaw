@@ -7,6 +7,19 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { ChatAttachment } from "@/store/chat"
 
+export type ChatInputDisabledReason =
+  | "gatewayUnknown"
+  | "gatewayStarting"
+  | "gatewayRestarting"
+  | "gatewayStopping"
+  | "gatewayStopped"
+  | "gatewayError"
+  | "websocketConnecting"
+  | "websocketDisconnected"
+  | "websocketError"
+  | "noDefaultModel"
+  | "unsupportedChannel"
+
 interface ChatComposerProps {
   input: string
   attachments: ChatAttachment[]
@@ -14,8 +27,7 @@ interface ChatComposerProps {
   onAddImages: () => void
   onRemoveAttachment: (index: number) => void
   onSend: () => void
-  isConnected: boolean
-  hasDefaultModel: boolean
+  inputDisabledReason: ChatInputDisabledReason | null
   canSend: boolean
   channel?: string
 }
@@ -27,16 +39,24 @@ export function ChatComposer({
   onAddImages,
   onRemoveAttachment,
   onSend,
-  isConnected,
-  hasDefaultModel,
+  inputDisabledReason,
   canSend,
   channel,
 }: ChatComposerProps) {
   const { t } = useTranslation()
 
-  const isPico = channel === "pico"
+  // 最终的有效禁用原因
+  let effectiveReason: ChatInputDisabledReason | null = inputDisabledReason
 
-  const canInput = isConnected && hasDefaultModel && isPico
+  // 如果网关/连接状态正常 (reason 为 null)，但渠道不是 pico，则禁用输入
+  if (effectiveReason === null && channel !== "pico") {
+    effectiveReason = "unsupportedChannel"
+  }
+
+  const canInput = effectiveReason === null
+  const placeholder = canInput
+    ? t("chat.placeholder")
+    : t(`chat.disabledPlaceholder.${effectiveReason}`)
 
   const handleKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.nativeEvent.isComposing) return
@@ -79,7 +99,7 @@ export function ChatComposer({
           value={input}
           onChange={(e) => onInputChange(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={t("chat.placeholder")}
+          placeholder={placeholder}
           disabled={!canInput}
           className={cn(
             "placeholder:text-muted-foreground/50 max-h-[200px] min-h-[60px] resize-none border-0 bg-transparent px-2 py-1 text-[15px] shadow-none transition-colors focus-visible:ring-0 focus-visible:outline-none dark:bg-transparent",
@@ -105,15 +125,17 @@ export function ChatComposer({
             </Button>
           </div>
 
-          <Button
-            type="button"
-            size="icon"
-            className="size-8 rounded-full bg-violet-500 text-white transition-transform hover:bg-violet-600 active:scale-95"
-            onClick={onSend}
-            disabled={!canSend}
-          >
-            <IconArrowUp className="size-4" />
-          </Button>
+          {canInput ? (
+            <Button
+              type="button"
+              size="icon"
+              className="size-8 rounded-full bg-violet-500 text-white transition-transform hover:bg-violet-600 active:scale-95"
+              onClick={onSend}
+              disabled={!canSend}
+            >
+              <IconArrowUp className="size-4" />
+            </Button>
+          ) : null}
         </div>
       </div>
     </div>
