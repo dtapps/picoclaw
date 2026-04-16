@@ -29,6 +29,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/netbind"
+	"github.com/sipeed/picoclaw/pkg/tools"
 	"github.com/sipeed/picoclaw/web/backend/api"
 	"github.com/sipeed/picoclaw/web/backend/dashboardauth"
 	"github.com/sipeed/picoclaw/web/backend/launcherconfig"
@@ -404,6 +405,7 @@ func main() {
 	if *lang != "" {
 		SetLanguage(*lang)
 	}
+	tools.SetPreferredWebSearchLanguage(string(GetLanguage()))
 
 	// Resolve config path
 	configPath := utils.GetDefaultConfigPath()
