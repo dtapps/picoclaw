@@ -86,9 +86,13 @@ export function AddModelSheet({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(EMPTY_ADD_FORM)
+       
       setSetAsDefault(false)
+       
       setFieldErrors({})
+       
       setServerError("")
     }
   }, [open])

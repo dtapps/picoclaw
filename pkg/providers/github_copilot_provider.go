@@ -112,10 +112,11 @@ func (p *GitHubCopilotProvider) Chat(
 	if resp == nil {
 		return nil, fmt.Errorf("empty response from copilot")
 	}
-	if resp.Data.Content == nil {
+	assistantData, ok := resp.Data.(*copilot.AssistantMessageData)
+	if !ok || assistantData.Content == "" {
 		return nil, fmt.Errorf("no content in copilot response")
 	}
-	content := *resp.Data.Content
+	content := assistantData.Content
 
 	return &LLMResponse{
 		FinishReason: "stop",

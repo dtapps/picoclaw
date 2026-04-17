@@ -76,9 +76,13 @@ export function WeixinForm({
 
   useEffect(() => {
     if (!existingAccountID) return
+     
     stopPolling()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAccountID(existingAccountID)
+     
     setBindState("confirmed")
+     
     setErrorMsg("")
   }, [existingAccountID, stopPolling])
 

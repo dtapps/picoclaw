@@ -31,8 +31,20 @@ export function useCredentialsPage() {
   const [activeFlow, setActiveFlow] = useState<OAuthFlowState | null>(null)
   const actionTokenRef = useRef(0)
 
-  const [watchFlowID, setWatchFlowID] = useState("")
-  const [watchMode, setWatchMode] = useState<FlowWatchMode>("")
+  const [watchFlowID, setWatchFlowID] = useState(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      return params.get("oauth_flow_id") || ""
+    }
+    return ""
+  })
+  const [watchMode, setWatchMode] = useState<FlowWatchMode>(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get("oauth_flow_id")) return "status"
+    }
+    return ""
+  })
   const [pollIntervalMs, setPollIntervalMs] = useState(2000)
 
   const [openAIToken, setOpenAIToken] = useState("")
@@ -61,6 +73,7 @@ export function useCredentialsPage() {
   }, [t])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadProviders()
   }, [loadProviders])
 
@@ -125,20 +138,6 @@ export function useCredentialsPage() {
       }
     }
   }, [loadProviders, pollIntervalMs, t, watchFlowID, watchMode])
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const flowID = params.get("oauth_flow_id")
-    if (!flowID) {
-      return
-    }
-
-    setWatchFlowID(flowID)
-    setWatchMode("status")
-    setPollIntervalMs(700)
-
-    window.history.replaceState({}, "", window.location.pathname)
-  }, [])
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {

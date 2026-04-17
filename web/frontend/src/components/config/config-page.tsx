@@ -84,7 +84,9 @@ export function ConfigPage() {
   useEffect(() => {
     if (!data) return
     const parsed = buildFormFromConfig(data)
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(parsed)
+     
     setBaseline(parsed)
   }, [data])
 
@@ -96,13 +98,17 @@ export function ConfigPage() {
       allowedCIDRsText: (launcherConfig.allowed_cidrs ?? []).join("\n"),
       launcherToken: launcherConfig.launcher_token ?? "",
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLauncherForm(parsed)
+     
     setLauncherBaseline(parsed)
   }, [launcherConfig])
 
   useEffect(() => {
     if (!autoStartStatus) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAutoStartEnabled(autoStartStatus.enabled)
+     
     setAutoStartBaseline(autoStartStatus.enabled)
   }, [autoStartStatus])
 

@@ -249,8 +249,9 @@ func parseResponse(apiResp *responses.Response) *protocoltypes.LLMResponse {
 			}
 		case "function_call":
 			var args map[string]any
-			if err := json.Unmarshal([]byte(item.Arguments), &args); err != nil {
-				args = map[string]any{"raw": item.Arguments}
+			argsStr := item.Arguments.OfString
+			if err := json.Unmarshal([]byte(argsStr), &args); err != nil {
+				args = map[string]any{"raw": argsStr}
 			}
 			toolCalls = append(toolCalls, protocoltypes.ToolCall{
 				ID:        item.CallID,

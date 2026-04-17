@@ -72,14 +72,19 @@ export function WecomForm({
   useEffect(() => () => stopPolling(), [stopPolling])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setEnabled(config.enabled === true)
   }, [config.enabled])
 
   useEffect(() => {
     if (!existingBotID) return
+     
     stopPolling()
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBotID(existingBotID)
+     
     setBindState("confirmed")
+     
     setErrorMsg("")
   }, [existingBotID, stopPolling])
 

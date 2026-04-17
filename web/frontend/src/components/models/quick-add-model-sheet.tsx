@@ -46,14 +46,19 @@ export function QuickAddModelSheet({
 
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearch("")
+       
       setFilterTag(null)
+       
       setImporting(null)
+       
       setImported(null)
     }
   }, [open])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setImported(null)
   }, [search, filterTag, existingNamesString])
 

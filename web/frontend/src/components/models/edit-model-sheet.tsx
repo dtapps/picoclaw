@@ -73,6 +73,7 @@ export function EditModelSheet({
 
   useEffect(() => {
     if (model) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm({
         apiKey: "",
         apiBase: model.api_base ?? "",
@@ -94,7 +95,9 @@ export function EditModelSheet({
           ? JSON.stringify(model.custom_headers, null, 2)
           : "",
       })
+       
       setSetAsDefault(model.is_default)
+       
       setError("")
     }
   }, [model])
