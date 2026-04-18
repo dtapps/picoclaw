@@ -1,4 +1,4 @@
-> Retour à [README](../../../README.fr.md)
+> Retour à [README](../../project/README.fr.md)
 
 # Canal Weibo
 

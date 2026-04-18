@@ -1,4 +1,4 @@
-> Voltar para [README](../../../README.pt-br.md)
+> Voltar para [README](../../project/README.pt-br.md)
 
 # Canal Tencent Yuanbao
 
