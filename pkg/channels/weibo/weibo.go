@@ -70,7 +70,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	defaultCfg.AppSecret = c.config.AppSecret.String()
 
 	// 创建客户端
-	c.weiboClient, err = weibo.NewClient("picoclaw", &weiboTypes.Config{
+	c.weiboClient, err = weibo.NewClient("default", &weiboTypes.Config{
 		Weibo: defaultCfg,
 	})
 	if err != nil {
@@ -118,7 +118,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 		inboundCtx := bus.InboundContext{
 			Channel:          c.Name(),            // 来源渠道
 			Account:          msg.AppID,           // 机器人账号
-			ChatID:           msg.SenderID,        // 会话 ID / 用户 ID
+			ChatID:           sender.PlatformID,   // 会话 ID / 用户 ID
 			ChatType:         "direct",            // 会话类型 direct / group
 			TopicID:          "",                  // 话题 ID
 			SpaceID:          "",                  // 空间 ID
@@ -171,6 +171,7 @@ func (c *WeiboChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]str
 		return nil, channels.ErrNotRunning
 	}
 
+	// 分片发送消息
 	messageIDs, err := c.weiboClient.SendMessageChunked(&weiboTypes.OutboundMessage{
 		ToUserID: msg.ChatID,
 		Text:     msg.Content,

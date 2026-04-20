@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	yuanbao "github.com/dtapps/yuanbao-go"
+	yuanbaoConfig "github.com/dtapps/yuanbao-go/config"
 	yuanbaoLogger "github.com/dtapps/yuanbao-go/logger"
 	yuanbaoTypes "github.com/dtapps/yuanbao-go/types"
 
@@ -59,47 +60,48 @@ func NewYuanbaoChannel(
 	}, nil
 }
 
+func (c *YuanbaoChannel) Name() string { return config.ChannelYuanbao }
+
 func (c *YuanbaoChannel) Start(ctx context.Context) error {
-	logger.InfoC(config.ChannelYuanbao, "Yuanbao channel started...")
+	logger.InfoC(c.Name(), "Yuanbao channel started...")
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	var err error
+
+	// 创建配置
+	defaultCfg := yuanbaoConfig.DefaultConfig()
+	defaultCfg.AppID = c.config.AppID
+	defaultCfg.AppSecret = c.config.AppSecret.String()
+	defaultCfg.RequireMention = &c.bc.GroupTrigger.MentionOnly
+
+	// 创建客户端
 	c.yuanbaoClient, err = yuanbao.NewClient("default", &yuanbaoTypes.Config{
-		Yuanbao: &yuanbaoTypes.YuanbaoConfig{
-			AppKey:         c.config.AppID,
-			AppSecret:      c.config.AppSecret.String(),
-			RequireMention: &c.bc.GroupTrigger.MentionOnly,
-		},
+		Yuanbao: defaultCfg,
 	})
 	if err != nil {
 		return fmt.Errorf("yuanbao new client failed: %w", err)
 	}
 
 	c.yuanbaoClient.OnConnected(func() {
-		logger.InfoC(config.ChannelYuanbao, "Yuanbao channel connected...")
+		logger.InfoC(c.Name(), "Yuanbao channel connected...")
 		c.SetRunning(true)
 	})
 
 	c.yuanbaoClient.OnDisconnected(func() {
-		logger.InfoC(config.ChannelYuanbao, "Yuanbao channel disconnected...")
+		logger.InfoC(c.Name(), "Yuanbao channel disconnected...")
 		c.SetRunning(false)
 	})
 
-	c.yuanbaoClient.OnMessage(func(msg *yuanbaoTypes.InboundMessage, chatType string) {
+	c.yuanbaoClient.OnMessage(func(msg *yuanbaoTypes.InboundMessage, chatType yuanbaoTypes.ChatType) {
 		if msg == nil {
 			return
 		}
 
-		// 提取文本内容
-		var content string
-		for _, elem := range msg.MsgBody {
-			if elem.MsgType == "TIMTextElem" {
-				content = strings.TrimSpace(elem.MsgContent.Text)
-				break
-			}
+		content := ""
+		for _, segment := range msg.Content {
+			content += strings.TrimSpace(segment.Text)
 		}
-
 		if content == "" {
 			return // 忽略空消息
 		}
@@ -112,15 +114,15 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 
 		// 构建发送者信息
 		sender := bus.SenderInfo{
-			Platform:    config.ChannelYuanbao,                                             // 平台名称
-			PlatformID:  msg.FromAccount,                                                   // 原始 ID
-			CanonicalID: identity.BuildCanonicalID(config.ChannelYuanbao, msg.FromAccount), // 规范化 ID
-			Username:    msg.SenderNickname,                                                // 用户名
-			DisplayName: msg.SenderNickname,                                                // 显示名称
+			Platform:    c.Name(),                                          // 平台名称
+			PlatformID:  msg.SenderID,                                      // 原始 ID
+			CanonicalID: identity.BuildCanonicalID(c.Name(), msg.SenderID), // 规范化 ID
+			Username:    msg.SenderName,                                    // 用户名
+			DisplayName: msg.SenderName,                                    // 显示名称
 		}
 		if chatType == "group" {
 			sender.PlatformID = msg.GroupCode
-			sender.CanonicalID = identity.BuildCanonicalID(config.ChannelYuanbao, msg.GroupCode)
+			sender.CanonicalID = identity.BuildCanonicalID(c.Name(), msg.GroupCode)
 			sender.DisplayName = msg.GroupName
 		}
 
@@ -138,19 +140,25 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 
 		// 构建标准化上下文
 		inboundCtx := bus.InboundContext{
-			Channel:          config.ChannelYuanbao, // 来源渠道
-			Account:          "",                    // 机器人账号
-			ChatID:           sender.PlatformID,     // 会话 ID / 用户 ID
-			ChatType:         icChatType,            // 会话类型 direct / group
-			TopicID:          "",                    // 话题 ID
-			SpaceID:          "",                    // 空间 ID
-			SpaceType:        "",                    // 空间类型
-			SenderID:         msg.FromAccount,       // 发送者 ID
-			MessageID:        msg.MsgID,             // 消息 ID
-			Mentioned:        msg.IsAtBot,           // 是否被提及其
-			ReplyToMessageID: "",                    // 回复消息 ID
-			ReplyHandles:     map[string]string{},   // 回复句柄
-			Raw:              map[string]string{},   // 原始数据
+			Channel:          c.Name(),            // 来源渠道
+			Account:          msg.BotID,           // 机器人账号
+			ChatID:           sender.PlatformID,   // 会话 ID / 用户 ID
+			ChatType:         icChatType,          // 会话类型 direct / group
+			TopicID:          "",                  // 话题 ID
+			SpaceID:          "",                  // 空间 ID
+			SpaceType:        "",                  // 空间类型
+			SenderID:         msg.SenderID,        // 发送者 ID
+			MessageID:        msg.MessageID,       // 消息 ID
+			ReplyToMessageID: "",                  // 回复消息 ID
+			ReplyHandles:     map[string]string{}, // 回复句柄
+			Raw: map[string]string{
+				"raw_data": string(msg.RawMessage),
+			}, // 原始数据
+		}
+
+		// 是否被提及其
+		if len(msg.AtList) > 0 {
+			inboundCtx.Mentioned = true
 		}
 
 		// 媒体处理
@@ -171,7 +179,7 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 }
 
 func (c *YuanbaoChannel) Stop(ctx context.Context) error {
-	logger.InfoC(config.ChannelYuanbao, "Stopping Yuanbao channel...")
+	logger.InfoC(c.Name(), "Stopping Yuanbao channel...")
 
 	if c.cancel != nil {
 		c.cancel()
@@ -191,22 +199,31 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 		return nil, channels.ErrNotRunning
 	}
 
+	messageIDs := []string{}
 	chatKind := c.getChatKind(msg.ChatID)
 	if chatKind == "direct" {
-		err := c.yuanbaoClient.SendMessage(msg.ChatID, msg.Content)
+		messageID, err := c.yuanbaoClient.SendMessage(&yuanbaoTypes.OutboundC2CMessage{
+			ToUserID: msg.ChatID,
+			Text:     msg.Content,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", channels.ErrTemporary, err)
 		}
+		messageIDs = append(messageIDs, messageID)
 	} else if chatKind == "group" {
-		err := c.yuanbaoClient.SendGroupMessage(msg.ChatID, msg.Content)
+		messageID, err := c.yuanbaoClient.SendGroupMessage(&yuanbaoTypes.OutboundGroupMessage{
+			ToGroupID: msg.ChatID,
+			Text:      msg.Content,
+		})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", channels.ErrTemporary, err)
 		}
+		messageIDs = append(messageIDs, messageID)
 	} else {
 		return nil, fmt.Errorf("unknown chat type: %s", chatKind)
 	}
 
-	return []string{}, nil
+	return messageIDs, nil
 }
 
 func (c *YuanbaoChannel) getChatKind(chatID string) string {
@@ -215,7 +232,7 @@ func (c *YuanbaoChannel) getChatKind(chatID string) string {
 			return k
 		}
 	}
-	logger.DebugCF(config.ChannelYuanbao, "Unknown chat type for chatID, defaulting to group", map[string]any{
+	logger.DebugCF(c.Name(), "Unknown chat type for chatID, defaulting to group", map[string]any{
 		"chat_id": chatID,
 	})
 	return ""

@@ -17,7 +17,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
 	github.com/dtapps/weibo-go v1.0.2
-	github.com/dtapps/yuanbao-go v1.0.2
+	github.com/dtapps/yuanbao-go v1.0.3
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
 	github.com/gdamore/tcell/v2 v2.13.8
@@ -84,7 +84,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
