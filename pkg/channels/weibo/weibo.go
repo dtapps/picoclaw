@@ -77,18 +77,32 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 		return fmt.Errorf("weibo new client failed: %w", err)
 	}
 
+	// 设置连接成功回调
 	c.weiboClient.OnConnected(func() {
 		logger.InfoC(c.Name(), "Weibo channel connected...")
 		c.SetRunning(true)
 	})
 
+	// 设置断开连接回调
 	c.weiboClient.OnDisconnected(func() {
 		logger.InfoC(c.Name(), "Weibo channel disconnected...")
 		c.SetRunning(false)
 	})
 
+	// 设置错误回调
+	c.weiboClient.OnError(func(err error) {
+		logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
+			"error": err.Error(),
+		})
+		c.SetRunning(false)
+	})
+
+	// 设置消息处理回调
 	c.weiboClient.OnMessage(func(msg *weiboTypes.InboundMessage) {
 		if msg == nil {
+			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
+				"error": "message is nil",
+			})
 			return
 		}
 
@@ -97,6 +111,9 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 			content += strings.TrimSpace(segment.Text)
 		}
 		if content == "" {
+			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
+				"error": "message is empty",
+			})
 			return // 忽略空消息
 		}
 
@@ -111,6 +128,9 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 
 		// 权限校验
 		if !c.IsAllowedSender(sender) {
+			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
+				"error": "sender not allowed to send",
+			})
 			return
 		}
 

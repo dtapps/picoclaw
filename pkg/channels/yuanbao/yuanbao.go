@@ -83,18 +83,32 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 		return fmt.Errorf("yuanbao new client failed: %w", err)
 	}
 
+	// 设置连接成功回调
 	c.yuanbaoClient.OnConnected(func() {
 		logger.InfoC(c.Name(), "Yuanbao channel connected...")
 		c.SetRunning(true)
 	})
 
+	// 设置断开连接回调
 	c.yuanbaoClient.OnDisconnected(func() {
 		logger.InfoC(c.Name(), "Yuanbao channel disconnected...")
 		c.SetRunning(false)
 	})
 
+	// 设置错误回调
+	c.yuanbaoClient.OnError(func(err error) {
+		logger.ErrorCF(c.Name(), "Yuanbao channel error", map[string]any{
+			"error": err.Error(),
+		})
+		c.SetRunning(false)
+	})
+
+	// 设置消息处理回调
 	c.yuanbaoClient.OnMessage(func(msg *yuanbaoTypes.InboundMessage, chatType yuanbaoTypes.ChatType) {
 		if msg == nil {
+			logger.ErrorCF(c.Name(), "Yuanbao channel error", map[string]any{
+				"error": "message is nil",
+			})
 			return
 		}
 
@@ -103,6 +117,9 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 			content += strings.TrimSpace(segment.Text)
 		}
 		if content == "" {
+			logger.ErrorCF(c.Name(), "Yuanbao channel error", map[string]any{
+				"error": "message is empty",
+			})
 			return // 忽略空消息
 		}
 
@@ -128,6 +145,9 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 
 		// 权限校验
 		if !c.IsAllowedSender(sender) {
+			logger.ErrorCF(c.Name(), "Yuanbao channel error", map[string]any{
+				"error": "sender not allowed to send",
+			})
 			return
 		}
 
