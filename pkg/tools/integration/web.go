@@ -2034,15 +2034,15 @@ func isPrivateOrRestrictedIP(ip net.IP) bool {
 	return false
 }
 
-type WebEncyclopediaSearchProvider interface {
+type EncyclopediaSearchProvider interface {
 	Search(ctx context.Context, query string) (string, error)
 }
-type WebEncyclopediaSearchTool struct {
-	provider   WebEncyclopediaSearchProvider
+type EncyclopediaSearchTool struct {
+	provider   EncyclopediaSearchProvider
 	maxResults int
 }
 
-type WebEncyclopediaSearchToolOptions struct {
+type EncyclopediaSearchToolOptions struct {
 	BaiduBaikeAPIKey     string
 	BaiduBaikeBaseURL    string
 	BaiduBaikeMaxResults int
@@ -2050,8 +2050,8 @@ type WebEncyclopediaSearchToolOptions struct {
 	Proxy                string
 }
 
-func NewWebEncyclopediaSearchTool(opts WebEncyclopediaSearchToolOptions) (*WebEncyclopediaSearchTool, error) {
-	var provider WebEncyclopediaSearchProvider
+func NewEncyclopediaSearchTool(opts EncyclopediaSearchToolOptions) (*EncyclopediaSearchTool, error) {
+	var provider EncyclopediaSearchProvider
 	maxResults := 10
 	if opts.BaiduBaikeEnabled && opts.BaiduBaikeAPIKey != "" {
 		client, err := utils.CreateHTTPClient(opts.Proxy, perplexityTimeout)
@@ -2071,21 +2071,21 @@ func NewWebEncyclopediaSearchTool(opts WebEncyclopediaSearchToolOptions) (*WebEn
 		return nil, nil
 	}
 
-	return &WebEncyclopediaSearchTool{
+	return &EncyclopediaSearchTool{
 		provider:   provider,
 		maxResults: maxResults,
 	}, nil
 }
 
-func (t *WebEncyclopediaSearchTool) Name() string {
-	return "web_encyclopedia_search"
+func (t *EncyclopediaSearchTool) Name() string {
+	return "encyclopedia_search"
 }
 
-func (t *WebEncyclopediaSearchTool) Description() string {
+func (t *EncyclopediaSearchTool) Description() string {
 	return "Search the web for current information. Supports query. Returns titles, URLs, and snippets from search results."
 }
 
-func (t *WebEncyclopediaSearchTool) Parameters() map[string]any {
+func (t *EncyclopediaSearchTool) Parameters() map[string]any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -2098,7 +2098,7 @@ func (t *WebEncyclopediaSearchTool) Parameters() map[string]any {
 	}
 }
 
-func (t *WebEncyclopediaSearchTool) Execute(ctx context.Context, args map[string]any) *ToolResult {
+func (t *EncyclopediaSearchTool) Execute(ctx context.Context, args map[string]any) *ToolResult {
 	query, ok := args["query"].(string)
 	if !ok || strings.TrimSpace(query) == "" {
 		return ErrorResult("query is required")

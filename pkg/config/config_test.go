@@ -2045,7 +2045,9 @@ func TestFilterSensitiveData_AllTokenTypes(t *testing.T) {
 				Perplexity:  PerplexityConfig{APIKeys: SecureStrings{NewSecureString("perplexity-api-key")}},
 				GLMSearch:   GLMSearchConfig{APIKey: *NewSecureString("glm-search-key")},
 				BaiduSearch: BaiduSearchConfig{APIKey: *NewSecureString("baidu-search-key")},
-				BaiduBaike:  BaiduBaikeConfig{APIKey: *NewSecureString("baidu-baike-key")},
+			},
+			Encyclopedia: EncyclopediaToolsConfig{
+				BaiduBaike: BaiduBaikeConfig{APIKey: *NewSecureString("baidu-baike-key")},
 			},
 			// Skills tokens
 			Skills: SkillsToolsConfig{

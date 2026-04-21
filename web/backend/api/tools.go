@@ -124,10 +124,10 @@ var toolCatalog = []toolCatalogEntry{
 		ConfigKey:   "web_fetch",
 	},
 	{
-		Name:        "web_encyclopedia_search",
+		Name:        "encyclopedia_search",
 		Description: "Search the web encyclopedia using the configured providers.",
 		Category:    "web",
-		ConfigKey:   "web_encyclopedia_search",
+		ConfigKey:   "encyclopedia_search",
 	},
 	{
 		Name:        "message",
@@ -191,11 +191,45 @@ var toolCatalog = []toolCatalogEntry{
 	},
 }
 
+type encyclopediaSearchProviderOption struct {
+	ID           string `json:"id"`
+	Label        string `json:"label"`
+	Configured   bool   `json:"configured"`
+	Current      bool   `json:"current"`
+	RequiresAuth bool   `json:"requires_auth"`
+}
+
+type encyclopediaSearchProviderConfig struct {
+	Enabled    bool     `json:"enabled"`
+	MaxResults int      `json:"max_results"`
+	BaseURL    string   `json:"base_url,omitempty"`
+	APIKey     string   `json:"api_key,omitempty"`
+	APIKeys    []string `json:"api_keys,omitempty"`
+	APIKeySet  bool     `json:"api_key_set,omitempty"`
+}
+type encyclopediaSearchConfigResponse struct {
+	Provider       string                                      `json:"provider"`
+	CurrentService string                                      `json:"current_service"`
+	PreferNative   bool                                        `json:"prefer_native"`
+	Proxy          string                                      `json:"proxy,omitempty"`
+	Providers      []encyclopediaSearchProviderOption          `json:"providers"`
+	Settings       map[string]encyclopediaSearchProviderConfig `json:"settings"`
+}
+
+type encyclopediaSearchConfigRequest struct {
+	Provider     string                                      `json:"provider"`
+	PreferNative bool                                        `json:"prefer_native"`
+	Proxy        string                                      `json:"proxy"`
+	Settings     map[string]encyclopediaSearchProviderConfig `json:"settings"`
+}
+
 func (h *Handler) registerToolRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/tools", h.handleListTools)
 	mux.HandleFunc("PUT /api/tools/{name}/state", h.handleUpdateToolState)
 	mux.HandleFunc("GET /api/tools/web-search-config", h.handleGetWebSearchConfig)
 	mux.HandleFunc("PUT /api/tools/web-search-config", h.handleUpdateWebSearchConfig)
+	mux.HandleFunc("GET /api/tools/encyclopedia-search-config", h.handleGetEncyclopediaSearchConfig)
+	mux.HandleFunc("PUT /api/tools/encyclopedia-search-config", h.handleUpdateEncyclopediaSearchConfig)
 }
 
 func (h *Handler) handleListTools(w http.ResponseWriter, r *http.Request) {
@@ -330,8 +364,8 @@ func applyToolState(cfg *config.Config, toolName string, enabled bool) error {
 		cfg.Tools.Web.Enabled = enabled
 	case "web_fetch":
 		cfg.Tools.WebFetch.Enabled = enabled
-	case "web_encyclopedia_search":
-		cfg.Tools.WebEncyclopediaSearch.Enabled = enabled
+	case "encyclopedia_search":
+		cfg.Tools.Encyclopedia.Enabled = enabled
 	case "message":
 		cfg.Tools.Message.Enabled = enabled
 	case "send_file":
@@ -695,6 +729,140 @@ func webSearchProviderConfigured(cfg *config.Config, name string) bool {
 		return cfg.Tools.Web.GLMSearch.Enabled && cfg.Tools.Web.GLMSearch.APIKey.String() != ""
 	case "baidu_search":
 		return cfg.Tools.Web.BaiduSearch.Enabled && cfg.Tools.Web.BaiduSearch.APIKey.String() != ""
+	default:
+		return false
+	}
+}
+
+func (h *Handler) handleGetEncyclopediaSearchConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := config.LoadConfig(h.configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(buildEncyclopediaSearchConfigResponse(cfg)); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) handleUpdateEncyclopediaSearchConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := config.LoadConfig(h.configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var req encyclopediaSearchConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	provider := normalizeEncyclopediaSearchProvider(req.Provider)
+	if provider == "" {
+		http.Error(w, "invalid encyclopedia search provider", http.StatusBadRequest)
+		return
+	}
+
+	cfg.Tools.Encyclopedia.Provider = provider
+	cfg.Tools.Encyclopedia.PreferNative = req.PreferNative
+	cfg.Tools.Encyclopedia.Proxy = strings.TrimSpace(req.Proxy)
+
+	if settings, ok := req.Settings["baidu_baike"]; ok {
+		cfg.Tools.Encyclopedia.BaiduBaike.Enabled = settings.Enabled
+		cfg.Tools.Encyclopedia.BaiduBaike.MaxResults = settings.MaxResults
+		cfg.Tools.Encyclopedia.BaiduBaike.BaseURL = strings.TrimSpace(settings.BaseURL)
+		if key := strings.TrimSpace(settings.APIKey); key != "" {
+			cfg.Tools.Encyclopedia.BaiduBaike.APIKey = *config.NewSecureString(key)
+		}
+	}
+
+	if err := config.SaveConfig(h.configPath, cfg); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(buildEncyclopediaSearchConfigResponse(cfg)); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func normalizeEncyclopediaSearchProvider(provider string) string {
+	switch strings.ToLower(strings.TrimSpace(provider)) {
+	case "", "auto":
+		return "auto"
+	case "baidu_baike":
+		return strings.ToLower(strings.TrimSpace(provider))
+	default:
+		return ""
+	}
+}
+
+func buildEncyclopediaSearchConfigResponse(cfg *config.Config) encyclopediaSearchConfigResponse {
+	current := resolveCurrentEncyclopediaSearchProvider(cfg)
+	settings := map[string]encyclopediaSearchProviderConfig{
+		"baidu_baike": {
+			Enabled:    cfg.Tools.Encyclopedia.BaiduBaike.Enabled,
+			MaxResults: cfg.Tools.Encyclopedia.BaiduBaike.MaxResults,
+			BaseURL:    cfg.Tools.Encyclopedia.BaiduBaike.BaseURL,
+			APIKeySet:  cfg.Tools.Encyclopedia.BaiduBaike.APIKey.String() != "",
+		},
+	}
+
+	providers := []encyclopediaSearchProviderOption{
+		{
+			ID:         "auto",
+			Label:      "Auto",
+			Configured: current != "",
+			Current: cfg.Tools.Encyclopedia.Provider == "" ||
+				cfg.Tools.Encyclopedia.Provider == "auto",
+		},
+		{
+			ID:    "baidu_baike",
+			Label: "Baidu Baike",
+			Configured: cfg.Tools.Encyclopedia.BaiduBaike.Enabled &&
+				cfg.Tools.Encyclopedia.BaiduBaike.APIKey.String() != "",
+			Current:      current == "baidu_baike",
+			RequiresAuth: true,
+		},
+	}
+
+	provider := cfg.Tools.Encyclopedia.Provider
+	if provider == "" {
+		provider = "auto"
+	}
+
+	return encyclopediaSearchConfigResponse{
+		Provider:       provider,
+		CurrentService: current,
+		PreferNative:   cfg.Tools.Encyclopedia.PreferNative,
+		Proxy:          cfg.Tools.Encyclopedia.Proxy,
+		Providers:      providers,
+		Settings:       settings,
+	}
+}
+
+func resolveCurrentEncyclopediaSearchProvider(cfg *config.Config) string {
+	selected := normalizeEncyclopediaSearchProvider(cfg.Tools.Encyclopedia.Provider)
+	if selected != "" && selected != "auto" && encyclopediaSearchProviderConfigured(cfg, selected) {
+		return selected
+	}
+
+	for _, name := range []string{"baidu_baike"} {
+		if encyclopediaSearchProviderConfigured(cfg, name) {
+			return name
+		}
+	}
+	return ""
+}
+
+func encyclopediaSearchProviderConfigured(cfg *config.Config, name string) bool {
+	switch name {
+	case "baidu_baike":
+		return cfg.Tools.Encyclopedia.BaiduBaike.Enabled && cfg.Tools.Encyclopedia.BaiduBaike.APIKey.String() != ""
 	default:
 		return false
 	}
