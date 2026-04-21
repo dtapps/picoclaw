@@ -1,9 +1,4 @@
-import {
-  Navigate,
-  Outlet,
-  createFileRoute,
-  useRouterState,
-} from "@tanstack/react-router"
+import { Outlet, createFileRoute, useRouterState } from "@tanstack/react-router"
 
 import { AllSessionsPage } from "@/components/chat/all-sessions-page"
 
