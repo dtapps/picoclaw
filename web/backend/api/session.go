@@ -24,6 +24,8 @@ func (h *Handler) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sessions", h.handleListSessions)
 	mux.HandleFunc("GET /api/sessions/{id}", h.handleGetSession)
 	mux.HandleFunc("DELETE /api/sessions/{id}", h.handleDeleteSession)
+	mux.HandleFunc("GET /api/all-sessions", h.handleListAllSessions)
+	mux.HandleFunc("GET /api/all-sessions/{id}", h.handleGetAllSession)
 }
 
 // sessionFile mirrors the on-disk session JSON structure from pkg/session.
@@ -43,7 +45,7 @@ type sessionListItem struct {
 	MessageCount int    `json:"message_count"`
 	Created      string `json:"created"`
 	Updated      string `json:"updated"`
-	Channel      string `json:"channel"`
+	Channel      string `json:"channel,omitempty"`
 }
 
 type sessionChatMessage struct {
@@ -659,26 +661,14 @@ func (h *Handler) handleListSessions(w http.ResponseWriter, r *http.Request) {
 	items := []sessionListItem{}
 	seen := make(map[string]struct{})
 
-	// if refs, findErr := h.findPicoJSONLSessions(dir); findErr == nil {
-	// 	for _, ref := range refs {
-	// 		sess, loadErr := h.readJSONLSession(dir, ref.Key)
-	// 		if loadErr != nil || isEmptySession(sess) {
-	// 			continue
-	// 		}
-	// 		seen[ref.ID] = struct{}{}
-	// 		items = append(items, buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength))
-	// 	}
-	// }
-	if refs, findErr := h.findAllJSONLSessions(dir); findErr == nil {
+	if refs, findErr := h.findPicoJSONLSessions(dir); findErr == nil {
 		for _, ref := range refs {
 			sess, loadErr := h.readJSONLSession(dir, ref.Key)
 			if loadErr != nil || isEmptySession(sess) {
 				continue
 			}
 			seen[ref.ID] = struct{}{}
-			item := buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength)
-			item.Channel = ref.Channel
-			items = append(items, item)
+			items = append(items, buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength))
 		}
 	}
 
@@ -747,8 +737,7 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// ref, refErr := h.findPicoJSONLSession(dir, sessionID)
-	ref, refErr := h.findAllJSONLSession(dir, sessionID)
+	ref, refErr := h.findPicoJSONLSession(dir, sessionID)
 	var sess sessionFile
 	err = refErr
 	if refErr == nil {
@@ -785,7 +774,6 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		"summary":  sess.Summary,
 		"created":  sess.Created.Format(time.RFC3339),
 		"updated":  sess.Updated.Format(time.RFC3339),
-		"channel":  ref.Channel,
 	})
 }
 
@@ -837,6 +825,145 @@ func (h *Handler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleListAllSessions returns a list of Pico session summaries.
+//
+//	GET /api/all-sessions
+func (h *Handler) handleListAllSessions(w http.ResponseWriter, r *http.Request) {
+	dir, toolFeedbackMaxArgsLength, err := h.sessionRuntimeSettings()
+	if err != nil {
+		http.Error(w, "failed to resolve sessions directory", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := os.ReadDir(dir); err != nil {
+		// Directory doesn't exist yet = no sessions
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]sessionListItem{})
+		return
+	}
+
+	items := []sessionListItem{}
+	seen := make(map[string]struct{})
+
+	if refs, findErr := h.findAllJSONLSessions(dir); findErr == nil {
+		for _, ref := range refs {
+			sess, loadErr := h.readJSONLSession(dir, ref.Key)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			seen[ref.ID] = struct{}{}
+			item := buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength)
+			item.Channel = ref.Channel
+			items = append(items, item)
+		}
+	}
+
+	if legacyRefs, findErr := h.findLegacyPicoSessions(dir); findErr == nil {
+		for _, ref := range legacyRefs {
+			if _, exists := seen[ref.ID]; exists {
+				continue
+			}
+			sess, loadErr := h.readLegacySession(ref.Path)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			seen[ref.ID] = struct{}{}
+			items = append(items, buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength))
+		}
+	}
+
+	// Sort by updated descending (most recent first)
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Updated > items[j].Updated
+	})
+
+	// Pagination parameters
+	offsetStr := r.URL.Query().Get("offset")
+	limitStr := r.URL.Query().Get("limit")
+
+	offset := 0
+	limit := 20 // Default limit
+
+	if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+		offset = val
+	}
+	if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
+		limit = val
+	}
+
+	totalItems := len(items)
+
+	end := offset + limit
+	if offset >= totalItems {
+		items = []sessionListItem{} // Out of bounds, return empty
+	} else {
+		if end > totalItems {
+			end = totalItems
+		}
+		items = items[offset:end]
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+// handleGetAllSession returns the full message history for a specific session.
+//
+//	GET /api/all-sessions/{id}
+func (h *Handler) handleGetAllSession(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("id")
+	if sessionID == "" {
+		http.Error(w, "missing session id", http.StatusBadRequest)
+		return
+	}
+
+	dir, toolFeedbackMaxArgsLength, err := h.sessionRuntimeSettings()
+	if err != nil {
+		http.Error(w, "failed to resolve sessions directory", http.StatusInternalServerError)
+		return
+	}
+
+	ref, refErr := h.findAllJSONLSession(dir, sessionID)
+	var sess sessionFile
+	err = refErr
+	if refErr == nil {
+		sess, err = h.readJSONLSession(dir, ref.Key)
+	}
+	if err == nil && isEmptySession(sess) {
+		err = os.ErrNotExist
+	}
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if legacyRef, legacyErr := h.findLegacyPicoSession(dir, sessionID); legacyErr == nil {
+				sess, err = h.readLegacySession(legacyRef.Path)
+			}
+			if err == nil && isEmptySession(sess) {
+				err = os.ErrNotExist
+			}
+		}
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				http.Error(w, "session not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "failed to parse session", http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
+	messages := visibleSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"id":       sessionID,
+		"messages": messages,
+		"summary":  sess.Summary,
+		"created":  sess.Created.Format(time.RFC3339),
+		"updated":  sess.Updated.Format(time.RFC3339),
+		"channel":  ref.Channel,
+	})
 }
 
 // 定义局部结构体，用于解析 meta.json 里的 scope 字段

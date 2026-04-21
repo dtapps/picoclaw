@@ -115,7 +115,6 @@ export function ChatPage() {
     connectionState,
     isTyping,
     activeSessionId,
-    currentChannel,
     sendMessage,
     switchSession,
     newChat,
@@ -154,7 +153,7 @@ export function ChatPage() {
   })
 
   const syncScrollState = (element: HTMLDivElement) => {
-    const { scrollTop, scrollHeight, clientHeight } = element
+    const { clientHeight, scrollHeight, scrollTop } = element
     setHasScrolled(scrollTop > 0)
     setIsAtBottom(scrollHeight - scrollTop <= clientHeight + 10)
   }
@@ -249,7 +248,6 @@ export function ChatPage() {
   return (
     <div className="bg-background/95 flex h-full flex-col">
       <PageHeader
-        channel={currentChannel ? t(`channels.name.${currentChannel}`) : ""}
         title={t("navigation.chat")}
         className={`transition-shadow ${
           hasScrolled ? "shadow-xs" : "shadow-none"
@@ -296,7 +294,7 @@ export function ChatPage() {
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8 lg:px-24 xl:px-48"
+        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 [scrollbar-gutter:stable] md:px-8 lg:px-24 xl:px-48"
       >
         <div className="mx-auto flex w-full max-w-250 flex-col gap-8 pb-8">
           {messages.length === 0 && !isTyping && (
@@ -345,7 +343,6 @@ export function ChatPage() {
         onSend={handleSend}
         inputDisabledReason={inputDisabledReason}
         canSend={canSubmit}
-        channel={currentChannel}
       />
     </div>
   )

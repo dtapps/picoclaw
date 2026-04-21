@@ -16,23 +16,18 @@ function toChatAttachments(media?: string[]): ChatAttachment[] | undefined {
 
 export async function loadSessionMessages(
   sessionId: string,
-): Promise<{ messages: ChatMessage[]; channel: string }> {
+): Promise<ChatMessage[]> {
   const detail = await getSessionHistory(sessionId)
   const fallbackTime = detail.updated
 
-  const messages = detail.messages.map((message, index) => ({
+  return detail.messages.map((message, index) => ({
     id: `hist-${index}-${Date.now()}`,
     role: message.role,
     content: message.content,
-    kind: message.role === "assistant" ? ("normal" as const) : undefined,
+    kind: message.role === "assistant" ? "normal" : undefined,
     attachments: toChatAttachments(message.media),
     timestamp: fallbackTime,
   }))
-
-  return {
-    messages,
-    channel: detail.channel,
-  }
 }
 
 function normalizeMessageTimestamp(timestamp: number | string): string {

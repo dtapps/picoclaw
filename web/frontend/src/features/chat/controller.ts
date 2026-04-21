@@ -274,27 +274,18 @@ export async function hydrateActiveSession() {
       if (currentState.messages.length > 0) {
         updateChatStore({
           messages: mergeHistoryMessages(
-            historyMessages.messages,
+            historyMessages,
             currentState.messages,
           ),
-          hasHydratedActiveSession: true,
-          ...(historyMessages.channel && { currentChannel: historyMessages.channel }),
-        })
-        return
-      }
-
-      if (historyMessages.messages.length === 0 && !historyMessages.channel) {
-        updateChatStore({
           hasHydratedActiveSession: true,
         })
         return
       }
 
       updateChatStore({
-        messages: historyMessages.messages,
+        messages: historyMessages,
         isTyping: false,
         hasHydratedActiveSession: true,
-        ...(historyMessages.channel && { currentChannel: historyMessages.channel }),
       })
     })
     .catch((error) => {
@@ -393,8 +384,7 @@ export async function switchChatSession(sessionId: string) {
   }
 
   try {
-    const { messages: historyMessages, channel } =
-      await loadSessionMessages(sessionId)
+    const historyMessages = await loadSessionMessages(sessionId)
 
     disconnectChatInternal({ clearDesiredConnection: false })
     setActiveSessionId(sessionId)
@@ -402,7 +392,6 @@ export async function switchChatSession(sessionId: string) {
       messages: historyMessages,
       isTyping: false,
       hasHydratedActiveSession: true,
-      currentChannel: channel,
     })
 
     if (store.get(gatewayAtom).status === "running") {
@@ -426,7 +415,6 @@ export async function newChatSession() {
     messages: [],
     isTyping: false,
     hasHydratedActiveSession: true,
-    currentChannel: "pico",
   })
 
   if (store.get(gatewayAtom).status === "running") {
