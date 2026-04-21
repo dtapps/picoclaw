@@ -1,7 +1,23 @@
 {
+  "all_sessions": {
+    "title": "All Conversations",
+    "description": "View conversation history from all channels",
+    "empty": "No conversations yet",
+    "retry": "Retry",
+    "messages": "messages"
+  },
+  "session_history": {
+    "title": "Conversation Details",
+    "back": "Back",
+    "notFound": "Session not found",
+    "empty": "No messages in this conversation",
+    "summary": "Summary",
+    "created": "Created",
+    "updated": "Updated"
+  },
   "navigation": {
     "chat": "Chat",
-    "model_group": "Models",
+    "all_sessions": "All Conversations",
     "models": "Models",
     "credentials": "Credentials",
     "agent_group": "Agent",

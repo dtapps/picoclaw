@@ -16,8 +16,10 @@ import { Route as LauncherLoginRouteImport } from './routes/launcher-login'
 import { Route as CredentialsRouteImport } from './routes/credentials'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AgentRouteImport } from './routes/agent'
+import { Route as SessionsRouteRouteImport } from './routes/sessions/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SessionsIdRouteImport } from './routes/sessions/$id'
 import { Route as ConfigRawRouteImport } from './routes/config.raw'
 import { Route as ChannelsNameRouteImport } from './routes/channels/$name'
 import { Route as AgentToolsRouteImport } from './routes/agent/tools'
@@ -59,6 +61,11 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SessionsRouteRoute = SessionsRouteRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
   id: '/channels',
   path: '/channels',
@@ -68,6 +75,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SessionsIdRoute = SessionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SessionsRouteRoute,
 } as any)
 const ConfigRawRoute = ConfigRawRouteImport.update({
   id: '/raw',
@@ -98,6 +110,7 @@ const AgentHubRoute = AgentHubRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -110,10 +123,12 @@ export interface FileRoutesByFullPath {
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -126,11 +141,13 @@ export interface FileRoutesByTo {
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -143,12 +160,14 @@ export interface FileRoutesById {
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/channels'
+    | '/sessions'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -161,10 +180,12 @@ export interface FileRouteTypes {
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/channels'
+    | '/sessions'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -177,10 +198,12 @@ export interface FileRouteTypes {
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
   id:
     | '__root__'
     | '/'
     | '/channels'
+    | '/sessions'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -193,11 +216,13 @@ export interface FileRouteTypes {
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChannelsRouteRoute: typeof ChannelsRouteRouteWithChildren
+  SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   ConfigRoute: typeof ConfigRouteWithChildren
   CredentialsRoute: typeof CredentialsRoute
@@ -258,6 +283,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sessions': {
+      id: '/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof SessionsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/channels': {
       id: '/channels'
       path: '/channels'
@@ -271,6 +303,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/sessions/$id': {
+      id: '/sessions/$id'
+      path: '/$id'
+      fullPath: '/sessions/$id'
+      preLoaderRoute: typeof SessionsIdRouteImport
+      parentRoute: typeof SessionsRouteRoute
     }
     '/config/raw': {
       id: '/config/raw'
@@ -322,6 +361,18 @@ const ChannelsRouteRouteWithChildren = ChannelsRouteRoute._addFileChildren(
   ChannelsRouteRouteChildren,
 )
 
+interface SessionsRouteRouteChildren {
+  SessionsIdRoute: typeof SessionsIdRoute
+}
+
+const SessionsRouteRouteChildren: SessionsRouteRouteChildren = {
+  SessionsIdRoute: SessionsIdRoute,
+}
+
+const SessionsRouteRouteWithChildren = SessionsRouteRoute._addFileChildren(
+  SessionsRouteRouteChildren,
+)
+
 interface AgentRouteChildren {
   AgentHubRoute: typeof AgentHubRoute
   AgentSkillsRoute: typeof AgentSkillsRoute
@@ -350,6 +401,7 @@ const ConfigRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChannelsRouteRoute: ChannelsRouteRouteWithChildren,
+  SessionsRouteRoute: SessionsRouteRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   ConfigRoute: ConfigRouteWithChildren,
   CredentialsRoute: CredentialsRoute,

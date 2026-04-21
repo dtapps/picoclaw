@@ -1,7 +1,6 @@
 import { getDefaultStore } from "jotai"
 import { toast } from "sonner"
 
-import { getPicoToken } from "@/api/pico"
 import {
   loadSessionMessages,
   mergeHistoryMessages,
@@ -131,7 +130,6 @@ export async function connectChat() {
   updateChatStore({ connectionState: "connecting" })
 
   try {
-    const { token } = await getPicoToken()
     const sessionId = activeSessionIdRef
 
     if (generation !== connectionGeneration) {
@@ -139,18 +137,10 @@ export async function connectChat() {
       return
     }
 
-    if (!token) {
-      console.error("No pico token available")
-      updateChatStore({ connectionState: "error" })
-      isConnecting = false
-      scheduleReconnect(generation, sessionId)
-      return
-    }
-
     const wsScheme = window.location.protocol === "https:" ? "wss:" : "ws:"
     const wsUrl = `${wsScheme}//${window.location.host}/pico/ws`
     const url = `${wsUrl}?session_id=${encodeURIComponent(sessionId)}`
-    const socket = new WebSocket(url, [`token.${token}`])
+    const socket = new WebSocket(url)
 
     if (generation !== connectionGeneration) {
       isConnecting = false
@@ -284,20 +274,18 @@ export async function hydrateActiveSession() {
       if (currentState.messages.length > 0) {
         updateChatStore({
           messages: mergeHistoryMessages(
-            historyMessages.messages,
+            historyMessages,
             currentState.messages,
           ),
           hasHydratedActiveSession: true,
-          currentChannel: historyMessages.channel,
         })
         return
       }
 
       updateChatStore({
-        messages: historyMessages.messages,
+        messages: historyMessages,
         isTyping: false,
         hasHydratedActiveSession: true,
-        currentChannel: historyMessages.channel,
       })
     })
     .catch((error) => {
@@ -396,8 +384,7 @@ export async function switchChatSession(sessionId: string) {
   }
 
   try {
-    const { messages: historyMessages, channel } =
-      await loadSessionMessages(sessionId)
+    const historyMessages = await loadSessionMessages(sessionId)
 
     disconnectChatInternal({ clearDesiredConnection: false })
     setActiveSessionId(sessionId)
@@ -405,7 +392,6 @@ export async function switchChatSession(sessionId: string) {
       messages: historyMessages,
       isTyping: false,
       hasHydratedActiveSession: true,
-      currentChannel: channel,
     })
 
     if (store.get(gatewayAtom).status === "running") {
