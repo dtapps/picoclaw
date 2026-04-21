@@ -1,4 +1,4 @@
-import { IconLoader2, IconPlus, IconStar } from "@tabler/icons-react"
+import { IconBolt, IconLoader2, IconPlus, IconStar } from "@tabler/icons-react"
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 
@@ -11,6 +11,7 @@ import { DeleteModelDialog } from "./delete-model-dialog"
 import { EditModelSheet } from "./edit-model-sheet"
 import { getProviderKey, getProviderLabel } from "./provider-label"
 import { ProviderSection } from "./provider-section"
+import { QuickAddModelSheet } from "./quick-add-model-sheet"
 
 const PROVIDER_PRIORITY: Record<string, number> = {
   volcengine: 0,
@@ -52,6 +53,7 @@ export function ModelsPage() {
   const [editingModel, setEditingModel] = useState<ModelInfo | null>(null)
   const [deletingModel, setDeletingModel] = useState<ModelInfo | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [settingDefaultIndex, setSettingDefaultIndex] = useState<number | null>(
     null,
   )
@@ -74,6 +76,10 @@ export function ModelsPage() {
       setLoading(false)
     }
   }, [t])
+
+  const handleQuickAddImported = useCallback(() => {
+    fetchModels()
+  }, [fetchModels])
 
   useEffect(() => {
     fetchModels()
@@ -141,6 +147,14 @@ export function ModelsPage() {
     <div className="flex h-full flex-col">
       <PageHeader title={t("navigation.models")}>
         <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setQuickAddOpen(true)}
+          >
+            <IconBolt className="size-4" />
+            {t("models.quickAdd.button")}
+          </Button>
           <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
             <IconPlus className="size-4" />
             {t("models.add.button")}
@@ -203,6 +217,13 @@ export function ModelsPage() {
         open={addOpen}
         onClose={() => setAddOpen(false)}
         onSaved={fetchModels}
+        existingModelNames={models.map((model) => model.model_name)}
+      />
+
+      <QuickAddModelSheet
+        open={quickAddOpen}
+        onClose={() => setQuickAddOpen(false)}
+        onImported={handleQuickAddImported}
         existingModelNames={models.map((model) => model.model_name)}
       />
 
