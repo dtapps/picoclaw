@@ -1024,23 +1024,25 @@ func (h *Handler) findAllJSONLSessions(dir string) ([]picoJSONLSessionRef, error
 		base := strings.TrimSuffix(name, ".meta.json")
 		metaBackedBases[base] = struct{}{}
 
-		var id string
 		var channel string
 
-		// 解析新版 Scope 结构
+		// 解析新版 Scope 结构获取 channel
 		if len(meta.Scope) > 0 {
 			var sc picoScopeInternal
 			if err := json.Unmarshal(meta.Scope, &sc); err == nil {
 				channel = sc.Channel
-				// 从 values.chat 获取原始 ID (如 direct:pico:7028...)
-				if chatVal, ok := sc.Values["chat"]; ok && chatVal != "" {
-					id = extractGeneralSessionID(chatVal)
-				}
 			}
 		}
+		if channel == "" {
+			channel = detectChannelFromKey(meta.Key)
+		}
 
-		// 兜底识别
-		if id == "" {
+		// ID 提取逻辑
+		var id string
+		if session.IsOpaqueSessionKey(meta.Key) {
+			// 如果 key 是 sk_v1_ 格式，直接使用 key 作为 ID
+			id = meta.Key
+		} else {
 			id = extractGeneralSessionID(meta.Key)
 		}
 		if channel == "" {
@@ -1076,7 +1078,13 @@ func (h *Handler) findAllJSONLSessions(dir string) ([]picoJSONLSessionRef, error
 			continue
 		}
 
-		id := extractGeneralSessionID(base)
+		// ID 提取逻辑
+		var id string
+		if session.IsOpaqueSessionKey(base) {
+			id = base
+		} else {
+			id = extractGeneralSessionID(base)
+		}
 		if id == "" || id == "unknown" || id == "sk" {
 			continue
 		}
