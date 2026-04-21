@@ -146,20 +146,9 @@ func (h *Handler) handleCreateCronJob(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := cs.Load(); err != nil {
-		http.Error(w, fmt.Sprintf("Failed to load cron jobs: %v", err), http.StatusInternalServerError)
+	if loadErr := cs.Load(); loadErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to load cron jobs: %v", loadErr), http.StatusInternalServerError)
 		return
-	}
-
-	payload := cron.CronPayload{
-		Kind:    "agent_turn",
-		Message: req.Message,
-		Command: req.Command,
-		Channel: req.Channel,
-		To:      req.To,
-	}
-	if req.Command != "" {
-		payload.Kind = "command"
 	}
 
 	job, err := cs.AddJob(req.Name, req.Schedule, req.Message, req.Channel, req.To)
@@ -172,8 +161,8 @@ func (h *Handler) handleCreateCronJob(w http.ResponseWriter, r *http.Request) {
 	if req.Command != "" {
 		job.Payload.Command = req.Command
 		job.Payload.Kind = "command"
-		if err := cs.UpdateJob(job); err != nil {
-			http.Error(w, fmt.Sprintf("Failed to update job payload: %v", err), http.StatusInternalServerError)
+		if updateErr := cs.UpdateJob(job); updateErr != nil {
+			http.Error(w, fmt.Sprintf("Failed to update job payload: %v", updateErr), http.StatusInternalServerError)
 			return
 		}
 	}

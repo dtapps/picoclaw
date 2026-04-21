@@ -12,7 +12,7 @@ import {
 } from "@tabler/icons-react"
 import { useTranslation } from "react-i18next"
 
-import { type CronJob, formatSchedule, getNextRunText } from "@/api/cron"
+import { type CronJob, formatSchedule } from "@/api/cron"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
