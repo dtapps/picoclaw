@@ -145,18 +145,18 @@ func registerSharedTools(
 				agent.Tools.Register(fetchTool)
 			}
 		}
-		if cfg.Tools.IsToolEnabled("web_encyclopedia_search") {
-			encyclopediaSearchTool, err := tools.NewWebEncyclopediaSearchTool(tools.WebEncyclopediaSearchToolOptions{
-				BaiduBaikeAPIKey:     cfg.Tools.Web.BaiduBaike.APIKey.String(),
-				BaiduBaikeBaseURL:    cfg.Tools.Web.BaiduBaike.BaseURL,
-				BaiduBaikeMaxResults: cfg.Tools.Web.BaiduBaike.MaxResults,
-				BaiduBaikeEnabled:    cfg.Tools.Web.BaiduBaike.Enabled,
-				Proxy:                cfg.Tools.Web.Proxy,
+		if cfg.Tools.IsToolEnabled("encyclopedia_search") {
+			encyclopediaSearchTool, err := tools.NewEncyclopediaSearchTool(tools.EncyclopediaSearchToolOptions{
+				BaiduBaikeAPIKey:     cfg.Tools.Encyclopedia.BaiduBaike.APIKey.String(),
+				BaiduBaikeBaseURL:    cfg.Tools.Encyclopedia.BaiduBaike.BaseURL,
+				BaiduBaikeMaxResults: cfg.Tools.Encyclopedia.BaiduBaike.MaxResults,
+				BaiduBaikeEnabled:    cfg.Tools.Encyclopedia.BaiduBaike.Enabled,
+				Proxy:                cfg.Tools.Encyclopedia.Proxy,
 			})
 			if err != nil {
 				logger.ErrorCF(
 					"agent",
-					"Failed to create web encyclopedia search tool",
+					"Failed to create encyclopedia search tool",
 					map[string]any{"error": err.Error()},
 				)
 			} else if encyclopediaSearchTool != nil {

@@ -467,9 +467,6 @@
     },
     "write_file": {
       "enabled": true
-    },
-    "web_encyclopedia_search": {
-      "enabled": true
     }
   },
   "heartbeat": {

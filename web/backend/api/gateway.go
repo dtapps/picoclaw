@@ -435,8 +435,8 @@ func computeConfigSignature(cfg *config.Config) string {
 	if cfg.Tools.WebFetch.Enabled {
 		toolSignatures = append(toolSignatures, "web_fetch")
 	}
-	if cfg.Tools.WebEncyclopediaSearch.Enabled {
-		toolSignatures = append(toolSignatures, "web_encyclopedia_search")
+	if cfg.Tools.Encyclopedia.Enabled {
+		toolSignatures = append(toolSignatures, "encyclopedia_search")
 	}
 	if cfg.Tools.Message.Enabled {
 		toolSignatures = append(toolSignatures, "message")

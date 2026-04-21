@@ -10,32 +10,32 @@ import (
 )
 
 type (
-	SendCallbackWithContext          = integrationtools.SendCallbackWithContext
-	ReactionCallback                 = integrationtools.ReactionCallback
-	MCPManager                       = integrationtools.MCPManager
-	MCPTool                          = integrationtools.MCPTool
-	FindSkillsTool                   = integrationtools.FindSkillsTool
-	InstallSkillTool                 = integrationtools.InstallSkillTool
-	MessageTool                      = integrationtools.MessageTool
-	ReactionTool                     = integrationtools.ReactionTool
-	SendTTSTool                      = integrationtools.SendTTSTool
-	APIKeyPool                       = integrationtools.APIKeyPool
-	APIKeyIterator                   = integrationtools.APIKeyIterator
-	SearchProvider                   = integrationtools.SearchProvider
-	SearchResultItem                 = integrationtools.SearchResultItem
-	BraveSearchProvider              = integrationtools.BraveSearchProvider
-	TavilySearchProvider             = integrationtools.TavilySearchProvider
-	SogouSearchProvider              = integrationtools.SogouSearchProvider
-	DuckDuckGoSearchProvider         = integrationtools.DuckDuckGoSearchProvider
-	PerplexitySearchProvider         = integrationtools.PerplexitySearchProvider
-	SearXNGSearchProvider            = integrationtools.SearXNGSearchProvider
-	GLMSearchProvider                = integrationtools.GLMSearchProvider
-	BaiduSearchProvider              = integrationtools.BaiduSearchProvider
-	WebSearchTool                    = integrationtools.WebSearchTool
-	WebSearchToolOptions             = integrationtools.WebSearchToolOptions
-	WebFetchTool                     = integrationtools.WebFetchTool
-	WebEncyclopediaSearchTool        = integrationtools.WebEncyclopediaSearchTool
-	WebEncyclopediaSearchToolOptions = integrationtools.WebEncyclopediaSearchToolOptions
+	SendCallbackWithContext       = integrationtools.SendCallbackWithContext
+	ReactionCallback              = integrationtools.ReactionCallback
+	MCPManager                    = integrationtools.MCPManager
+	MCPTool                       = integrationtools.MCPTool
+	FindSkillsTool                = integrationtools.FindSkillsTool
+	InstallSkillTool              = integrationtools.InstallSkillTool
+	MessageTool                   = integrationtools.MessageTool
+	ReactionTool                  = integrationtools.ReactionTool
+	SendTTSTool                   = integrationtools.SendTTSTool
+	APIKeyPool                    = integrationtools.APIKeyPool
+	APIKeyIterator                = integrationtools.APIKeyIterator
+	SearchProvider                = integrationtools.SearchProvider
+	SearchResultItem              = integrationtools.SearchResultItem
+	BraveSearchProvider           = integrationtools.BraveSearchProvider
+	TavilySearchProvider          = integrationtools.TavilySearchProvider
+	SogouSearchProvider           = integrationtools.SogouSearchProvider
+	DuckDuckGoSearchProvider      = integrationtools.DuckDuckGoSearchProvider
+	PerplexitySearchProvider      = integrationtools.PerplexitySearchProvider
+	SearXNGSearchProvider         = integrationtools.SearXNGSearchProvider
+	GLMSearchProvider             = integrationtools.GLMSearchProvider
+	BaiduSearchProvider           = integrationtools.BaiduSearchProvider
+	WebSearchTool                 = integrationtools.WebSearchTool
+	WebSearchToolOptions          = integrationtools.WebSearchToolOptions
+	WebFetchTool                  = integrationtools.WebFetchTool
+	EncyclopediaSearchTool        = integrationtools.EncyclopediaSearchTool
+	EncyclopediaSearchToolOptions = integrationtools.EncyclopediaSearchToolOptions
 )
 
 func NewMCPTool(manager MCPManager, serverName string, tool *mcp.Tool) *MCPTool {
@@ -102,6 +102,6 @@ func NewWebFetchToolWithConfig(
 	return integrationtools.NewWebFetchToolWithConfig(maxChars, proxy, format, fetchLimitBytes, privateHostWhitelist)
 }
 
-func NewWebEncyclopediaSearchTool(opts WebEncyclopediaSearchToolOptions) (*WebEncyclopediaSearchTool, error) {
-	return integrationtools.NewWebEncyclopediaSearchTool(opts)
+func NewEncyclopediaSearchTool(opts EncyclopediaSearchToolOptions) (*EncyclopediaSearchTool, error) {
+	return integrationtools.NewEncyclopediaSearchTool(opts)
 }

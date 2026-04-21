@@ -42,6 +42,31 @@ export interface WebSearchConfigResponse {
   settings: Record<string, WebSearchProviderConfig>
 }
 
+export interface EncyclopediaSearchProviderOption {
+  id: string
+  label: string
+  configured: boolean
+  current: boolean
+  requires_auth: boolean
+}
+
+export interface EncyclopediaSearchProviderConfig {
+  enabled: boolean
+  max_results: number
+  base_url?: string
+  api_key?: string
+  api_key_set?: boolean
+}
+
+export interface EncyclopediaSearchConfigResponse {
+  provider: string
+  current_service: string
+  prefer_native: boolean
+  proxy?: string
+  providers: EncyclopediaSearchProviderOption[]
+  settings: Record<string, EncyclopediaSearchProviderConfig>
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await launcherFetch(path, options)
   if (!res.ok) {
@@ -94,4 +119,23 @@ export async function updateWebSearchConfig(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   })
+}
+
+export async function getEncyclopediaSearchConfig(): Promise<EncyclopediaSearchConfigResponse> {
+  return request<EncyclopediaSearchConfigResponse>(
+    "/api/tools/encyclopedia-search-config",
+  )
+}
+
+export async function updateEncyclopediaSearchConfig(
+  payload: EncyclopediaSearchConfigResponse,
+): Promise<EncyclopediaSearchConfigResponse> {
+  return request<EncyclopediaSearchConfigResponse>(
+    "/api/tools/encyclopedia-search-config",
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    },
+  )
 }

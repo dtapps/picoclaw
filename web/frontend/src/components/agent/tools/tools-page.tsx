@@ -1,6 +1,8 @@
 import { useTranslation } from "react-i18next"
+
 import { PageHeader } from "@/components/page-header"
 
+import { EncyclopediaSearchTab } from "./encyclopedia-search-tab"
 import { ToolLibraryTab } from "./tool-library-tab"
 import { ToolsTabs } from "./tools-tabs"
 import { useToolsPage } from "./use-tools-page"
@@ -10,28 +12,38 @@ export function ToolsPage() {
   const { t } = useTranslation()
   const {
     activeTab,
-    currentProviderLabel,
-    expandedProvider,
+    currentWebSearchProviderLabel,
+    currentEncyclopediaSearchProviderLabel,
+    expandedWebSearchProvider,
+    expandedEncyclopediaSearchProvider,
     groupedTools,
     pendingToolName,
-    providerLabelMap,
+    webSearchProviderLabelMap,
+    encyclopediaSearchProviderLabelMap,
     searchQuery,
     statusFilter,
     tools,
     totalFilteredCount,
     webSearchDraft,
+    encyclopediaSearchDraft,
     hasToolsError,
     hasWebSearchError,
+    hasEncyclopediaSearchError,
     isToolsLoading,
     isWebSearchLoading,
     isWebSearchSaving,
+    isEncyclopediaSearchLoading,
+    isEncyclopediaSearchSaving,
     setActiveTab,
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
-    toggleExpandedProvider,
+    saveEncyclopediaSearchConfig,
+    toggleExpandedWebSearchProvider,
+    toggleExpandedEncyclopediaSearchProvider,
     toggleTool,
     updateWebSearchDraft,
+    updateEncyclopediaSearchDraft,
   } = useToolsPage()
 
   return (
@@ -55,19 +67,34 @@ export function ToolsPage() {
               onStatusFilterChange={setStatusFilter}
               onToggleTool={toggleTool}
             />
-          ) : (
+          ) : activeTab === "web-search" ? (
             <WebSearchTab
               draft={webSearchDraft}
-              currentProviderLabel={currentProviderLabel}
-              providerLabelMap={providerLabelMap}
-              expandedProvider={expandedProvider}
+              currentProviderLabel={currentWebSearchProviderLabel}
+              providerLabelMap={webSearchProviderLabelMap}
+              expandedProvider={expandedWebSearchProvider}
               isLoading={isWebSearchLoading}
               hasError={hasWebSearchError}
               isSaving={isWebSearchSaving}
               onSave={saveWebSearchConfig}
-              onToggleProviderExpand={toggleExpandedProvider}
+              onToggleProviderExpand={toggleExpandedWebSearchProvider}
               onUpdateDraft={updateWebSearchDraft}
             />
+          ) : activeTab === "encyclopedia-search" ? (
+            <EncyclopediaSearchTab
+              draft={encyclopediaSearchDraft}
+              currentProviderLabel={currentEncyclopediaSearchProviderLabel}
+              providerLabelMap={encyclopediaSearchProviderLabelMap}
+              expandedProvider={expandedEncyclopediaSearchProvider}
+              isLoading={isEncyclopediaSearchLoading}
+              hasError={hasEncyclopediaSearchError}
+              isSaving={isEncyclopediaSearchSaving}
+              onSave={saveEncyclopediaSearchConfig}
+              onToggleProviderExpand={toggleExpandedEncyclopediaSearchProvider}
+              onUpdateDraft={updateEncyclopediaSearchDraft}
+            />
+          ) : (
+            ""
           )}
         </div>
       </div>
