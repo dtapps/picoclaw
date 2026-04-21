@@ -47,7 +47,7 @@
 | **Anthropic**       | `anthropic/`          | `https://api.anthropic.com/v1`                      | Anthropic  | [キーを取得](https://console.anthropic.com)                       |
 | **智谱 AI (GLM)**   | `zhipu/`              | `https://open.bigmodel.cn/api/paas/v4`              | OpenAI     | [キーを取得](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) |
 | **DeepSeek**        | `deepseek/`           | `https://api.deepseek.com/v1`                       | OpenAI     | [キーを取得](https://platform.deepseek.com)                       |
-| **Google Gemini**   | `gemini/`             | `https://generativelanguage.googleapis.com/v1beta`  | OpenAI     | [キーを取得](https://aistudio.google.com/api-keys)                |
+| **Google Gemini**   | `gemini/`             | `https://generativelanguage.googleapis.com/v1beta`  | Gemini     | [キーを取得](https://aistudio.google.com/api-keys)                |
 | **Groq**            | `groq/`               | `https://api.groq.com/openai/v1`                    | OpenAI     | [キーを取得](https://console.groq.com)                            |
 | **Moonshot**        | `moonshot/`           | `https://api.moonshot.cn/v1`                        | OpenAI     | [キーを取得](https://platform.moonshot.cn)                        |
 | **通義千問 (Qwen)** | `qwen/`               | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI     | [キーを取得](https://dashscope.console.aliyun.com)                |
@@ -109,7 +109,7 @@
 | `api_keys` | string[] | はい* | 認証キー。複数キーでリクエストごとのローテーションが可能。ローカル provider（Ollama、LM Studio、VLLM）には不要 |
 | `api_base` | string | いいえ | デフォルトの API エンドポイント URL を上書き |
 | `proxy` | string | いいえ | このモデルエントリの HTTP プロキシ URL |
-| `user_agent` | string | いいえ | カスタム `User-Agent` リクエストヘッダー（OpenAI 互換、Anthropic、Azure provider で対応） |
+| `user_agent` | string | いいえ | カスタム `User-Agent` リクエストヘッダー（OpenAI 互換、Gemini、Anthropic、Azure provider で対応） |
 | `request_timeout` | int | いいえ | リクエストタイムアウト（秒）。デフォルト値は provider により異なる |
 | `max_tokens` | int | いいえ | 最大 Token 数を上書き |
 | `max_tokens_field` | string | いいえ | リクエストボディの max tokens フィールド名を上書き（例：o1 モデルでは `max_completion_tokens`） |
@@ -312,6 +312,7 @@ PicoClaw はリクエスト送信前に外側の `litellm/` プレフィック�
 PicoClaw はプロトコルファミリーごとに Provider をルーティングします：
 
 - OpenAI 互換プロトコル：OpenRouter、OpenAI 互換ゲートウェイ、Groq、Zhipu、vLLM スタイルのエンドポイント。
+- Gemini ネイティブプロトコル：Google Gemini のネイティブ `models/*:generateContent` / `models/*:streamGenerateContent` エンドポイント。
 - Anthropic プロトコル：Claude ネイティブ API 動作。
 - Codex/OAuth パス：OpenAI OAuth/Token 認証ルート。
 

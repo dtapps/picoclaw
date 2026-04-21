@@ -46,7 +46,7 @@ Thiết kế này cũng cho phép **hỗ trợ đa agent** với lựa chọn pr
 | **Anthropic**       | `anthropic/`      | `https://api.anthropic.com/v1`                      | Anthropic | [Get Key](https://console.anthropic.com)                         |
 | **智谱 AI (GLM)**   | `zhipu/`          | `https://open.bigmodel.cn/api/paas/v4`              | OpenAI    | [Get Key](https://open.bigmodel.cn/usercenter/proj-mgmt/apikeys) |
 | **DeepSeek**        | `deepseek/`       | `https://api.deepseek.com/v1`                       | OpenAI    | [Get Key](https://platform.deepseek.com)                         |
-| **Google Gemini**   | `gemini/`         | `https://generativelanguage.googleapis.com/v1beta`  | OpenAI    | [Get Key](https://aistudio.google.com/api-keys)                  |
+| **Google Gemini**   | `gemini/`         | `https://generativelanguage.googleapis.com/v1beta`  | Gemini    | [Get Key](https://aistudio.google.com/api-keys)                  |
 | **Groq**            | `groq/`           | `https://api.groq.com/openai/v1`                    | OpenAI    | [Get Key](https://console.groq.com)                              |
 | **Moonshot**        | `moonshot/`       | `https://api.moonshot.cn/v1`                        | OpenAI    | [Get Key](https://platform.moonshot.cn)                          |
 | **通义千问 (Qwen)** | `qwen/`           | `https://dashscope.aliyuncs.com/compatible-mode/v1` | OpenAI    | [Get Key](https://dashscope.console.aliyun.com)                  |
@@ -108,7 +108,7 @@ Thiết kế này cũng cho phép **hỗ trợ đa agent** với lựa chọn pr
 | `api_keys` | string[] | Có* | Khóa API xác thực. Nhiều khóa cho phép xoay vòng theo yêu cầu. Không cần thiết cho provider nội bộ (Ollama, LM Studio, VLLM) |
 | `api_base` | string | Không | Ghi đè URL endpoint API mặc định |
 | `proxy` | string | Không | URL proxy HTTP cho entry model này |
-| `user_agent` | string | Không | Header `User-Agent` tùy chỉnh gửi với yêu cầu API (được hỗ trợ bởi provider OpenAI-compatible, Anthropic và Azure) |
+| `user_agent` | string | Không | Header `User-Agent` tùy chỉnh gửi với yêu cầu API (được hỗ trợ bởi provider OpenAI-compatible, Gemini, Anthropic và Azure) |
 | `request_timeout` | int | Không | Timeout yêu cầu tính bằng giây (mặc định khác nhau tùy provider) |
 | `max_tokens` | int | Không | Số Token tối đa |
 | `max_tokens_field` | string | Không | Ghi đè tên trường max tokens trong request body (ví dụ: `max_completion_tokens` cho model o1) |
@@ -300,6 +300,7 @@ Cấu hình `providers` cũ đã **bị deprecated** và đã được loại b�
 PicoClaw định tuyến provider theo họ giao thức:
 
 - Giao thức tương thích OpenAI: OpenRouter, gateway tương thích OpenAI, Groq, Zhipu, và endpoint kiểu vLLM.
+- Giao thức Gemini native: Google Gemini qua các endpoint native `models/*:generateContent` và `models/*:streamGenerateContent`.
 - Giao thức Anthropic: Hành vi API native của Claude.
 - Đường dẫn Codex/OAuth: Tuyến xác thực OAuth/token của OpenAI.
 
