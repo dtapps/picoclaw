@@ -19,7 +19,7 @@
   "dependencies": {
     "@fontsource-variable/inter": "^5.2.8",
     "@tabler/icons-react": "^3.40.0",
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.2.4",
     "@tanstack/react-query": "^5.99.0",
     "@tanstack/react-router": "^1.168.23",
     "@tanstack/react-router-devtools": "^1.166.13",
@@ -64,7 +64,7 @@
     "globals": "^17.5.0",
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.7.2",
-    "typescript": "~5.9.3",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.58.2",
     "vite": "^8.0.8"
   }
