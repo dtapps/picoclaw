@@ -1,43 +1,43 @@
-## 📝 Description
+## 📝 描述
 
-<!-- Please briefly describe the changes and purpose of this PR -->
+<!-- 请简要描述本次更改的内容和目的 -->
 
-## 🗣️ Type of Change
-- [ ] 🐞 Bug fix (non-breaking change which fixes an issue)
-- [ ] ✨ New feature (non-breaking change which adds functionality)
-- [ ] 📖 Documentation update
-- [ ] ⚡ Code refactoring (no functional changes, no api changes)
+## 🗣️ 变更类型
+- [ ] 🐞 Bug 修复（修复问题的非破坏性变更）
+- [ ] ✨ 新功能（添加功能的非破坏性变更）
+- [ ] 📖 文档更新
+- [ ] ⚡ 代码重构（无功能变更，无 API 变更）
 
-## 🤖 AI Code Generation
-- [ ] 🤖 Fully AI-generated (100% AI, 0% Human)
-- [ ] 🛠️ Mostly AI-generated (AI draft, Human verified/modified)
-- [ ] 👨‍💻 Mostly Human-written (Human lead, AI assisted or none)
-
-
-## 🔗 Related Issue
-
-<!-- Please link the related issue(s) (e.g., Fixes #123, Closes #456) -->
-
-## 📚 Technical Context (Skip for Docs)
-- **Reference URL:**
-- **Reasoning:**
-
-## 🧪 Test Environment
-- **Hardware:** <!-- e.g. Raspberry Pi 5, Orange Pi, PC-->
-- **OS:** <!-- e.g. Debian 12, Ubuntu 22.04 -->
-- **Model/Provider:** <!-- e.g. OpenAI GPT-4o, Kimi k2, DeepSeek-V3 -->
-- **Channels:** <!-- e.g. Discord, Telegram, Feishu, ... -->
+## 🤖 AI 代码生成
+- [ ] 🤖 完全 AI 生成（100% AI，0% 人工）
+- [ ] 🛠️ 主要 AI 生成（AI 起草，人工验证/修改）
+- [ ] 👨‍💻 主要人工编写（人工主导，AI 辅助或无）
 
 
-## 📸 Evidence (Optional)
+## 🔗 相关问题
+
+<!-- 请链接相关问题（例如，Fixes #123, Closes #456） -->
+
+## 📚 技术背景（文档可跳过）
+- **参考 URL：**
+- **原因说明：**
+
+## 🧪 测试环境
+- **硬件：** <!-- 例如：树莓派 5、香橙派、PC -->
+- **操作系统：** <!-- 例如：Debian 12、Ubuntu 22.04 -->
+- **模型/提供商：** <!-- 例如：OpenAI GPT-4o、Kimi k2、DeepSeek-V3 -->
+- **渠道：** <!-- 例如：Discord、Telegram、飞书、... -->
+
+
+## 📸 证据（可选）
 <details>
-<summary>Click to view Logs/Screenshots</summary>
+<summary>点击查看日志/截图</summary>
 
-<!-- Please paste relevant screenshots or logs here -->
+<!-- 请在此粘贴相关截图或日志 -->
 
 </details>
 
-## ☑️ Checklist
-- [ ] My code/docs follow the style of this project.
-- [ ] I have performed a self-review of my own changes.
-- [ ] I have updated the documentation accordingly.
+## ☑️ 检查清单
+- [ ] 我的代码/文档遵循本项目的风格。
+- [ ] 我已对自己的更改进行了自我审查。
+- [ ] 我已相应地更新了文档。
