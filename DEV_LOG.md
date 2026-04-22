@@ -20,7 +20,7 @@
 | **核心逻辑**  | ~~基础来源校验~~          | **完善 AllowFrom 字段解析机制**    | 适配新渠道（微博/元宝）时的通用逻辑增强，提升配置兼容性     | [fix/channel-allowfrom](https://github.com/dtapps/picoclaw/tree/fix/channel-allowfrom)                       |
 | **模型配置**  | 手动逐个添加模型          | **支持快速添加模型预设**           | 提升模型配置效率，方便批量添加                              | [feat/model-quick-add-presets](https://github.com/dtapps/picoclaw/tree/feat/model-quick-add-presets)         |
 | **定时任务**  | 暂无 UI 管理              | **新增 Web UI 管理页面**           | 可视化创建、编辑、启停定时任务，支持 Cron/Interval/One-time | [feat/cron-schedules-ui](https://github.com/dtapps/picoclaw/tree/feat/cron-schedules-ui)                     |
-| **工具集**    | 暂无 UI 管理              | **新增 MCP 服务器 Web UI 配置**    | 可视化配置 MCP 服务器，支持 stdio/sse/http 类型，含完整参数 | [feat/mcp-server-config](https://github.com/dtapps/picoclaw/tree/feat/mcp-server-config)                     |
+| **工具集**    | 暂无 UI 管理              | **新增 MCP 服务器 Web UI 配置**    | 可视化配置 MCP 服务器，支持 stdio/sse/http 类型，含完整参数 | [feature/mcp-server-config](https://github.com/dtapps/picoclaw/tree/feature/mcp-server-config)               |
 
 ---
 
