@@ -223,6 +223,31 @@ type encyclopediaSearchConfigRequest struct {
 	Settings     map[string]encyclopediaSearchProviderConfig `json:"settings"`
 }
 
+type mcpServerConfig struct {
+	Name     string            `json:"name"`
+	Enabled  bool              `json:"enabled"`
+	Deferred *bool             `json:"deferred,omitempty"`
+	Command  string            `json:"command,omitempty"`
+	Args     []string          `json:"args,omitempty"`
+	Env      map[string]string `json:"env,omitempty"`
+	EnvFile  string            `json:"env_file,omitempty"`
+	Type     string            `json:"type,omitempty"`
+	URL      string            `json:"url,omitempty"`
+	Headers  map[string]string `json:"headers,omitempty"`
+}
+
+type mcpConfigResponse struct {
+	Enabled            bool              `json:"enabled"`
+	MaxInlineTextChars int               `json:"max_inline_text_chars"`
+	Servers            []mcpServerConfig `json:"servers"`
+}
+
+type mcpConfigRequest struct {
+	Enabled            bool              `json:"enabled"`
+	MaxInlineTextChars int               `json:"max_inline_text_chars"`
+	Servers            []mcpServerConfig `json:"servers"`
+}
+
 func (h *Handler) registerToolRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/tools", h.handleListTools)
 	mux.HandleFunc("PUT /api/tools/{name}/state", h.handleUpdateToolState)
@@ -230,6 +255,8 @@ func (h *Handler) registerToolRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /api/tools/web-search-config", h.handleUpdateWebSearchConfig)
 	mux.HandleFunc("GET /api/tools/encyclopedia-search-config", h.handleGetEncyclopediaSearchConfig)
 	mux.HandleFunc("PUT /api/tools/encyclopedia-search-config", h.handleUpdateEncyclopediaSearchConfig)
+	mux.HandleFunc("GET /api/tools/mcp-config", h.handleGetMCPConfig)
+	mux.HandleFunc("PUT /api/tools/mcp-config", h.handleUpdateMCPConfig)
 }
 
 func (h *Handler) handleListTools(w http.ResponseWriter, r *http.Request) {
@@ -865,5 +892,88 @@ func encyclopediaSearchProviderConfigured(cfg *config.Config, name string) bool 
 		return cfg.Tools.Encyclopedia.BaiduBaike.Enabled && cfg.Tools.Encyclopedia.BaiduBaike.APIKey.String() != ""
 	default:
 		return false
+	}
+}
+
+func (h *Handler) handleGetMCPConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := config.LoadConfig(h.configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(buildMCPConfigResponse(cfg)); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func (h *Handler) handleUpdateMCPConfig(w http.ResponseWriter, r *http.Request) {
+	cfg, err := config.LoadConfig(h.configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	var req mcpConfigRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, fmt.Sprintf("Invalid JSON: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	cfg.Tools.MCP.Enabled = req.Enabled
+	if req.MaxInlineTextChars > 0 {
+		cfg.Tools.MCP.MaxInlineTextChars = req.MaxInlineTextChars
+	}
+
+	cfg.Tools.MCP.Servers = make(map[string]config.MCPServerConfig)
+	for _, server := range req.Servers {
+		name := strings.TrimSpace(server.Name)
+		if name == "" {
+			continue
+		}
+		cfg.Tools.MCP.Servers[name] = config.MCPServerConfig{
+			Enabled:  server.Enabled,
+			Deferred: server.Deferred,
+			Command:  server.Command,
+			Args:     server.Args,
+			Env:      server.Env,
+			EnvFile:  server.EnvFile,
+			Type:     server.Type,
+			URL:      server.URL,
+			Headers:  server.Headers,
+		}
+	}
+
+	if err := config.SaveConfig(h.configPath, cfg); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to save config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(buildMCPConfigResponse(cfg)); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}
+
+func buildMCPConfigResponse(cfg *config.Config) mcpConfigResponse {
+	servers := make([]mcpServerConfig, 0, len(cfg.Tools.MCP.Servers))
+	for name, server := range cfg.Tools.MCP.Servers {
+		servers = append(servers, mcpServerConfig{
+			Name:    name,
+			Command: server.Command,
+			Args:    server.Args,
+			Env:     server.Env,
+			EnvFile: server.EnvFile,
+			Type:    server.Type,
+			URL:     server.URL,
+			Headers: server.Headers,
+		})
+	}
+
+	return mcpConfigResponse{
+		Enabled:            cfg.Tools.MCP.Enabled,
+		MaxInlineTextChars: cfg.Tools.MCP.GetMaxInlineTextChars(),
+		Servers:            servers,
 	}
 }

@@ -67,6 +67,25 @@ export interface EncyclopediaSearchConfigResponse {
   settings: Record<string, EncyclopediaSearchProviderConfig>
 }
 
+export interface MCPServerConfig {
+  name: string
+  enabled: boolean
+  deferred?: boolean
+  command?: string
+  args?: string[]
+  env?: Record<string, string>
+  env_file?: string
+  type?: string
+  url?: string
+  headers?: Record<string, string>
+}
+
+export interface MCPConfigResponse {
+  enabled: boolean
+  max_inline_text_chars: number
+  servers: MCPServerConfig[]
+}
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await launcherFetch(path, options)
   if (!res.ok) {
@@ -138,4 +157,18 @@ export async function updateEncyclopediaSearchConfig(
       body: JSON.stringify(payload),
     },
   )
+}
+
+export async function getMCPConfig(): Promise<MCPConfigResponse> {
+  return request<MCPConfigResponse>("/api/tools/mcp-config")
+}
+
+export async function updateMCPConfig(
+  payload: MCPConfigResponse,
+): Promise<MCPConfigResponse> {
+  return request<MCPConfigResponse>("/api/tools/mcp-config", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
 }

@@ -5,12 +5,15 @@ import { toast } from "sonner"
 
 import {
   type EncyclopediaSearchConfigResponse,
+  type MCPConfigResponse,
   type WebSearchConfigResponse,
   getEncyclopediaSearchConfig,
+  getMCPConfig,
   getTools,
   getWebSearchConfig,
   setToolEnabled,
   updateEncyclopediaSearchConfig,
+  updateMCPConfig,
   updateWebSearchConfig,
 } from "@/api/tools"
 import { refreshGatewayState } from "@/store/gateway"
@@ -36,6 +39,8 @@ export function useToolsPage() {
     useState<WebSearchConfigResponse | null>(null)
   const [encyclopediaSearchDraftOverride, setEncyclopediaSearchDraftOverride] =
     useState<EncyclopediaSearchConfigResponse | null>(null)
+  const [mcpDraftOverride, setMcpDraftOverride] =
+    useState<MCPConfigResponse | null>(null)
 
   const toolsQuery = useQuery({
     queryKey: ["tools"],
@@ -49,6 +54,10 @@ export function useToolsPage() {
     queryKey: ["tools", "encyclopedia-search-config"],
     queryFn: getEncyclopediaSearchConfig,
   })
+  const mcpQuery = useQuery({
+    queryKey: ["tools", "mcp-config"],
+    queryFn: getMCPConfig,
+  })
 
   const tools = useMemo(
     () => toolsQuery.data?.tools ?? [],
@@ -58,6 +67,7 @@ export function useToolsPage() {
   const webSearchDraft = webSearchDraftOverride ?? webSearchQuery.data ?? null
   const encyclopediaSearchDraft =
     encyclopediaSearchDraftOverride ?? encyclopediaSearchQuery.data ?? null
+  const mcpDraft = mcpDraftOverride ?? mcpQuery.data ?? null
 
   const toggleToolMutation = useMutation({
     mutationFn: async ({ name, enabled }: { name: string; enabled: boolean }) =>
@@ -139,6 +149,35 @@ export function useToolsPage() {
           : t(
               "pages.agent.tools.encyclopedia_search.save_error",
               "Failed to save settings",
+            ),
+      )
+    },
+  })
+
+  const saveMCPMutation = useMutation({
+    mutationFn: updateMCPConfig,
+    onSuccess: (updatedConfig) => {
+      queryClient.setQueryData(["tools", "mcp-config"], updatedConfig)
+      setMcpDraftOverride(null)
+      toast.success(
+        t(
+          "pages.agent.tools.mcp.save_success",
+          "MCP settings saved successfully",
+        ),
+      )
+      void queryClient.invalidateQueries({
+        queryKey: ["tools", "mcp-config"],
+      })
+      void queryClient.invalidateQueries({ queryKey: ["tools"] })
+      void refreshGatewayState({ force: true })
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : t(
+              "pages.agent.tools.mcp.save_error",
+              "Failed to save MCP settings",
             ),
       )
     },
@@ -227,6 +266,15 @@ export function useToolsPage() {
     })
   }
 
+  const updateMCPDraft = (
+    updater: (current: MCPConfigResponse) => MCPConfigResponse,
+  ) => {
+    setMcpDraftOverride((current) => {
+      const draft = current ?? mcpQuery.data
+      return draft ? updater(draft) : current
+    })
+  }
+
   const toggleTool = (name: string, enabled: boolean) => {
     toggleToolMutation.mutate({ name, enabled })
   }
@@ -240,6 +288,12 @@ export function useToolsPage() {
   const saveEncyclopediaSearchConfig = () => {
     if (encyclopediaSearchDraft) {
       saveEncyclopediaSearchMutation.mutate(encyclopediaSearchDraft)
+    }
+  }
+
+  const saveMCPConfig = () => {
+    if (mcpDraft) {
+      saveMCPMutation.mutate(mcpDraft)
     }
   }
 
@@ -271,23 +325,29 @@ export function useToolsPage() {
     totalFilteredCount: groupedTools.totalFilteredCount,
     webSearchDraft,
     encyclopediaSearchDraft,
+    mcpDraft,
     hasToolsError: toolsQuery.error != null,
     hasWebSearchError: webSearchQuery.error != null,
     hasEncyclopediaSearchError: encyclopediaSearchQuery.error != null,
+    hasMCPError: mcpQuery.error != null,
     isToolsLoading: toolsQuery.isLoading,
     isWebSearchLoading: webSearchQuery.isLoading,
     isEncyclopediaSearchLoading: encyclopediaSearchQuery.isLoading,
+    isMCPLoading: mcpQuery.isLoading,
     isWebSearchSaving: saveWebSearchMutation.isPending,
     isEncyclopediaSearchSaving: saveEncyclopediaSearchMutation.isPending,
+    isMCPSaving: saveMCPMutation.isPending,
     setActiveTab,
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
     saveEncyclopediaSearchConfig,
+    saveMCPConfig,
     toggleExpandedWebSearchProvider,
     toggleExpandedEncyclopediaSearchProvider,
     toggleTool,
     updateWebSearchDraft,
     updateEncyclopediaSearchDraft,
+    updateMCPDraft,
   }
 }
