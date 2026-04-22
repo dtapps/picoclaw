@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { PageHeader } from "@/components/page-header"
 
 import { EncyclopediaSearchTab } from "./encyclopedia-search-tab"
+import { MCPTab } from "./mcp-tab"
 import { ToolLibraryTab } from "./tool-library-tab"
 import { ToolsTabs } from "./tools-tabs"
 import { useToolsPage } from "./use-tools-page"
@@ -26,24 +27,30 @@ export function ToolsPage() {
     totalFilteredCount,
     webSearchDraft,
     encyclopediaSearchDraft,
+    mcpDraft,
     hasToolsError,
     hasWebSearchError,
     hasEncyclopediaSearchError,
+    hasMCPError,
     isToolsLoading,
     isWebSearchLoading,
     isWebSearchSaving,
     isEncyclopediaSearchLoading,
     isEncyclopediaSearchSaving,
+    isMCPLoading,
+    isMCPSaving,
     setActiveTab,
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
     saveEncyclopediaSearchConfig,
+    saveMCPConfig,
     toggleExpandedWebSearchProvider,
     toggleExpandedEncyclopediaSearchProvider,
     toggleTool,
     updateWebSearchDraft,
     updateEncyclopediaSearchDraft,
+    updateMCPDraft,
   } = useToolsPage()
 
   return (
@@ -92,6 +99,15 @@ export function ToolsPage() {
               onSave={saveEncyclopediaSearchConfig}
               onToggleProviderExpand={toggleExpandedEncyclopediaSearchProvider}
               onUpdateDraft={updateEncyclopediaSearchDraft}
+            />
+          ) : activeTab === "mcp" ? (
+            <MCPTab
+              draft={mcpDraft}
+              isLoading={isMCPLoading}
+              hasError={hasMCPError}
+              isSaving={isMCPSaving}
+              onSave={saveMCPConfig}
+              onUpdateDraft={updateMCPDraft}
             />
           ) : (
             ""

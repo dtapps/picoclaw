@@ -631,6 +631,48 @@
           "api_key_placeholder": "Enter API key, leave it blank to keep the original key",
           "none": "Unavailable"
         },
+        "mcp": {
+          "title": "MCP",
+          "description": "Configure MCP (Model Context Protocol) servers to extend agent capabilities with external tools.",
+          "enabled": "Enabled",
+          "disabled": "Disabled",
+          "load_error": "Failed to load MCP configuration.",
+          "save": "Save Changes",
+          "save_success": "MCP settings saved successfully.",
+          "save_error": "Failed to save MCP settings.",
+          "general": {
+            "title": "General Settings",
+            "enable": "Enable MCP",
+            "enable_description": "Enable MCP to allow agents to use external tools via Model Context Protocol.",
+            "max_inline_text_chars": "Max Inline Text Chars",
+            "max_inline_text_chars_description": "Maximum text length to display inline before saving as artifact."
+          },
+          "servers": {
+            "title": "MCP Servers",
+            "add": "Add Server",
+            "empty": "No MCP servers configured. Click \"Add Server\" to add one.",
+            "server_title": "Server {{index}}",
+            "enabled": "Enabled",
+            "disabled": "Disabled",
+            "enable": "Enable Server",
+            "enable_description": "Enable this MCP server to make it available to agents.",
+            "deferred": "Deferred Mode",
+            "deferred_description": "When enabled, tools are hidden and discoverable via search. When disabled, tools are always visible in context.",
+            "name": "Name",
+            "type": "Type",
+            "command": "Command",
+            "args": "Arguments",
+            "env": "Environment Variables",
+            "env_description": "Environment variables for the server process (one per line, format: KEY=value)",
+            "url": "URL",
+            "env_file": "Env File (optional)",
+            "headers": "Headers",
+            "headers_description": "HTTP headers to send with requests (one per line, format: Key: Value)",
+            "delete_title": "Delete Server",
+            "delete_description": "Are you sure you want to delete the server \"{{name}}\"? This action cannot be undone.",
+            "delete_confirm": "Delete"
+          }
+        },
         "status": {
           "enabled": "Enabled",
           "disabled": "Disabled",
