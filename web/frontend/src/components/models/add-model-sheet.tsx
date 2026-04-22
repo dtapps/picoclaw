@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea"
 
 interface AddForm {
   modelName: string
+  provider: string
   model: string
   apiBase: string
   apiKey: string
@@ -42,6 +43,7 @@ interface AddForm {
 
 const EMPTY_ADD_FORM: AddForm = {
   modelName: "",
+  provider: "",
   model: "",
   apiBase: "",
   apiKey: "",
@@ -121,9 +123,11 @@ export function AddModelSheet({
     setServerError("")
     try {
       const modelName = form.modelName.trim()
+      const provider = form.provider.trim()
       const modelId = form.model.trim()
       await addModel({
         model_name: modelName,
+        provider: provider || undefined,
         model: modelId,
         api_base: form.apiBase.trim() || undefined,
         api_key: form.apiKey.trim() || undefined,
@@ -187,6 +191,17 @@ export function AddModelSheet({
                   {fieldErrors.modelName}
                 </p>
               )}
+            </Field>
+
+            <Field
+              label={t("models.field.provider")}
+              hint={t("models.field.providerHint")}
+            >
+              <Input
+                value={form.provider}
+                onChange={setField("provider")}
+                placeholder={t("models.field.providerPlaceholder")}
+              />
             </Field>
 
             <Field
