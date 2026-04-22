@@ -7,18 +7,18 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
-    labels:
-      - "dependencies"
-      - "go"
+    # labels:
+    #   - "dependencies"
+    #   - "go"
 
   # Frontend dependencies
   - package-ecosystem: "npm"
     directory: "/web/frontend"
     schedule:
       interval: "weekly"
-    labels:
-      - "dependencies"
-      - "frontend"
+    # labels:
+    #   - "dependencies"
+    #   - "frontend"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
