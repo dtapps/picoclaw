@@ -42,20 +42,29 @@ type UserEnv struct {
 var (
 	isolationMu      sync.RWMutex
 	currentIsolation = config.DefaultConfig().Isolation
-	currentEnvVars   = config.DefaultConfig().EnvVars
+
+	envVarsMu      sync.RWMutex
+	currentEnvVars = config.DefaultConfig().EnvVars
 )
 
 // Configure updates the process-wide isolation state used by subsequent child
 // process launches.
 func Configure(cfg *config.Config) {
 	isolationMu.Lock()
-	defer isolationMu.Unlock()
+	envVarsMu.Lock()
+
+	defer func() {
+		envVarsMu.Unlock()
+		isolationMu.Unlock()
+	}()
+
 	if cfg == nil {
 		defaults := config.DefaultConfig()
 		currentIsolation = defaults.Isolation
 		currentEnvVars = defaults.EnvVars
 		return
 	}
+
 	currentIsolation = cfg.Isolation
 	currentEnvVars = cfg.EnvVars
 }
@@ -69,8 +78,8 @@ func CurrentConfig() config.IsolationConfig {
 
 // CurrentEnvVars returns the currently active environment variables configuration.
 func CurrentEnvVars() config.EnvVarsConfig {
-	isolationMu.RLock()
-	defer isolationMu.RUnlock()
+	envVarsMu.RLock()
+	defer envVarsMu.RUnlock()
 	return currentEnvVars
 }
 
