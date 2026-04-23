@@ -42,26 +42,45 @@ type UserEnv struct {
 var (
 	isolationMu      sync.RWMutex
 	currentIsolation = config.DefaultConfig().Isolation
+
+	envVarsMu      sync.RWMutex
+	currentEnvVars = config.DefaultConfig().EnvVars
 )
 
 // Configure updates the process-wide isolation state used by subsequent child
 // process launches.
 func Configure(cfg *config.Config) {
 	isolationMu.Lock()
-	defer isolationMu.Unlock()
+	envVarsMu.Lock()
+
+	defer func() {
+		envVarsMu.Unlock()
+		isolationMu.Unlock()
+	}()
+
 	if cfg == nil {
 		defaults := config.DefaultConfig()
 		currentIsolation = defaults.Isolation
+		currentEnvVars = defaults.EnvVars
 		return
 	}
+
 	currentIsolation = cfg.Isolation
+	currentEnvVars = cfg.EnvVars
 }
 
-// CurrentConfig returns the currently active isolation settings.
+// CurrentConfig 返回当前活动的隔离设置。
 func CurrentConfig() config.IsolationConfig {
 	isolationMu.RLock()
 	defer isolationMu.RUnlock()
 	return currentIsolation
+}
+
+// CurrentEnvVars returns the currently active environment variables configuration.
+func CurrentEnvVars() config.EnvVarsConfig {
+	envVarsMu.RLock()
+	defer envVarsMu.RUnlock()
+	return currentEnvVars
 }
 
 // ResolveInstanceRoot resolves the instance root used to build the isolated
@@ -127,13 +146,30 @@ func ResolveUserEnv(root string) UserEnv {
 
 // ApplyUserEnv rewrites the child process environment so home, temp, and
 // platform-specific user-data directories point into the instance root.
+// It also injects environment variables from the global env_vars configuration.
 func ApplyUserEnv(cmd *exec.Cmd, root string) {
 	userEnv := ResolveUserEnv(root)
 	envMap := make(map[string]string)
+
+	// 从系统环境变量开始（如果 cmd.Env 未设置，cmd.Environ() 会返回 nil）
+	for _, item := range os.Environ() {
+		if idx := strings.IndexRune(item, '='); idx > 0 {
+			envMap[item[:idx]] = item[idx+1:]
+		}
+	}
+
+	// 再应用 cmd 已有的环境变量（覆盖系统变量）
 	for _, item := range cmd.Environ() {
 		if idx := strings.IndexRune(item, '='); idx > 0 {
 			envMap[item[:idx]] = item[idx+1:]
 		}
+	}
+
+	// 从配置注入 env_vars
+	envVars := CurrentEnvVars()
+	enabledVars := envVars.GetEnabledVars()
+	for k, v := range enabledVars {
+		envMap[k] = v
 	}
 
 	if runtime.GOOS == "windows" {
@@ -426,15 +462,23 @@ func terminateStartedCommand(cmd *exec.Cmd) {
 // isolated environment before being started by the caller.
 func PrepareCommand(cmd *exec.Cmd) error {
 	isolation := CurrentConfig()
+
 	if err := Preflight(); err != nil {
 		return err
 	}
+
+	// 无论隔离是否启用，都注入环境变量
+	root := ""
 	if isolation.Enabled {
-		root, err := ResolveInstanceRoot()
+		var err error
+		root, err = ResolveInstanceRoot()
 		if err != nil {
 			return err
 		}
-		ApplyUserEnv(cmd, root)
+	}
+	ApplyUserEnv(cmd, root)
+
+	if isolation.Enabled {
 		if err := applyPlatformIsolation(cmd, isolation, root); err != nil {
 			return err
 		}
