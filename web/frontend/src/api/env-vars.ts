@@ -10,7 +10,6 @@ export interface EnvVarEntry {
 
 export interface EnvVarsConfig {
   variables: EnvVarEntry[]
-  env_file: string
 }
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {

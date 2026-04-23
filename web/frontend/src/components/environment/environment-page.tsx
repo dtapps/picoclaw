@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
@@ -23,7 +23,6 @@ import {
   IconDownload,
   IconEye,
   IconEyeOff,
-  IconFile,
   IconEdit,
 } from "@tabler/icons-react"
 
@@ -55,12 +54,13 @@ export function EnvironmentPage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
   const [variables, setVariables] = useState<EnvVarEntry[]>([])
-  const [envFile, setEnvFile] = useState("")
   const [isDirty, setIsDirty] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [form, setForm] = useState<EnvVarFormData>(EMPTY_FORM)
   const [showSecret, setShowSecret] = useState(false)
+  // 跟踪列表中哪些敏感变量应该显示真实值
+  const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set())
 
   const { data, isLoading } = useQuery({
     queryKey: ["env-vars"],
@@ -70,7 +70,6 @@ export function EnvironmentPage() {
   useEffect(() => {
     if (data) {
       setVariables(data.variables)
-      setEnvFile(data.env_file)
     }
   }, [data])
 
@@ -89,9 +88,8 @@ export function EnvironmentPage() {
   const handleSave = useCallback(() => {
     updateMutation.mutate({
       variables,
-      env_file: envFile,
     })
-  }, [variables, envFile, updateMutation])
+  }, [variables, updateMutation])
 
   const handleAdd = useCallback(() => {
     setEditingIndex(null)
@@ -124,6 +122,18 @@ export function EnvironmentPage() {
       prev.map((v, i) => (i === index ? { ...v, enabled: !v.enabled } : v))
     )
     setIsDirty(true)
+  }, [])
+
+  const handleToggleSensitive = useCallback((index: number) => {
+    setVisibleSecrets((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(index)) {
+        newSet.delete(index)
+      } else {
+        newSet.add(index)
+      }
+      return newSet
+    })
   }, [])
 
   const handleSaveForm = useCallback(() => {
@@ -252,7 +262,7 @@ export function EnvironmentPage() {
                     {v.key}
                   </code>
                   <span className="text-muted-foreground text-sm truncate max-w-[200px]">
-                    {v.sensitive ? "********" : v.value}
+                    {v.sensitive && !visibleSecrets.has(index) ? "********" : v.value}
                   </span>
                   {v.note && (
                     <span className="text-muted-foreground text-xs truncate max-w-[150px] hidden sm:inline">
@@ -265,7 +275,22 @@ export function EnvironmentPage() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-1 ml-2">
+                <div className="flex items-center gap-2 ml-2">
+                  {v.sensitive && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7"
+                      onClick={() => handleToggleSensitive(index)}
+                      title={visibleSecrets.has(index) ? t("environment.hide_secret") : t("environment.show_secret")}
+                    >
+                      {visibleSecrets.has(index) ? (
+                        <IconEye className="h-3.5 w-3.5" />
+                      ) : (
+                        <IconEyeOff className="h-3.5 w-3.5" />
+                      )}
+                    </Button>
+                  )}
                   <Switch
                     checked={v.enabled}
                     onCheckedChange={() => handleToggleEnabled(index)}
@@ -293,29 +318,6 @@ export function EnvironmentPage() {
           )}
         </div>
 
-        {/* 环境变量文件区域 */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base">
-              <IconFile className="h-5 w-5 text-muted-foreground" />
-              {t("environment.env_file_title")}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Input
-              placeholder="~/.picoclaw/.env"
-              value={envFile}
-              onChange={(e) => {
-                setEnvFile(e.target.value)
-                setIsDirty(true)
-              }}
-            />
-            <p className="text-muted-foreground text-sm">
-              {t("environment.env_file_description")}
-            </p>
-          </CardContent>
-        </Card>
-
         {/* 保存按钮 */}
         {isDirty && (
           <div className="flex justify-end gap-2">
@@ -324,7 +326,6 @@ export function EnvironmentPage() {
               onClick={() => {
                 if (data) {
                   setVariables(data.variables)
-                  setEnvFile(data.env_file)
                   setIsDirty(false)
                 }
               }}
@@ -371,7 +372,7 @@ export function EnvironmentPage() {
                 <Input
                   id="value"
                   type={form.sensitive && !showSecret ? "password" : "text"}
-                  placeholder="your-value-here"
+                  placeholder="KEY_VALUE"
                   value={form.value}
                   onChange={(e) => setForm({ ...form, value: e.target.value })}
                 />
@@ -383,9 +384,9 @@ export function EnvironmentPage() {
                     onClick={() => setShowSecret(!showSecret)}
                   >
                     {showSecret ? (
-                      <IconEyeOff className="h-4 w-4" />
-                    ) : (
                       <IconEye className="h-4 w-4" />
+                    ) : (
+                      <IconEyeOff className="h-4 w-4" />
                     )}
                   </Button>
                 )}
@@ -418,9 +419,11 @@ export function EnvironmentPage() {
                 <Switch
                   id="sensitive"
                   checked={form.sensitive}
-                  onCheckedChange={(checked) =>
+                  onCheckedChange={(checked) => {
                     setForm({ ...form, sensitive: checked })
-                  }
+                    // 切换敏感开关时，重置显示密码的状态
+                    setShowSecret(false)
+                  }}
                 />
                 <Label htmlFor="sensitive">{t("environment.sensitive")}</Label>
               </div>

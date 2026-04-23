@@ -1032,17 +1032,18 @@ func (c *MCPConfig) GetMaxInlineTextChars() int {
 
 // EnvVarEntry 表示单个环境变量条目
 type EnvVarEntry struct {
-	Key       string `json:"key"`       // 变量名称
-	Value     string `json:"value"`     // 变量值
-	Enabled   bool   `json:"enabled"`   // 变量是否启用
-	Sensitive bool   `json:"sensitive"` // 值是否敏感（在 UI 中隐藏）
-	Note      string `json:"note"`      // 可选的备注/描述
+	Key         string       `json:"key"`                   // 变量名称
+	Value       string       `json:"value"`                 // 变量值（非敏感变量）
+	SecureValue SecureString `json:"secure_value,omitzero"` // 敏感变量值（加密存储）
+	Enabled     bool         `json:"enabled"`               // 变量是否启用
+	Sensitive   bool         `json:"sensitive"`             // 值是否敏感（存储在.security.yml）
+	Note        string       `json:"note"`                  // 可选的备注/描述
 }
 
 // EnvVarsConfig 保存环境变量配置
 type EnvVarsConfig struct {
-	Variables []EnvVarEntry `json:"variables"` // 环境变量列表
-	EnvFile   string        `json:"env_file"`  // 可选的 .env 文件路径
+	// 环境变量列表
+	Variables []EnvVarEntry `json:"variables"`
 }
 
 // GetEnabledVars 返回已启用的环境变量映射
@@ -1050,7 +1051,11 @@ func (c *EnvVarsConfig) GetEnabledVars() map[string]string {
 	result := make(map[string]string)
 	for _, v := range c.Variables {
 		if v.Enabled {
-			result[v.Key] = v.Value
+			if v.Sensitive {
+				result[v.Key] = v.SecureValue.String()
+			} else {
+				result[v.Key] = v.Value
+			}
 		}
 	}
 	return result
@@ -1432,8 +1437,22 @@ func SaveConfig(path string, cfg *Config) error {
 	}()
 	cfg.ModelList = nonVirtualModels
 
+	// 在保存安全配置前临时清除 EnvVars（环境变量单独保存）
+	originalEnvVars := cfg.EnvVars
+	cfg.EnvVars = EnvVarsConfig{}
+
 	if err := saveSecurityConfig(securityPath(path), cfg); err != nil {
-		logger.ErrorCF("config", "cannot save .security.yml", map[string]any{"error": err})
+		logger.ErrorCF("config", "无法保存 .security.yml", map[string]any{"error": err})
+		cfg.EnvVars = originalEnvVars
+		return err
+	}
+
+	// 恢复 EnvVars
+	cfg.EnvVars = originalEnvVars
+
+	// 单独保存敏感环境变量
+	if err := saveEnvVarsToSecurity(securityPath(path), cfg); err != nil {
+		logger.ErrorCF("config", "无法保存环境变量到 .security.yml", map[string]any{"error": err})
 		return err
 	}
 

@@ -168,6 +168,8 @@
     "enabled": "启用",
     "disabled": "禁用",
     "sensitive": "敏感",
+    "show_secret": "显示敏感值",
+    "hide_secret": "隐藏敏感值",
     "no_variables": "尚未配置环境变量",
     "import": "导入 .env",
     "export": "导出",
@@ -177,9 +179,7 @@
     "export_error": "导出失败：{{error}}",
     "save_success": "环境变量保存成功",
     "save_error": "保存失败：{{error}}",
-    "key_required": "键不能为空",
-    "env_file_title": "环境变量文件（可选）",
-    "env_file_description": "同时从此文件加载变量。文件中的变量将与上方列表合并。"
+    "key_required": "键不能为空"
   },
   "labels": {
     "loading": "加载中..."

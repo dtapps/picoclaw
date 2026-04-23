@@ -24,32 +24,13 @@ func InjectEnvVars(cmd *exec.Cmd, cfg *config.Config) {
 		}
 	}
 
-	// 如果指定了环境变量文件，则从文件加载
-	if cfg.EnvVars.EnvFile != "" {
-		if fileVars, err := config.LoadEnvFile(cfg.EnvVars.EnvFile); err == nil {
-			for k, v := range fileVars {
-				envMap[k] = v
-			}
-			logger.DebugF("从环境变量文件加载变量", map[string]any{
-				"file":      cfg.EnvVars.EnvFile,
-				"var_count": len(fileVars),
-			})
-		} else {
-			logger.WarnF("加载环境变量文件失败", map[string]any{
-				"file":  cfg.EnvVars.EnvFile,
-				"error": err.Error(),
-			})
-		}
-	}
-
-	// 加载配置的环境变量（优先级高于文件）
+	// 加载配置的环境变量
 	enabledVars := cfg.EnvVars.GetEnabledVars()
 	for k, v := range enabledVars {
 		envMap[k] = v
 	}
 
 	logger.DebugF("Skills 环境变量注入", map[string]any{
-		"env_file":    cfg.EnvVars.EnvFile,
 		"config_vars": len(enabledVars),
 		"total_vars":  len(envMap),
 	})
@@ -77,16 +58,7 @@ func GetEnvVars(cfg *config.Config) map[string]string {
 		}
 	}
 
-	// 如果指定了环境变量文件，则从文件加载
-	if cfg.EnvVars.EnvFile != "" {
-		if fileVars, err := config.LoadEnvFile(cfg.EnvVars.EnvFile); err == nil {
-			for k, v := range fileVars {
-				result[k] = v
-			}
-		}
-	}
-
-	// 加载配置的环境变量（更高优先级）
+	// 加载配置的环境变量
 	for k, v := range cfg.EnvVars.GetEnabledVars() {
 		result[k] = v
 	}

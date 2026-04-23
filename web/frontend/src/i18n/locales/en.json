@@ -167,6 +167,8 @@
     "enabled": "Enabled",
     "disabled": "Disabled",
     "sensitive": "Sensitive",
+    "show_secret": "Show secret",
+    "hide_secret": "Hide secret",
     "no_variables": "No environment variables configured yet",
     "import": "Import .env",
     "export": "Export",
@@ -176,9 +178,7 @@
     "export_error": "Failed to export: {{error}}",
     "save_success": "Environment variables saved successfully",
     "save_error": "Failed to save: {{error}}",
-    "key_required": "Key is required",
-    "env_file_title": "Environment File (Optional)",
-    "env_file_description": "Also load variables from this file. File variables will be merged with the list above."
+    "key_required": "Key is required"
   },
   "labels": {
     "loading": "Loading..."

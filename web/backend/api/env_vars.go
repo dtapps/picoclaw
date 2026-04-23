@@ -21,13 +21,11 @@ type envVarEntryResponse struct {
 // envVarsConfigResponse 表示环境变量配置响应
 type envVarsConfigResponse struct {
 	Variables []envVarEntryResponse `json:"variables"`
-	EnvFile   string                `json:"env_file"`
 }
 
 // envVarsUpdateRequest 表示更新环境变量的请求
 type envVarsUpdateRequest struct {
 	Variables []envVarEntryResponse `json:"variables"`
-	EnvFile   string                `json:"env_file"`
 }
 
 // registerEnvVarsRoutes 注册环境变量 API 路由
@@ -48,20 +46,20 @@ func (h *Handler) handleGetEnvVars(w http.ResponseWriter, r *http.Request) {
 
 	response := envVarsConfigResponse{
 		Variables: make([]envVarEntryResponse, 0, len(cfg.EnvVars.Variables)),
-		EnvFile:   cfg.EnvVars.EnvFile,
 	}
 
 	for _, v := range cfg.EnvVars.Variables {
 		entry := envVarEntryResponse{
 			Key:       v.Key,
-			Value:     v.Value,
 			Enabled:   v.Enabled,
 			Sensitive: v.Sensitive,
 			Note:      v.Note,
 		}
-		// 隐藏敏感值
-		if entry.Sensitive && entry.Value != "" {
-			entry.Value = "********"
+		// 敏感变量从 SecureValue 获取值，非敏感变量从 Value 获取
+		if v.Sensitive {
+			entry.Value = v.SecureValue.String()
+		} else {
+			entry.Value = v.Value
 		}
 		response.Variables = append(response.Variables, entry)
 	}
@@ -109,10 +107,13 @@ func (h *Handler) handleUpdateEnvVars(w http.ResponseWriter, r *http.Request) {
 			// 查找现有值
 			for _, existing := range cfg.EnvVars.Variables {
 				if existing.Key == v.Key {
-					entry.Value = existing.Value
+					entry.SecureValue = existing.SecureValue
 					break
 				}
 			}
+		} else if v.Sensitive {
+			// 敏感值保存到 SecureValue
+			entry.SecureValue = *config.NewSecureString(v.Value)
 		} else {
 			entry.Value = v.Value
 		}
@@ -123,7 +124,6 @@ func (h *Handler) handleUpdateEnvVars(w http.ResponseWriter, r *http.Request) {
 	// 更新配置
 	cfg.EnvVars = config.EnvVarsConfig{
 		Variables: variables,
-		EnvFile:   req.EnvFile,
 	}
 
 	// 保存配置
