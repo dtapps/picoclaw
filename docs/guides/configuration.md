@@ -98,9 +98,11 @@ export PICOCLAW_BUILTIN_SKILLS=/path/to/skills
 
 ### Using Skills From Chat Channels
 
-Once skills are installed, you can inspect and force them directly from a chat channel:
+Once skills are installed, and MCP servers are configured, you can inspect and force them directly from a chat channel:
 
 - `/list skills` shows the installed skill names available to the current agent.
+- `/list mcp` shows configured MCP servers with enabled/deferred/connected status.
+- `/show mcp <server>` shows the active tools exposed by a connected MCP server.
 - `/use <skill> <message>` forces a specific skill for a single request.
 - `/use <skill>` arms that skill for your next message in the same chat session.
 - `/use clear` cancels a pending skill override created by `/use <skill>`.
@@ -110,6 +112,8 @@ Examples:
 
 ```text
 /list skills
+/list mcp
+/show mcp github
 /use git explain how to squash the last 3 commits
 /btw remind me what we already decided about the deploy plan
 /use italiapersonalfinance
