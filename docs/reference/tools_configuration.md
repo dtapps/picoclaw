@@ -26,6 +26,12 @@ PicoClaw's tools configuration is located in the `tools` field of `config.json`.
 }
 ```
 
+## Environment Variables
+
+PicoClaw supports global environment variable management that can be automatically injected into Skills and MCP execution environments.
+
+See [Environment Variables Configuration](environment_variables.md) for full documentation.
+
 ## Sensitive Data Filtering
 
 Before tool results are sent to the LLM, PicoClaw can filter sensitive values (API keys, tokens, secrets) from the output. This prevents the LLM from seeing its own credentials.

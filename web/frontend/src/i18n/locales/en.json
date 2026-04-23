@@ -29,6 +29,7 @@
     "show_more_channels": "More",
     "show_less_channels": "Less",
     "schedules": "Schedules",
+    "environment": "Environment",
     "config": "Config",
     "logs": "Logs"
   },
@@ -146,7 +147,38 @@
     "save": "Save",
     "saving": "Saving...",
     "reset": "Reset",
-    "confirm": "Confirm"
+    "confirm": "Confirm",
+    "loading": "Loading...",
+    "actions": "Actions",
+    "save_changes": "Save Changes",
+    "add": "Add"
+  },
+  "environment": {
+    "title": "Environment Variables",
+    "description": "Configure environment variables for Skills and MCP execution",
+    "add_variable": "Add Variable",
+    "edit_variable": "Edit Variable",
+    "variable_description": "Set the key, value, and options for this environment variable",
+    "key": "Key",
+    "value": "Value",
+    "note": "Note",
+    "note_placeholder": "e.g., For MCP servers",
+    "status": "Status",
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "sensitive": "Sensitive",
+    "no_variables": "No environment variables configured yet",
+    "import": "Import .env",
+    "export": "Export",
+    "import_success": "Successfully imported {{count}} variables",
+    "import_error": "Failed to import: {{error}}",
+    "export_success": "Successfully exported environment variables",
+    "export_error": "Failed to export: {{error}}",
+    "save_success": "Environment variables saved successfully",
+    "save_error": "Failed to save: {{error}}",
+    "key_required": "Key is required",
+    "env_file_title": "Environment File (Optional)",
+    "env_file_description": "Also load variables from this file. File variables will be merged with the list above."
   },
   "labels": {
     "loading": "Loading..."

@@ -44,6 +44,8 @@ type Config struct {
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
+	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
+	EnvVars EnvVarsConfig `json:"env_vars,omitempty" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
 
@@ -1026,6 +1028,62 @@ func (c *MCPConfig) GetMaxInlineTextChars() int {
 		return c.MaxInlineTextChars
 	}
 	return DefaultMCPMaxInlineTextChars
+}
+
+// EnvVarEntry 表示单个环境变量条目
+type EnvVarEntry struct {
+	Key       string `json:"key"`       // 变量名称
+	Value     string `json:"value"`     // 变量值
+	Enabled   bool   `json:"enabled"`   // 变量是否启用
+	Sensitive bool   `json:"sensitive"` // 值是否敏感（在 UI 中隐藏）
+	Note      string `json:"note"`      // 可选的备注/描述
+}
+
+// EnvVarsConfig 保存环境变量配置
+type EnvVarsConfig struct {
+	Variables []EnvVarEntry `json:"variables"` // 环境变量列表
+	EnvFile   string        `json:"env_file"`  // 可选的 .env 文件路径
+}
+
+// GetEnabledVars 返回已启用的环境变量映射
+func (c *EnvVarsConfig) GetEnabledVars() map[string]string {
+	result := make(map[string]string)
+	for _, v := range c.Variables {
+		if v.Enabled {
+			result[v.Key] = v.Value
+		}
+	}
+	return result
+}
+
+// LoadEnvFile 从 .env 文件加载环境变量
+func LoadEnvFile(path string) (map[string]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	vars := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// 解析 KEY=VALUE 格式
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
+			// 如果存在引号则移除
+			if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'')) {
+				value = value[1 : len(value)-1]
+			}
+			vars[key] = value
+		}
+	}
+	return vars, nil
 }
 
 func LoadConfig(path string) (*Config, error) {
