@@ -70,7 +70,6 @@ export interface EncyclopediaSearchConfigResponse {
 export interface MCPServerConfig {
   name: string
   enabled: boolean
-  deferred?: boolean
   command?: string
   args?: string[]
   env?: Record<string, string>
@@ -80,9 +79,18 @@ export interface MCPServerConfig {
   headers?: Record<string, string>
 }
 
+export interface MCPDiscoveryConfig {
+  enabled: boolean
+  ttl: number
+  max_search_results: number
+  use_bm25: boolean
+  use_regex: boolean
+}
+
 export interface MCPConfigResponse {
   enabled: boolean
   max_inline_text_chars: number
+  discovery: MCPDiscoveryConfig
   servers: MCPServerConfig[]
 }
 
