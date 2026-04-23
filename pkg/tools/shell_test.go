@@ -1613,3 +1613,38 @@ func TestEncodeKeyTokenWithPtyKeyMode(t *testing.T) {
 		})
 	}
 }
+
+// TestShellTool_EnvVarsInjection verifies that environment variables from config are injected
+func TestShellTool_EnvVarsInjection(t *testing.T) {
+	cfg := &config.Config{
+		Tools: config.ToolsConfig{
+			Exec: config.ExecConfig{
+				EnableDenyPatterns: true,
+				AllowRemote:        true,
+			},
+		},
+		EnvVars: config.EnvVarsConfig{
+			Variables: []config.EnvVarEntry{
+				{Key: "TEST_VAR_1", Value: "test_value_1", Enabled: true},
+				{Key: "TEST_VAR_2", Value: "test_value_2", Enabled: true},
+				{Key: "DISABLED_VAR", Value: "should_not_appear", Enabled: false},
+			},
+		},
+	}
+
+	tool, err := NewExecToolWithConfig("", false, cfg)
+	require.NoError(t, err)
+
+	ctx := context.Background()
+	args := map[string]any{
+		"action":  "run",
+		"command": "echo $TEST_VAR_1 $TEST_VAR_2",
+	}
+
+	result := tool.Execute(ctx, args)
+
+	require.False(t, result.IsError, "command should succeed: %s", result.ForLLM)
+	require.Contains(t, result.ForLLM, "test_value_1", "TEST_VAR_1 should be injected")
+	require.Contains(t, result.ForLLM, "test_value_2", "TEST_VAR_2 should be injected")
+	require.NotContains(t, result.ForLLM, "should_not_appear", "DISABLED_VAR should not be injected")
+}

@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/constants"
 	"github.com/sipeed/picoclaw/pkg/isolation"
+	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
 var (
@@ -44,6 +45,7 @@ type ExecTool struct {
 	restrictToWorkspace bool
 	allowRemote         bool
 	sessionManager      *SessionManager
+	cfg                 *config.Config
 }
 
 var (
@@ -178,6 +180,7 @@ func NewExecToolWithConfig(
 		restrictToWorkspace: restrict,
 		allowRemote:         allowRemote,
 		sessionManager:      getSessionManager(),
+		cfg:                 cfg,
 	}, nil
 }
 
@@ -373,6 +376,11 @@ func (t *ExecTool) runSync(ctx context.Context, command, cwd string) *ToolResult
 		cmd.Dir = cwd
 	}
 
+	// 注入环境变量
+	if t.cfg != nil {
+		skills.InjectEnvVars(cmd, t.cfg)
+	}
+
 	prepareCommandForTermination(cmd)
 
 	var stdout, stderr bytes.Buffer
@@ -483,6 +491,11 @@ func (t *ExecTool) runBackground(ctx context.Context, command, cwd string, ptyEn
 	}
 	if cwd != "" {
 		cmd.Dir = cwd
+	}
+
+	// 注入环境变量
+	if t.cfg != nil {
+		skills.InjectEnvVars(cmd, t.cfg)
 	}
 
 	prepareCommandForTermination(cmd)

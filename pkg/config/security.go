@@ -57,8 +57,9 @@ func loadSecurityConfig(cfg *Config, securityPath string) error {
 		return fmt.Errorf("failed to parse security config: %w", err)
 	}
 
-	// Extract channels node (support both 'channels' and 'channel_list' keys)
+	// Extract channels node (support both 'channels' and 'channel_list' keys) and env_vars node
 	var channelsNode *yaml.Node
+	var envVarsNode *yaml.Node
 	if len(rootNode.Content) > 0 {
 		content := rootNode.Content[0].Content
 		for i := 0; i < len(content); i += 2 {
@@ -66,7 +67,8 @@ func loadSecurityConfig(cfg *Config, securityPath string) error {
 				key := content[i].Value
 				if key == "channels" || key == "channel_list" {
 					channelsNode = content[i+1]
-					break
+				} else if key == "env_vars" {
+					envVarsNode = content[i+1]
 				}
 			}
 		}
@@ -91,6 +93,13 @@ func loadSecurityConfig(cfg *Config, securityPath string) error {
 	if channelsNode != nil {
 		if err := cfg.Channels.UnmarshalYAML(channelsNode); err != nil {
 			return fmt.Errorf("failed to merge channels from security config: %w", err)
+		}
+	}
+
+	// 如果在 security.yml 中找到 env_vars 节点，将安全值合并到现有环境变量中
+	if envVarsNode != nil {
+		if err := mergeSecureEnvVars(cfg, envVarsNode); err != nil {
+			return fmt.Errorf("从安全配置合并环境变量失败: %w", err)
 		}
 	}
 
@@ -199,6 +208,132 @@ func saveSecurityConfig(securityPath string, sec *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal security config: %w", err)
 	}
+	return fileutil.WriteFileAtomic(securityPath, buf.Bytes(), 0o600)
+}
+
+// envVarSecurityEntry 用于保存敏感环境变量到.security.yml
+type envVarSecurityEntry struct {
+	Key   string       `yaml:"key"`
+	Value SecureString `yaml:"value"`
+}
+
+// mergeSecureEnvVars 将 security.yml 中的安全环境变量值合并到 cfg 中
+func mergeSecureEnvVars(cfg *Config, envVarsNode *yaml.Node) error {
+	// security.yml 中的 env_vars 是 envVarSecurityEntry 的序列
+	var secureEnvVars []envVarSecurityEntry
+	if err := envVarsNode.Decode(&secureEnvVars); err != nil {
+		return err
+	}
+
+	// 将安全值合并到配置中
+	secureValueMap := make(map[string]SecureString)
+	for _, entry := range secureEnvVars {
+		secureValueMap[entry.Key] = entry.Value
+	}
+
+	// 使用安全值更新敏感变量
+	for i := range cfg.EnvVars.Variables {
+		if cfg.EnvVars.Variables[i].Sensitive {
+			if secureValue, ok := secureValueMap[cfg.EnvVars.Variables[i].Key]; ok {
+				cfg.EnvVars.Variables[i].SecureValue = secureValue
+			}
+		}
+	}
+
+	return nil
+}
+
+// saveEnvVarsToSecurity 仅将敏感环境变量保存到 security.yml
+func saveEnvVarsToSecurity(securityPath string, cfg *Config) error {
+	// 收集敏感环境变量
+	var secureVars []envVarSecurityEntry
+	for _, v := range cfg.EnvVars.Variables {
+		if v.Sensitive && v.SecureValue.String() != "" {
+			secureVars = append(secureVars, envVarSecurityEntry{
+				Key:   v.Key,
+				Value: v.SecureValue,
+			})
+		}
+	}
+
+	// 如果没有敏感变量，不需要保存
+	if len(secureVars) == 0 {
+		return nil
+	}
+
+	// 读取现有的.security.yml内容
+	existingContent, err := os.ReadFile(securityPath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("读取安全配置失败: %w", err)
+	}
+
+	// 如果没有现有配置，直接保存环境变量配置
+	if len(existingContent) == 0 {
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(secureVars); err != nil {
+			return fmt.Errorf("序列化环境变量失败: %w", err)
+		}
+		return fileutil.WriteFileAtomic(securityPath, buf.Bytes(), 0o600)
+	}
+
+	// 如果存在现有配置，需要合并
+	var existingRoot yaml.Node
+	if err := yaml.Unmarshal(existingContent, &existingRoot); err != nil || len(existingRoot.Content) == 0 {
+		// 解析失败，直接覆盖
+		var buf bytes.Buffer
+		enc := yaml.NewEncoder(&buf)
+		enc.SetIndent(2)
+		if err := enc.Encode(secureVars); err != nil {
+			return fmt.Errorf("序列化环境变量失败: %w", err)
+		}
+		return fileutil.WriteFileAtomic(securityPath, buf.Bytes(), 0o600)
+	}
+
+	// 解析新的环境变量配置（直接是数组）
+	var newBuf bytes.Buffer
+	newEnc := yaml.NewEncoder(&newBuf)
+	newEnc.SetIndent(2)
+	if err := newEnc.Encode(secureVars); err != nil {
+		return fmt.Errorf("序列化环境变量失败: %w", err)
+	}
+
+	var newRoot yaml.Node
+	if err := yaml.Unmarshal(newBuf.Bytes(), &newRoot); err != nil || len(newRoot.Content) == 0 {
+		// 解析失败，保留现有配置，忽略错误
+		//nolint:nilerr
+		return nil
+	}
+
+	// 合并：将env_vars节点添加到现有配置或替换
+	existingMap := existingRoot.Content[0]
+
+	// 查找并替换或添加env_vars节点
+	found := false
+	for i := 0; i < len(existingMap.Content); i += 2 {
+		if i < len(existingMap.Content) && existingMap.Content[i].Value == "env_vars" {
+			if i+1 < len(existingMap.Content) && len(newRoot.Content) > 0 {
+				existingMap.Content[i+1] = newRoot.Content[0]
+				found = true
+				break
+			}
+		}
+	}
+	if !found && len(newRoot.Content) > 0 {
+		// 添加 env_vars 键和值节点
+		keyNode := &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: "env_vars"}
+		existingMap.Content = append(existingMap.Content, keyNode, newRoot.Content[0])
+	}
+
+	// 重新编码
+	var buf bytes.Buffer
+	enc := yaml.NewEncoder(&buf)
+	enc.SetIndent(2)
+	if err := enc.Encode(existingRoot.Content[0]); err != nil {
+		return fmt.Errorf("重新编码合并后的配置失败: %w", err)
+	}
+
 	return fileutil.WriteFileAtomic(securityPath, buf.Bytes(), 0o600)
 }
 

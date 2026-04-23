@@ -11,6 +11,7 @@ import {
   IconSearch,
   IconSettings,
   IconSparkles,
+  IconTerminal,
   IconTools,
 } from "@tabler/icons-react"
 import { Link, useRouterState } from "@tanstack/react-router"
@@ -167,6 +168,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             title: "navigation.schedules",
             url: "/schedules",
             icon: IconCalendar,
+            translateTitle: true,
+          },
+          {
+            title: "navigation.environment",
+            url: "/environment",
+            icon: IconTerminal,
             translateTitle: true,
           },
           {

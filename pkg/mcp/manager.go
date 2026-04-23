@@ -111,6 +111,7 @@ type Manager struct {
 	mu      sync.RWMutex
 	closed  atomic.Bool    // changed from bool to atomic.Bool to avoid TOCTOU race
 	wg      sync.WaitGroup // tracks in-flight CallTool calls
+	cfg     *config.Config // 用于访问环境变量的全局配置
 }
 
 // NewManager creates a new MCP manager
@@ -122,6 +123,7 @@ func NewManager() *Manager {
 
 // LoadFromConfig loads MCP servers from configuration
 func (m *Manager) LoadFromConfig(ctx context.Context, cfg *config.Config) error {
+	m.cfg = cfg
 	return m.LoadFromMCPConfig(ctx, cfg.Tools.MCP, cfg.WorkspacePath())
 }
 
@@ -337,6 +339,18 @@ func (m *Manager) ConnectServer(
 			}
 		}
 
+		// 从配置加载全局环境变量（最低优先级）
+		if m.cfg != nil {
+			for k, v := range m.cfg.EnvVars.GetEnabledVars() {
+				envMap[k] = v
+			}
+			logger.DebugCF("mcp", "已加载全局环境变量",
+				map[string]any{
+					"server":    name,
+					"var_count": len(m.cfg.EnvVars.Variables),
+				})
+		}
+
 		// Load environment variables from file if specified
 		if cfg.EnvFile != "" {
 			envVars, err := loadEnvFile(cfg.EnvFile)
@@ -354,7 +368,7 @@ func (m *Manager) ConnectServer(
 				})
 		}
 
-		// Environment variables from config override those from file
+		// Environment variables from server config override all others (highest priority)
 		for k, v := range cfg.Env {
 			envMap[k] = v
 		}

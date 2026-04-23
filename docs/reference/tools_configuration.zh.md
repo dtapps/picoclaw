@@ -28,6 +28,12 @@ PicoClaw 的工具配置位于 `config.json` 的 `tools` 字段中。
 }
 ```
 
+## 环境变量
+
+PicoClaw 支持全局环境变量管理，可以自动注入到 Skills 和 MCP 执行环境中。
+
+详细说明请参阅[环境变量配置](environment_variables.zh.md)。
+
 ## 敏感数据过滤
 
 在将工具结果发送给 LLM 之前，PicoClaw 可以从输出中过滤敏感值（API 密钥、令牌、密码）。这可以防止 LLM 看到自己的凭据。

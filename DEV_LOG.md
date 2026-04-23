@@ -21,6 +21,7 @@
 | **模型配置**  | 手动逐个添加模型          | **支持快速添加模型预设**           | 提升模型配置效率，方便批量添加                              | [feat/model-quick-add-presets](https://github.com/dtapps/picoclaw/tree/feat/model-quick-add-presets)         |
 | **定时任务**  | 暂无 UI 管理              | **新增 Web UI 管理页面**           | 可视化创建、编辑、启停定时任务，支持 Cron/Interval/One-time | [feat/cron-schedules-ui](https://github.com/dtapps/picoclaw/tree/feat/cron-schedules-ui)                     |
 | **工具集**    | 暂无 UI 管理              | **新增 MCP 服务器 Web UI 配置**    | 可视化配置 MCP 服务器，支持 stdio/sse/http 类型，含完整参数 | [feature/mcp-server-config](https://github.com/dtapps/picoclaw/tree/feature/mcp-server-config)               |
+| **环境变量**  | 暂无 环境变量 管理        | **新增环境变量配置 UI**            | 支持全局环境变量管理，自动注入到 Skills 和 MCP 执行环境     | [feat/env-vars-config](https://github.com/dtapps/picoclaw/tree/feat/env-vars-config)                         |
 
 ---
 

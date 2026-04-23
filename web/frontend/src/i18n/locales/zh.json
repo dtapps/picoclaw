@@ -30,6 +30,7 @@
     "show_more_channels": "更多",
     "show_less_channels": "收起",
     "schedules": "定时任务",
+    "environment": "环境变量",
     "config": "配置",
     "logs": "日志"
   },
@@ -147,7 +148,38 @@
     "save": "保存",
     "saving": "保存中...",
     "reset": "重置",
-    "confirm": "确认"
+    "confirm": "确认",
+    "loading": "加载中...",
+    "actions": "操作",
+    "save_changes": "保存更改",
+    "add": "添加"
+  },
+  "environment": {
+    "title": "环境变量",
+    "description": "配置 Skills 和 MCP 执行时使用的环境变量",
+    "add_variable": "添加变量",
+    "edit_variable": "编辑变量",
+    "variable_description": "设置环境变量的键、值和选项",
+    "key": "键",
+    "value": "值",
+    "note": "备注",
+    "note_placeholder": "例如：用于 MCP 服务器",
+    "status": "状态",
+    "enabled": "启用",
+    "disabled": "禁用",
+    "sensitive": "敏感",
+    "show_secret": "显示敏感值",
+    "hide_secret": "隐藏敏感值",
+    "no_variables": "尚未配置环境变量",
+    "import": "导入 .env",
+    "export": "导出",
+    "import_success": "成功导入 {{count}} 个变量",
+    "import_error": "导入失败：{{error}}",
+    "export_success": "成功导出环境变量",
+    "export_error": "导出失败：{{error}}",
+    "save_success": "环境变量保存成功",
+    "save_error": "保存失败：{{error}}",
+    "key_required": "键不能为空"
   },
   "labels": {
     "loading": "加载中..."

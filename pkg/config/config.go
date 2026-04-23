@@ -44,6 +44,8 @@ type Config struct {
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
+	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
+	EnvVars EnvVarsConfig `json:"env_vars,omitempty" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
 
@@ -1028,6 +1030,67 @@ func (c *MCPConfig) GetMaxInlineTextChars() int {
 	return DefaultMCPMaxInlineTextChars
 }
 
+// EnvVarEntry 表示单个环境变量条目
+type EnvVarEntry struct {
+	Key         string       `json:"key"`                   // 变量名称
+	Value       string       `json:"value"`                 // 变量值（非敏感变量）
+	SecureValue SecureString `json:"secure_value,omitzero"` // 敏感变量值（加密存储）
+	Enabled     bool         `json:"enabled"`               // 变量是否启用
+	Sensitive   bool         `json:"sensitive"`             // 值是否敏感（存储在.security.yml）
+	Note        string       `json:"note"`                  // 可选的备注/描述
+}
+
+// EnvVarsConfig 保存环境变量配置
+type EnvVarsConfig struct {
+	// 环境变量列表
+	Variables []EnvVarEntry `json:"variables"`
+}
+
+// GetEnabledVars 返回已启用的环境变量映射
+func (c *EnvVarsConfig) GetEnabledVars() map[string]string {
+	result := make(map[string]string)
+	for _, v := range c.Variables {
+		if v.Enabled {
+			if v.Sensitive {
+				result[v.Key] = v.SecureValue.String()
+			} else {
+				result[v.Key] = v.Value
+			}
+		}
+	}
+	return result
+}
+
+// LoadEnvFile 从 .env 文件加载环境变量
+func LoadEnvFile(path string) (map[string]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	vars := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// 解析 KEY=VALUE 格式
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
+			// 如果存在引号则移除
+			if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'')) {
+				value = value[1 : len(value)-1]
+			}
+			vars[key] = value
+		}
+	}
+	return vars, nil
+}
+
 func LoadConfig(path string) (*Config, error) {
 	updateResolver(filepath.Dir(path))
 
@@ -1374,8 +1437,22 @@ func SaveConfig(path string, cfg *Config) error {
 	}()
 	cfg.ModelList = nonVirtualModels
 
+	// 在保存安全配置前临时清除 EnvVars（环境变量单独保存）
+	originalEnvVars := cfg.EnvVars
+	cfg.EnvVars = EnvVarsConfig{}
+
 	if err := saveSecurityConfig(securityPath(path), cfg); err != nil {
-		logger.ErrorCF("config", "cannot save .security.yml", map[string]any{"error": err})
+		logger.ErrorCF("config", "无法保存 .security.yml", map[string]any{"error": err})
+		cfg.EnvVars = originalEnvVars
+		return err
+	}
+
+	// 恢复 EnvVars
+	cfg.EnvVars = originalEnvVars
+
+	// 单独保存敏感环境变量
+	if err := saveEnvVarsToSecurity(securityPath(path), cfg); err != nil {
+		logger.ErrorCF("config", "无法保存环境变量到 .security.yml", map[string]any{"error": err})
 		return err
 	}
 
