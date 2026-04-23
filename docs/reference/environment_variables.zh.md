@@ -124,45 +124,12 @@ PicoClaw 支持全局环境变量管理，可以自动注入到 Skills 和 MCP �
 }
 ```
 
-### 与 MCP 服务器一起使用
+### 在命令中使用
 
-启动 MCP 服务器时自动注入环境变量：
-
-```json
-{
-  "env_vars": {
-    "variables": [
-      {
-        "key": "GITHUB_TOKEN",
-        "value": "ghp_...",
-        "enabled": true,
-        "sensitive": true
-      }
-    ]
-  },
-  "tools": {
-    "mcp": {
-      "servers": {
-        "github": {
-          "enabled": true,
-          "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-github"],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### 与 Skills 一起使用
-
-使用 exec 工具运行命令时，全局环境变量自动可用：
+使用 exec 工具执行命令时，全局环境变量自动可用：
 
 ```bash
-# 在 skill 或 exec 命令中
+# 在通过 exec 工具执行的命令中
 echo $OPENAI_API_KEY  # 将输出配置的值
 ```
 
@@ -213,8 +180,11 @@ DESCRIPTION="This is a description"
 
 ### 运行时注入
 
-环境变量在以下时机注入：
+环境变量通过隔离运行时自动注入到所有子进程中。这包括：
 
-1. **Skills 执行**: 通过 `exec` 工具执行命令时
-2. **MCP 服务器启动**: 启动 MCP 服务器进程时
-3. **变量引用**: 支持 `${VAR_NAME}` 语法在其他配置中引用
+- 通过 `exec` 工具执行的命令
+- MCP 服务器进程
+- 进程钩子
+- PicoClaw 生成的任何其他子进程
+
+通过 Web UI 进行的修改会立即生效，无需重启程序。

@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/isolation"
 )
 
 // envVarEntryResponse 表示用于 API 响应的环境变量条目
@@ -131,6 +132,9 @@ func (h *Handler) handleUpdateEnvVars(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("保存配置失败: %v", err), http.StatusInternalServerError)
 		return
 	}
+
+	// 重新加载配置到 isolation 包，使环境变量立即生效
+	isolation.Configure(cfg)
 
 	w.WriteHeader(http.StatusOK)
 }

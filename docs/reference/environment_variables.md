@@ -124,45 +124,12 @@ You can manage environment variables through the Web UI:
 }
 ```
 
-### Using with MCP Servers
+### Using in Commands
 
-Environment variables are automatically injected when MCP servers start:
-
-```json
-{
-  "env_vars": {
-    "variables": [
-      {
-        "key": "GITHUB_TOKEN",
-        "value": "ghp_...",
-        "enabled": true,
-        "sensitive": true
-      }
-    ]
-  },
-  "tools": {
-    "mcp": {
-      "servers": {
-        "github": {
-          "enabled": true,
-          "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-github"],
-          "env": {
-            "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_TOKEN}"
-          }
-        }
-      }
-    }
-  }
-}
-```
-
-### Using with Skills
-
-When using the exec tool to run commands, global environment variables are automatically available:
+Global environment variables are automatically available when using the exec tool:
 
 ```bash
-# In a skill or exec command
+# In a command executed via exec tool
 echo $OPENAI_API_KEY  # Will output the configured value
 ```
 
@@ -213,8 +180,11 @@ You can export your configuration to a `.env` file:
 
 ### Runtime Injection
 
-Environment variables are injected at:
+Environment variables are automatically injected into all child processes through the isolation runtime. This includes:
 
-1. **Skills execution**: When commands are executed via the `exec` tool
-2. **MCP server startup**: When MCP server processes are started
-3. **Variable references**: Supports `${VAR_NAME}` syntax in other configurations
+- Commands executed via the `exec` tool
+- MCP server processes
+- Process hooks
+- Any other subprocesses spawned by PicoClaw
+
+Changes made through the Web UI take effect immediately without requiring a restart.
