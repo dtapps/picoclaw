@@ -650,6 +650,20 @@
             "max_inline_text_chars": "Max Inline Text Chars",
             "max_inline_text_chars_description": "Maximum text length to display inline before saving as artifact."
           },
+          "discovery": {
+            "title": "Discovery Settings",
+            "enable": "Enable Discovery",
+            "enable_description": "When enabled, all MCP tools are hidden and loaded on-demand via search. When disabled, all tools are loaded into context.",
+            "ttl": "TTL",
+            "ttl_description": "Number of conversation rounds to keep discovered tools unlocked.",
+            "max_search_results": "Max Search Results",
+            "max_search_results_description": "Maximum number of tools to return per search.",
+            "use_bm25": "Use BM25",
+            "use_bm25_description": "Enable natural language/keyword search for tools. Consumes more resources than regex search.",
+            "use_regex": "Use Regex",
+            "use_regex_description": "Enable regex pattern search for tools.",
+            "engine_warning": "Warning: At least one search engine (BM25 or Regex) must be enabled when Discovery is enabled."
+          },
           "servers": {
             "title": "MCP Servers",
             "add": "Add Server",
@@ -659,8 +673,6 @@
             "disabled": "Disabled",
             "enable": "Enable Server",
             "enable_description": "Enable this MCP server to make it available to agents.",
-            "deferred": "Deferred Mode",
-            "deferred_description": "When enabled, tools are hidden and discoverable via search. When disabled, tools are always visible in context.",
             "name": "Name",
             "type": "Type",
             "command": "Command",
