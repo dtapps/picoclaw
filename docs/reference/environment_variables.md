@@ -29,8 +29,7 @@ The environment variables configuration is located at the root level of `config.
         "sensitive": false,
         "note": "Enable debug logging"
       }
-    ],
-    "env_file": "/path/to/.env"
+    ]
   }
 }
 ```
@@ -41,31 +40,27 @@ The environment variables configuration is located at the root level of `config.
 
 Each variable in the `variables` array supports the following fields:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `key` | string | Yes | The environment variable name (must be valid env var format) |
-| `value` | string | Yes | The environment variable value |
-| `enabled` | bool | Yes | Whether this variable is active |
-| `sensitive` | bool | No | If true, the value will be masked in UI and logs |
-| `note` | string | No | Optional description or documentation |
+| Field       | Type   | Required | Description                                                        |
+| ----------- | ------ | -------- | ------------------------------------------------------------------ |
+| `key`       | string | Yes      | The environment variable name (must be valid env var format)       |
+| `value`     | string | Yes      | The environment variable value                                     |
+| `enabled`   | bool   | Yes      | Whether this variable is active                                    |
+| `sensitive` | bool   | No       | If true, marks this as sensitive data; the value will be encrypted |
+| `note`      | string | No       | Optional description or documentation                              |
 
-### Env File
+## Sensitive Variables
 
-The `env_file` field specifies a path to a `.env` file that will be loaded in addition to the configured variables.
+Mark sensitive values (API keys, tokens, passwords) with `"sensitive": true`:
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `env_file` | string | No | Path to a `.env` file to load |
+1. **Encrypted Storage**: Sensitive values are encrypted and stored in `.security.yml`
 
 ## Priority Order
 
 When environment variables are resolved, the following priority order is used (highest to lowest):
 
 1. **Server-specific env** (MCP server config) - Highest priority
-2. **Server-specific env_file** (MCP server config)
-3. **Global env_vars variables** (from this configuration)
-4. **Global env_file** (from this configuration)
-5. **Parent process environment** - Lowest priority
+2. **Global env_vars variables** (from this configuration)
+3. **Parent process environment** - Lowest priority
 
 ## Web UI Management
 
@@ -73,9 +68,9 @@ You can manage environment variables through the Web UI:
 
 1. Navigate to **Services > Environment Variables**
 2. Add, edit, enable/disable, or delete variables
-3. Import from `.env` files
-4. Export to `.env` files
-5. Variables marked as "sensitive" will be masked in the UI
+3. Variables marked as "sensitive" will be masked as `********` in the UI, click the eye icon to reveal
+4. Import from `.env` files
+5. Export to `.env` files
 
 ## Example Use Cases
 
@@ -175,9 +170,9 @@ echo $OPENAI_API_KEY  # Will output the configured value
 
 1. **Sensitive Variables**: Mark sensitive values (API keys, tokens, passwords) with `"sensitive": true` to prevent them from being displayed in the UI or logs.
 
-2. **File Permissions**: Ensure your `config.json` file has appropriate permissions (e.g., `600`) to prevent unauthorized access.
+2. **Encrypted Storage**: Sensitive values are stored in `.security.yml` with AES-GCM encryption.
 
-3. **Environment File**: If using an `env_file`, ensure it is also properly secured and not committed to version control.
+3. **File Permissions**: Ensure your `config.json` and `.security.yml` files have appropriate permissions (e.g., `600`) to prevent unauthorized access.
 
 ## Import and Export
 
@@ -191,6 +186,7 @@ You can import existing `.env` files through the Web UI:
 4. Variables will be parsed and added to the configuration
 
 Supported `.env` format:
+
 ```bash
 # Comments are supported
 API_KEY=secret_value
@@ -206,26 +202,19 @@ You can export your configuration to a `.env` file:
 
 1. Go to **Services > Environment Variables**
 2. Click "Export"
-3. Only enabled variables will be exported
-4. Sensitive values will be included in plain text in the exported file
+3. A `.env` file containing all enabled variables will be downloaded
 
-## Troubleshooting
+## Technical Details
 
-### Variables Not Applied
+### Storage
 
-- Check that the variable is enabled (`"enabled": true`)
-- For MCP servers: Restart the MCP server after changing variables
-- For Skills: Variables are applied on each command execution
+- **Non-sensitive variables**: Stored in plain text in `config.json`
+- **Sensitive variables**: Encrypted and stored in `.security.yml`, key derived from system-specific information
 
-### Validation Errors
+### Runtime Injection
 
-Environment variable keys must:
-- Start with a letter or underscore
-- Contain only letters, numbers, and underscores
-- Not be empty
+Environment variables are injected at:
 
-### MCP Server Not Receiving Variables
-
-- MCP servers load environment variables at startup time
-- Changes to global `env_vars` require restarting the MCP server
-- Check server-specific `env` and `env_file` settings which may override global values
+1. **Skills execution**: When commands are executed via the `exec` tool
+2. **MCP server startup**: When MCP server processes are started
+3. **Variable references**: Supports `${VAR_NAME}` syntax in other configurations
