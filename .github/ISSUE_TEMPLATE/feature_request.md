@@ -1,23 +1,23 @@
 ---
-name: Feature request
-about: Suggest a new idea or improvement
+name: 功能建议
+about: 提出新想法或改进建议
 title: "[Feature]"
 labels: enhancement
 assignees: ''
 
 ---
 
-## 🎯 The Goal / Use Case
+## 目标 / 使用场景
 
-## 💡 Proposed Solution
+## 建议方案
 
-## 🛠 Potential Implementation (Optional)
+## 可能的实现方式（可选）
 
-## 🚦 Impact & Roadmap Alignment
-- [ ] This is a Core Feature
-- [ ] This is a Nice-to-Have / Enhancement
-- [ ] This aligns with the current Roadmap
+## 影响与路线图对齐
+- [ ] 这是核心功能
+- [ ] 这是锦上添花的功能 / 增强
+- [ ] 这与当前路线图一致
 
-## 🔄 Alternatives Considered
+## 替代方案
 
-## 💬 Additional Context
+## 补充说明

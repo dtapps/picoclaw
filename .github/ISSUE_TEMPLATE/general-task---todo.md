@@ -1,26 +1,26 @@
 ---
-name: General Task / Todo
-about: A specific piece of work like doc, refactoring, or maintenance.
+name: 通用任务 / 待办事项
+about: 具体的任务，如文档编写、代码重构或维护工作
 title: "[Task]"
 labels: ''
 assignees: ''
 
 ---
 
-## 📝 Objective
+## 目标
 
-## 📋 To-Do List
-- [ ] Step 1
-- [ ] Step 2
-- [ ] Step 3
+## 待办清单
+- [ ] 步骤 1
+- [ ] 步骤 2
+- [ ] 步骤 3
 
-## 🎯 Definition of Done (Acceptance Criteria)
-- [ ] Documentation is updated in the README/docs folder.
-- [ ] Code follows project linting standards.
-- [ ] (If applicable) Basic tests pass.
+## 完成标准（验收条件）
+- [ ] README/文档文件夹中的文档已更新
+- [ ] 代码符合项目代码规范
+- [ ] （如适用）基础测试通过
 
-## 💡 Context / Motivation
+## 背景 / 动机
 
-## 🔗 Related Issues / PRs
-- Fixes #
-- Relates to #
+## 相关 Issue / PR
+- 修复 #
+- 关联 #
