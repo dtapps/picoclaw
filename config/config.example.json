@@ -311,12 +311,6 @@
         "base_url": "https://qianfan.baidubce.com/v2/ai_search/web_search",
         "max_results": 10
       },
-      "baidu_baike": {
-        "enabled": false,
-        "api_key": "",
-        "base_url": "https://appbuilder.baidu.com/v2/baike/lemma/get_content",
-        "max_results": 10
-      },
       "private_host_whitelist": []
     },
     "cron": {

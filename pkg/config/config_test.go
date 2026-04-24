@@ -2057,9 +2057,6 @@ func TestFilterSensitiveData_AllTokenTypes(t *testing.T) {
 				GLMSearch:   GLMSearchConfig{APIKey: *NewSecureString("glm-search-key")},
 				BaiduSearch: BaiduSearchConfig{APIKey: *NewSecureString("baidu-search-key")},
 			},
-			Encyclopedia: EncyclopediaToolsConfig{
-				BaiduBaike: BaiduBaikeConfig{APIKey: *NewSecureString("baidu-baike-key")},
-			},
 			// Skills tokens
 			Skills: SkillsToolsConfig{
 				Github: SkillsGithubConfig{Token: *NewSecureString("github-token-xyz")},

@@ -24,11 +24,6 @@ const tabs: Array<{
     translationKey: "pages.agent.tools.web_search.title",
     defaultLabel: "Web Search",
   },
-  {
-    key: "encyclopedia-search",
-    translationKey: "pages.agent.tools.encyclopedia_search.title",
-    defaultLabel: "Encyclopedia Search",
-  },
 ]
 
 export function ToolsTabs({ activeTab, onChange }: ToolsTabsProps) {
