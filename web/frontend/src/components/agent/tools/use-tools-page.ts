@@ -4,11 +4,11 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
 import {
-  type WebSearchConfigResponse,
   getTools,
   getWebSearchConfig,
   setToolEnabled,
   updateWebSearchConfig,
+  type WebSearchConfigResponse,
 } from "@/api/tools"
 import { refreshGatewayState } from "@/store/gateway"
 
@@ -22,9 +22,7 @@ export function useToolsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const deferredSearchQuery = useDeferredValue(searchQuery)
   const [statusFilter, setStatusFilter] = useState<ToolStatusFilter>("all")
-  const [expandedWebSearchProvider, setExpandedWebSearchProvider] = useState<
-    string | null
-  >(null)
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [webSearchDraftOverride, setWebSearchDraftOverride] =
     useState<WebSearchConfigResponse | null>(null)
 
@@ -37,10 +35,7 @@ export function useToolsPage() {
     queryFn: getWebSearchConfig,
   })
 
-  const tools = useMemo(
-    () => toolsQuery.data?.tools ?? [],
-    [toolsQuery.data?.tools],
-  )
+  const tools = useMemo(() => toolsQuery.data?.tools ?? [], [toolsQuery.data?.tools])
   const normalizedSearchQuery = deferredSearchQuery.trim().toLowerCase()
   const webSearchDraft = webSearchDraftOverride ?? webSearchQuery.data ?? null
 
@@ -52,9 +47,9 @@ export function useToolsPage() {
         variables.enabled
           ? t("pages.agent.tools.enable_success", "Tool enabled successfully")
           : t(
-              "pages.agent.tools.disable_success",
-              "Tool disabled successfully",
-            ),
+            "pages.agent.tools.disable_success",
+            "Tool disabled successfully",
+          ),
       )
       void queryClient.invalidateQueries({ queryKey: ["tools"] })
       void refreshGatewayState({ force: true })
@@ -90,9 +85,9 @@ export function useToolsPage() {
         error instanceof Error
           ? error.message
           : t(
-              "pages.agent.tools.web_search.save_error",
-              "Failed to save settings",
-            ),
+            "pages.agent.tools.web_search.save_error",
+            "Failed to save settings",
+          ),
       )
     },
   })
@@ -110,9 +105,7 @@ export function useToolsPage() {
       }
 
       if (normalizedSearchQuery) {
-        const matchesName = tool.name
-          .toLowerCase()
-          .includes(normalizedSearchQuery)
+        const matchesName = tool.name.toLowerCase().includes(normalizedSearchQuery)
         const matchesDescription = (tool.description || "")
           .toLowerCase()
           .includes(normalizedSearchQuery)
@@ -134,15 +127,10 @@ export function useToolsPage() {
     }
   }, [normalizedSearchQuery, statusFilter, tools])
 
-  const webSearchProviderLabelMap = useMemo(() => {
+  const providerLabelMap = useMemo(() => {
     const providers = webSearchDraft?.providers ?? []
     return new Map(providers.map((provider) => [provider.id, provider.label]))
   }, [webSearchDraft])
-
-  const currentWebSearchProviderLabel = webSearchDraft?.current_service
-    ? (webSearchProviderLabelMap.get(webSearchDraft.current_service) ??
-      webSearchDraft.current_service)
-    : t("pages.agent.tools.web_search.none", "None")
 
   const pendingToolName = toggleToolMutation.isPending
     ? (toggleToolMutation.variables?.name ?? null)
@@ -167,19 +155,18 @@ export function useToolsPage() {
     }
   }
 
-  const toggleExpandedWebSearchProvider = (providerId: string) => {
-    setExpandedWebSearchProvider((current) =>
+  const toggleExpandedProvider = (providerId: string) => {
+    setExpandedProvider((current) =>
       current === providerId ? null : providerId,
     )
   }
 
   return {
     activeTab,
-    currentWebSearchProviderLabel,
-    expandedWebSearchProvider,
+    expandedProvider,
     groupedTools: groupedTools.groupedTools,
     pendingToolName,
-    webSearchProviderLabelMap,
+    providerLabelMap,
     searchQuery,
     statusFilter,
     tools,
@@ -194,7 +181,7 @@ export function useToolsPage() {
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
-    toggleExpandedWebSearchProvider,
+    toggleExpandedProvider,
     toggleTool,
     updateWebSearchDraft,
   }

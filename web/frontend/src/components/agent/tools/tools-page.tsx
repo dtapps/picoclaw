@@ -1,5 +1,5 @@
+import { useLayoutEffect, useRef } from "react"
 import { useTranslation } from "react-i18next"
-
 import { PageHeader } from "@/components/page-header"
 
 import { ToolLibraryTab } from "./tool-library-tab"
@@ -9,13 +9,13 @@ import { WebSearchTab } from "./web-search-tab"
 
 export function ToolsPage() {
   const { t } = useTranslation()
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null)
   const {
     activeTab,
-    currentWebSearchProviderLabel,
-    expandedWebSearchProvider,
+    expandedProvider,
     groupedTools,
     pendingToolName,
-    webSearchProviderLabelMap,
+    providerLabelMap,
     searchQuery,
     statusFilter,
     tools,
@@ -30,17 +30,24 @@ export function ToolsPage() {
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
-    toggleExpandedWebSearchProvider,
+    toggleExpandedProvider,
     toggleTool,
     updateWebSearchDraft,
   } = useToolsPage()
+
+  useLayoutEffect(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0 })
+  }, [activeTab])
 
   return (
     <div className="bg-background flex h-full flex-col">
       <PageHeader title={t("navigation.tools", "Tools")} />
       <ToolsTabs activeTab={activeTab} onChange={setActiveTab} />
 
-      <div className="flex-1 overflow-auto px-6 py-6 pb-20">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 overflow-auto px-6 py-6 pb-20"
+      >
         <div className="mx-auto w-full max-w-6xl">
           {activeTab === "library" ? (
             <ToolLibraryTab
@@ -54,19 +61,19 @@ export function ToolsPage() {
               pendingToolName={pendingToolName}
               onSearchQueryChange={setSearchQuery}
               onStatusFilterChange={setStatusFilter}
+              onOpenWebSearchSettings={() => setActiveTab("web-search")}
               onToggleTool={toggleTool}
             />
           ) : (
             <WebSearchTab
               draft={webSearchDraft}
-              currentProviderLabel={currentWebSearchProviderLabel}
-              providerLabelMap={webSearchProviderLabelMap}
-              expandedProvider={expandedWebSearchProvider}
+              providerLabelMap={providerLabelMap}
+              expandedProvider={expandedProvider}
               isLoading={isWebSearchLoading}
               hasError={hasWebSearchError}
               isSaving={isWebSearchSaving}
               onSave={saveWebSearchConfig}
-              onToggleProviderExpand={toggleExpandedWebSearchProvider}
+              onToggleProviderExpand={toggleExpandedProvider}
               onUpdateDraft={updateWebSearchDraft}
             />
           )}
