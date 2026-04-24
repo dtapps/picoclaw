@@ -763,31 +763,6 @@ type WebToolsConfig struct {
 	PrivateHostWhitelist FlexibleStringSlice `yaml:"-" json:"private_host_whitelist,omitempty" env:"PICOCLAW_TOOLS_WEB_PRIVATE_HOST_WHITELIST"`
 }
 
-type BaiduBaikeConfig struct {
-	Enabled    bool         `json:"enabled"          yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_ENABLED"`
-	APIKey     SecureString `json:"api_key,omitzero" yaml:"api_key,omitempty" env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_API_KEY"`
-	BaseURL    string       `json:"base_url"         yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_BASE_URL"`
-	MaxResults int          `json:"max_results"      yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_BAIDU_BAIKE_MAX_RESULTS"`
-}
-
-type EncyclopediaToolsConfig struct {
-	ToolConfig `                 yaml:"-"                     envPrefix:"PICOCLAW_TOOLS_WEB_"`
-	BaiduBaike BaiduBaikeConfig `yaml:"baidu_baike,omitempty"                                 json:"baidu_baike"`
-	Provider   string           `yaml:"-"                                                     json:"provider,omitempty" env:"PICOCLAW_TOOLS_WEB_PROVIDER"`
-	// PreferNative controls whether to use provider-native web search when
-	// the active LLM supports it (e.g. OpenAI web_search_preview). When true,
-	// the client-side web_search tool is hidden to avoid duplicate search surfaces,
-	// and the provider's built-in search is used instead. Falls back to client-side
-	// search when the provider does not support native search.
-	PreferNative bool `yaml:"-" json:"prefer_native" env:"PICOCLAW_TOOLS_WEB_PREFER_NATIVE"`
-	// Proxy is an optional proxy URL for web tools (http/https/socks5/socks5h).
-	// For authenticated proxies, prefer HTTP_PROXY/HTTPS_PROXY env vars instead of embedding credentials in config.
-	Proxy                string              `yaml:"-" json:"proxy,omitempty"                  env:"PICOCLAW_TOOLS_WEB_PROXY"`
-	FetchLimitBytes      int64               `yaml:"-" json:"fetch_limit_bytes,omitempty"      env:"PICOCLAW_TOOLS_WEB_FETCH_LIMIT_BYTES"`
-	Format               string              `yaml:"-" json:"format,omitempty"                 env:"PICOCLAW_TOOLS_WEB_FORMAT"`
-	PrivateHostWhitelist FlexibleStringSlice `yaml:"-" json:"private_host_whitelist,omitempty" env:"PICOCLAW_TOOLS_WEB_PRIVATE_HOST_WHITELIST"`
-}
-
 type CronToolsConfig struct {
 	ToolConfig         `     envPrefix:"PICOCLAW_TOOLS_CRON_"`
 	ExecTimeoutMinutes int  `                                 json:"exec_timeout_minutes" env:"PICOCLAW_TOOLS_CRON_EXEC_TIMEOUT_MINUTES"` // 0 means no timeout
@@ -850,31 +825,30 @@ type ToolsConfig struct {
 	// FilterMinLength is the minimum content length required for filtering.
 	// Content shorter than this will be returned unchanged for performance.
 	// Default: 8
-	FilterMinLength int                     `json:"filter_min_length" yaml:"-"                      env:"PICOCLAW_TOOLS_FILTER_MIN_LENGTH"`
-	Web             WebToolsConfig          `json:"web"               yaml:"web,omitempty"`
-	Encyclopedia    EncyclopediaToolsConfig `json:"encyclopedia"      yaml:"encyclopedia,omitempty"`
-	Cron            CronToolsConfig         `json:"cron"              yaml:"-"`
-	Exec            ExecConfig              `json:"exec"              yaml:"-"`
-	Skills          SkillsToolsConfig       `json:"skills"            yaml:"skills,omitempty"`
-	MediaCleanup    MediaCleanupConfig      `json:"media_cleanup"     yaml:"-"`
-	MCP             MCPConfig               `json:"mcp"               yaml:"-"`
-	AppendFile      ToolConfig              `json:"append_file"       yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
-	EditFile        ToolConfig              `json:"edit_file"         yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
-	FindSkills      ToolConfig              `json:"find_skills"       yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
-	I2C             ToolConfig              `json:"i2c"               yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_I2C_"`
-	InstallSkill    ToolConfig              `json:"install_skill"     yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
-	ListDir         ToolConfig              `json:"list_dir"          yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
-	Message         ToolConfig              `json:"message"           yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
-	ReadFile        ReadFileToolConfig      `json:"read_file"         yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
-	SendFile        ToolConfig              `json:"send_file"         yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
-	SendTTS         ToolConfig              `json:"send_tts"          yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SEND_TTS_"`
-	Spawn           ToolConfig              `json:"spawn"             yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
-	SpawnStatus     ToolConfig              `json:"spawn_status"      yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
-	SPI             ToolConfig              `json:"spi"               yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SPI_"`
-	Subagent        ToolConfig              `json:"subagent"          yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
-	WebFetch        ToolConfig              `json:"web_fetch"         yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
-	WriteFile       ToolConfig              `json:"write_file"        yaml:"-"                                                             envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
-	Browser         BrowserToolConfig       `json:"browser"           yaml:"browser,omitempty"`
+	FilterMinLength int                `json:"filter_min_length" yaml:"-"                 env:"PICOCLAW_TOOLS_FILTER_MIN_LENGTH"`
+	Web             WebToolsConfig     `json:"web"               yaml:"web,omitempty"`
+	Cron            CronToolsConfig    `json:"cron"              yaml:"-"`
+	Exec            ExecConfig         `json:"exec"              yaml:"-"`
+	Skills          SkillsToolsConfig  `json:"skills"            yaml:"skills,omitempty"`
+	MediaCleanup    MediaCleanupConfig `json:"media_cleanup"     yaml:"-"`
+	MCP             MCPConfig          `json:"mcp"               yaml:"-"`
+	AppendFile      ToolConfig         `json:"append_file"       yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
+	EditFile        ToolConfig         `json:"edit_file"         yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
+	FindSkills      ToolConfig         `json:"find_skills"       yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
+	I2C             ToolConfig         `json:"i2c"               yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_I2C_"`
+	InstallSkill    ToolConfig         `json:"install_skill"     yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
+	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
+	Message         ToolConfig         `json:"message"           yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+	ReadFile        ReadFileToolConfig `json:"read_file"         yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
+	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
+	SendTTS         ToolConfig         `json:"send_tts"          yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SEND_TTS_"`
+	Spawn           ToolConfig         `json:"spawn"             yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
+	SpawnStatus     ToolConfig         `json:"spawn_status"      yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
+	SPI             ToolConfig         `json:"spi"               yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SPI_"`
+	Subagent        ToolConfig         `json:"subagent"          yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
+	WebFetch        ToolConfig         `json:"web_fetch"         yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
+	WriteFile       ToolConfig         `json:"write_file"        yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	Browser         BrowserToolConfig  `json:"browser"           yaml:"browser,omitempty"`
 }
 
 // IsFilterSensitiveDataEnabled returns true if sensitive data filtering is enabled
@@ -1651,8 +1625,6 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.WriteFile.Enabled
 	case "mcp":
 		return t.MCP.Enabled
-	case "encyclopedia_search":
-		return t.Encyclopedia.Enabled
 	case "browser":
 		return t.Browser.Enabled
 	default:

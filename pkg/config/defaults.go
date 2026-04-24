@@ -349,21 +349,6 @@ func DefaultConfig() *Config {
 					MaxResults: 10,
 				},
 			},
-			Encyclopedia: EncyclopediaToolsConfig{
-				ToolConfig: ToolConfig{
-					Enabled: true,
-				},
-				Provider:        "auto",
-				PreferNative:    true,
-				Proxy:           "",
-				FetchLimitBytes: 10 * 1024 * 1024, // 10MB by default
-				Format:          "plaintext",
-				BaiduBaike: BaiduBaikeConfig{
-					Enabled:    false,
-					BaseURL:    "https://appbuilder.baidu.com/v2/baike/lemma/get_content",
-					MaxResults: 10,
-				},
-			},
 			Cron: CronToolsConfig{
 				ToolConfig: ToolConfig{
 					Enabled: true,

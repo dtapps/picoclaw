@@ -4,13 +4,10 @@ import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
 import {
-  type EncyclopediaSearchConfigResponse,
   type WebSearchConfigResponse,
-  getEncyclopediaSearchConfig,
   getTools,
   getWebSearchConfig,
   setToolEnabled,
-  updateEncyclopediaSearchConfig,
   updateWebSearchConfig,
 } from "@/api/tools"
 import { refreshGatewayState } from "@/store/gateway"
@@ -28,14 +25,8 @@ export function useToolsPage() {
   const [expandedWebSearchProvider, setExpandedWebSearchProvider] = useState<
     string | null
   >(null)
-  const [
-    expandedEncyclopediaSearchProvider,
-    setExpandedEncyclopediaSearchProvider,
-  ] = useState<string | null>(null)
   const [webSearchDraftOverride, setWebSearchDraftOverride] =
     useState<WebSearchConfigResponse | null>(null)
-  const [encyclopediaSearchDraftOverride, setEncyclopediaSearchDraftOverride] =
-    useState<EncyclopediaSearchConfigResponse | null>(null)
 
   const toolsQuery = useQuery({
     queryKey: ["tools"],
@@ -45,10 +36,6 @@ export function useToolsPage() {
     queryKey: ["tools", "web-search-config"],
     queryFn: getWebSearchConfig,
   })
-  const encyclopediaSearchQuery = useQuery({
-    queryKey: ["tools", "encyclopedia-search-config"],
-    queryFn: getEncyclopediaSearchConfig,
-  })
 
   const tools = useMemo(
     () => toolsQuery.data?.tools ?? [],
@@ -56,8 +43,6 @@ export function useToolsPage() {
   )
   const normalizedSearchQuery = deferredSearchQuery.trim().toLowerCase()
   const webSearchDraft = webSearchDraftOverride ?? webSearchQuery.data ?? null
-  const encyclopediaSearchDraft =
-    encyclopediaSearchDraftOverride ?? encyclopediaSearchQuery.data ?? null
 
   const toggleToolMutation = useMutation({
     mutationFn: async ({ name, enabled }: { name: string; enabled: boolean }) =>
@@ -112,38 +97,6 @@ export function useToolsPage() {
     },
   })
 
-  const saveEncyclopediaSearchMutation = useMutation({
-    mutationFn: updateEncyclopediaSearchConfig,
-    onSuccess: (updatedConfig) => {
-      queryClient.setQueryData(
-        ["tools", "encyclopedia-search-config"],
-        updatedConfig,
-      )
-      setEncyclopediaSearchDraftOverride(null)
-      toast.success(
-        t(
-          "pages.agent.tools.encyclopedia_search.save_success",
-          "Settings saved successfully",
-        ),
-      )
-      void queryClient.invalidateQueries({
-        queryKey: ["tools", "encyclopedia-search-config"],
-      })
-      void queryClient.invalidateQueries({ queryKey: ["tools"] })
-      void refreshGatewayState({ force: true })
-    },
-    onError: (error) => {
-      toast.error(
-        error instanceof Error
-          ? error.message
-          : t(
-              "pages.agent.tools.encyclopedia_search.save_error",
-              "Failed to save settings",
-            ),
-      )
-    },
-  })
-
   const groupedTools = useMemo<{
     groupedTools: GroupedTools
     totalFilteredCount: number
@@ -186,22 +139,10 @@ export function useToolsPage() {
     return new Map(providers.map((provider) => [provider.id, provider.label]))
   }, [webSearchDraft])
 
-  const encyclopediaSearchProviderLabelMap = useMemo(() => {
-    const providers = encyclopediaSearchDraft?.providers ?? []
-    return new Map(providers.map((provider) => [provider.id, provider.label]))
-  }, [encyclopediaSearchDraft])
-
   const currentWebSearchProviderLabel = webSearchDraft?.current_service
     ? (webSearchProviderLabelMap.get(webSearchDraft.current_service) ??
       webSearchDraft.current_service)
     : t("pages.agent.tools.web_search.none", "None")
-
-  const currentEncyclopediaSearchProviderLabel =
-    encyclopediaSearchDraft?.current_service
-      ? (encyclopediaSearchProviderLabelMap.get(
-          encyclopediaSearchDraft.current_service,
-        ) ?? encyclopediaSearchDraft.current_service)
-      : t("pages.agent.tools.encyclopedia_search.none", "None")
 
   const pendingToolName = toggleToolMutation.isPending
     ? (toggleToolMutation.variables?.name ?? null)
@@ -216,17 +157,6 @@ export function useToolsPage() {
     })
   }
 
-  const updateEncyclopediaSearchDraft = (
-    updater: (
-      current: EncyclopediaSearchConfigResponse,
-    ) => EncyclopediaSearchConfigResponse,
-  ) => {
-    setEncyclopediaSearchDraftOverride((current) => {
-      const draft = current ?? encyclopediaSearchQuery.data
-      return draft ? updater(draft) : current
-    })
-  }
-
   const toggleTool = (name: string, enabled: boolean) => {
     toggleToolMutation.mutate({ name, enabled })
   }
@@ -237,20 +167,8 @@ export function useToolsPage() {
     }
   }
 
-  const saveEncyclopediaSearchConfig = () => {
-    if (encyclopediaSearchDraft) {
-      saveEncyclopediaSearchMutation.mutate(encyclopediaSearchDraft)
-    }
-  }
-
   const toggleExpandedWebSearchProvider = (providerId: string) => {
     setExpandedWebSearchProvider((current) =>
-      current === providerId ? null : providerId,
-    )
-  }
-
-  const toggleExpandedEncyclopediaSearchProvider = (providerId: string) => {
-    setExpandedEncyclopediaSearchProvider((current) =>
       current === providerId ? null : providerId,
     )
   }
@@ -258,36 +176,26 @@ export function useToolsPage() {
   return {
     activeTab,
     currentWebSearchProviderLabel,
-    currentEncyclopediaSearchProviderLabel,
     expandedWebSearchProvider,
-    expandedEncyclopediaSearchProvider,
     groupedTools: groupedTools.groupedTools,
     pendingToolName,
     webSearchProviderLabelMap,
-    encyclopediaSearchProviderLabelMap,
     searchQuery,
     statusFilter,
     tools,
     totalFilteredCount: groupedTools.totalFilteredCount,
     webSearchDraft,
-    encyclopediaSearchDraft,
     hasToolsError: toolsQuery.error != null,
     hasWebSearchError: webSearchQuery.error != null,
-    hasEncyclopediaSearchError: encyclopediaSearchQuery.error != null,
     isToolsLoading: toolsQuery.isLoading,
     isWebSearchLoading: webSearchQuery.isLoading,
-    isEncyclopediaSearchLoading: encyclopediaSearchQuery.isLoading,
     isWebSearchSaving: saveWebSearchMutation.isPending,
-    isEncyclopediaSearchSaving: saveEncyclopediaSearchMutation.isPending,
     setActiveTab,
     setSearchQuery,
     setStatusFilter,
     saveWebSearchConfig,
-    saveEncyclopediaSearchConfig,
     toggleExpandedWebSearchProvider,
-    toggleExpandedEncyclopediaSearchProvider,
     toggleTool,
     updateWebSearchDraft,
-    updateEncyclopediaSearchDraft,
   }
 }
