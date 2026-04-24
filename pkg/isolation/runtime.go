@@ -11,6 +11,7 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // MountRule describes a source-to-target mount exposed inside the Linux
@@ -62,11 +63,20 @@ func Configure(cfg *config.Config) {
 		defaults := config.DefaultConfig()
 		currentIsolation = defaults.Isolation
 		currentEnvVars = defaults.EnvVars
+		logger.InfoC("isolation", "Configure called with nil config, 使用默认配置")
 		return
 	}
 
 	currentIsolation = cfg.Isolation
 	currentEnvVars = cfg.EnvVars
+
+	// 打印配置的环境变量
+	enabledVars := cfg.EnvVars.GetEnabledVars()
+	logger.InfoCF("isolation", "Configure 被调用，env_vars 配置",
+		map[string]any{
+			"count": len(enabledVars),
+			"keys":  getKeys(enabledVars),
+		})
 }
 
 // CurrentConfig 返回当前活动的隔离设置。
@@ -168,6 +178,16 @@ func ApplyUserEnv(cmd *exec.Cmd, root string) {
 	// 从配置注入 env_vars
 	envVars := CurrentEnvVars()
 	enabledVars := envVars.GetEnabledVars()
+
+	// 打印从配置加载的环境变量
+	if len(enabledVars) > 0 {
+		logger.InfoCF("isolation", "正在向命令注入 env_vars 环境变量",
+			map[string]any{
+				"count": len(enabledVars),
+				"keys":  getKeys(enabledVars),
+			})
+	}
+
 	for k, v := range enabledVars {
 		envMap[k] = v
 	}
@@ -192,6 +212,25 @@ func ApplyUserEnv(cmd *exec.Cmd, root string) {
 		env = append(env, fmt.Sprintf("%s=%s", k, v))
 	}
 	cmd.Env = env
+
+	// 打印最终设置的环境变量数量和部分 key
+	if len(enabledVars) > 0 {
+		logger.InfoCF("isolation", "命令环境变量准备完成",
+			map[string]any{
+				"total_vars": len(envMap),
+				"cmd_path":   cmd.Path,
+				"cmd_args":   cmd.Args,
+			})
+	}
+}
+
+// getKeys 返回 map 的所有 key 列表
+func getKeys(m map[string]string) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // ValidateExposePaths verifies the user-supplied path exposure rules before a
@@ -401,6 +440,10 @@ func Start(cmd *exec.Cmd) error {
 	if err := PrepareCommand(cmd); err != nil {
 		return err
 	}
+
+	// 打印当前命令的环境变量
+	logCommandEnv(cmd, "Start")
+
 	if err := cmd.Start(); err != nil {
 		cleanupPendingPlatformResources(cmd)
 		return err
@@ -428,6 +471,10 @@ func Run(cmd *exec.Cmd) error {
 	if err := PrepareCommand(cmd); err != nil {
 		return err
 	}
+
+	// 打印当前命令的环境变量
+	logCommandEnv(cmd, "Run")
+
 	if err := cmd.Start(); err != nil {
 		cleanupPendingPlatformResources(cmd)
 		return err
@@ -447,6 +494,27 @@ func Run(cmd *exec.Cmd) error {
 		return err
 	}
 	return cmd.Wait()
+}
+
+// logCommandEnv 打印命令的环境变量
+func logCommandEnv(cmd *exec.Cmd, caller string) {
+	if cmd == nil {
+		return
+	}
+
+	envVars := CurrentEnvVars()
+	enabledVars := envVars.GetEnabledVars()
+
+	// 只打印从 env_vars 配置注入的变量
+	if len(enabledVars) > 0 {
+		logger.InfoCF("isolation", "命令执行环境变量",
+			map[string]any{
+				"caller":    caller,
+				"cmd":       cmd.Path,
+				"env_count": len(enabledVars),
+				"env_keys":  getKeys(enabledVars),
+			})
+	}
 }
 
 func terminateStartedCommand(cmd *exec.Cmd) {

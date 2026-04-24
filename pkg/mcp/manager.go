@@ -16,6 +16,7 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/isolation"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -353,6 +354,17 @@ func (m *Manager) ConnectServer(
 					"var_count": len(envVars),
 				})
 		}
+
+		// 从全局配置注入 env_vars
+		globalEnvVars := isolation.CurrentEnvVars()
+		for k, v := range globalEnvVars.GetEnabledVars() {
+			envMap[k] = v
+		}
+		logger.InfoCF("mcp", "添加全局配置 env_vars",
+			map[string]any{
+				"server":    name,
+				"var_count": len(globalEnvVars.GetEnabledVars()),
+			})
 
 		// Environment variables from server config override all others (highest priority)
 		for k, v := range cfg.Env {
