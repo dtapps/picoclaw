@@ -109,6 +109,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// WeCom QR login flow
 	h.registerWecomRoutes(mux)
 
+	// MCP 管理
+	h.registerMCPRoutes(mux)
+
 	// 定时任务管理
 	h.registerCronRoutes(mux)
 

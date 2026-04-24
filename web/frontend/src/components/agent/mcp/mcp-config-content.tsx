@@ -2,7 +2,7 @@ import { IconPlus, IconTrash } from "@tabler/icons-react"
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
 
-import type { MCPConfigResponse } from "@/api/tools"
+import type { MCPConfigResponse } from "@/api/mcp"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch"
 
 import type { MCPDraftUpdater } from "./types"
 
-interface MCPTabProps {
+interface MCPConfigContentProps {
   draft: MCPConfigResponse | null
   isLoading: boolean
   hasError: boolean
@@ -36,14 +36,14 @@ function isDiscoveryValid(discovery: MCPConfigResponse["discovery"]): boolean {
   return discovery.use_bm25 || discovery.use_regex
 }
 
-export function MCPTab({
+export function MCPConfigContent({
   draft,
   isLoading,
   hasError,
   isSaving,
   onSave,
   onUpdateDraft,
-}: MCPTabProps) {
+}: MCPConfigContentProps) {
   const { t } = useTranslation()
 
   const isValid = draft ? isDiscoveryValid(draft.discovery) : true
@@ -54,7 +54,7 @@ export function MCPTab({
         <div className="py-20 text-center">
           <p className="text-destructive font-medium">
             {t(
-              "pages.agent.tools.mcp.load_error",
+              "pages.agent.mcp.load_error",
               "Failed to load MCP configuration",
             )}
           </p>
@@ -67,7 +67,7 @@ export function MCPTab({
             <div className="max-w-xl space-y-3">
               <div className="flex items-center gap-3">
                 <h1 className="text-foreground/90 text-2xl font-semibold tracking-tight">
-                  {t("pages.agent.tools.mcp.title", "MCP Configuration")}
+                  {t("pages.agent.mcp.title", "MCP Configuration")}
                 </h1>
                 <div
                   className={`rounded-full px-2.5 py-0.5 text-[11px] font-semibold tracking-wide uppercase ${
@@ -77,13 +77,13 @@ export function MCPTab({
                   }`}
                 >
                   {draft.enabled
-                    ? t("pages.agent.tools.mcp.enabled", "Enabled")
-                    : t("pages.agent.tools.mcp.disabled", "Disabled")}
+                    ? t("pages.agent.mcp.enabled", "Enabled")
+                    : t("pages.agent.mcp.disabled", "Disabled")}
                 </div>
               </div>
               <p className="text-muted-foreground/80 text-[14px] leading-relaxed">
                 {t(
-                  "pages.agent.tools.mcp.description",
+                  "pages.agent.mcp.description",
                   "Configure MCP (Model Context Protocol) servers to extend agent capabilities with external tools.",
                 )}
               </p>
@@ -94,7 +94,7 @@ export function MCPTab({
               disabled={isSaving || !isValid}
               className="h-10 shrink-0 rounded-xl px-6 shadow-sm transition-all active:scale-95"
             >
-              {t("pages.agent.tools.mcp.save", "Save Changes")}
+              {t("pages.agent.mcp.save", "Save Changes")}
             </Button>
           </div>
 
@@ -122,18 +122,18 @@ function GeneralSettings({
     <Card className="border-border/60 overflow-hidden rounded-2xl">
       <CardHeader className="bg-muted/30 border-border/60 border-b px-6 py-4">
         <CardTitle className="text-foreground/90 text-base font-semibold">
-          {t("pages.agent.tools.mcp.general.title", "General Settings")}
+          {t("pages.agent.mcp.general.title", "General Settings")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <Label className="text-foreground/90 text-sm font-medium">
-              {t("pages.agent.tools.mcp.general.enable", "Enable MCP")}
+              {t("pages.agent.mcp.general.enable", "Enable MCP")}
             </Label>
             <p className="text-muted-foreground text-xs">
               {t(
-                "pages.agent.tools.mcp.general.enable_description",
+                "pages.agent.mcp.general.enable_description",
                 "Enable MCP to allow agents to use external tools via Model Context Protocol.",
               )}
             </p>
@@ -152,13 +152,13 @@ function GeneralSettings({
         <div className="space-y-3">
           <Label className="text-foreground/90 text-sm font-medium">
             {t(
-              "pages.agent.tools.mcp.general.max_inline_text_chars",
+              "pages.agent.mcp.general.max_inline_text_chars",
               "Max Inline Text Chars",
             )}
           </Label>
           <p className="text-muted-foreground text-xs">
             {t(
-              "pages.agent.tools.mcp.general.max_inline_text_chars_description",
+              "pages.agent.mcp.general.max_inline_text_chars_description",
               "Maximum text length to display inline before saving as artifact.",
             )}
           </p>
@@ -198,18 +198,18 @@ function DiscoverySettings({
     <Card className="border-border/60 overflow-hidden rounded-2xl">
       <CardHeader className="bg-muted/30 border-border/60 border-b px-6 py-4">
         <CardTitle className="text-foreground/90 text-base font-semibold">
-          {t("pages.agent.tools.mcp.discovery.title", "Discovery Settings")}
+          {t("pages.agent.mcp.discovery.title", "Discovery Settings")}
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <Label className="text-foreground/90 text-sm font-medium">
-              {t("pages.agent.tools.mcp.discovery.enable", "Enable Discovery")}
+              {t("pages.agent.mcp.discovery.enable", "Enable Discovery")}
             </Label>
             <p className="text-muted-foreground text-xs">
               {t(
-                "pages.agent.tools.mcp.discovery.enable_description",
+                "pages.agent.mcp.discovery.enable_description",
                 "When enabled, all MCP tools are hidden and loaded on-demand via search. When disabled, all tools are loaded into context.",
               )}
             </p>
@@ -228,7 +228,7 @@ function DiscoverySettings({
         {showEngineWarning && (
           <div className="bg-destructive/10 text-destructive rounded-lg px-4 py-3 text-sm">
             {t(
-              "pages.agent.tools.mcp.discovery.engine_warning",
+              "pages.agent.mcp.discovery.engine_warning",
               "Warning: At least one search engine (BM25 or Regex) must be enabled when Discovery is enabled.",
             )}
           </div>
@@ -237,11 +237,11 @@ function DiscoverySettings({
         <div className="grid gap-6 md:grid-cols-2">
           <div className="space-y-3">
             <Label className="text-foreground/90 text-sm font-medium">
-              {t("pages.agent.tools.mcp.discovery.ttl", "TTL")}
+              {t("pages.agent.mcp.discovery.ttl", "TTL")}
             </Label>
             <p className="text-muted-foreground text-xs">
               {t(
-                "pages.agent.tools.mcp.discovery.ttl_description",
+                "pages.agent.mcp.discovery.ttl_description",
                 "Number of conversation rounds to keep discovered tools unlocked.",
               )}
             </p>
@@ -266,13 +266,13 @@ function DiscoverySettings({
           <div className="space-y-3">
             <Label className="text-foreground/90 text-sm font-medium">
               {t(
-                "pages.agent.tools.mcp.discovery.max_search_results",
+                "pages.agent.mcp.discovery.max_search_results",
                 "Max Search Results",
               )}
             </Label>
             <p className="text-muted-foreground text-xs">
               {t(
-                "pages.agent.tools.mcp.discovery.max_search_results_description",
+                "pages.agent.mcp.discovery.max_search_results_description",
                 "Maximum number of tools to return per search.",
               )}
             </p>
@@ -299,11 +299,11 @@ function DiscoverySettings({
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="text-foreground/90 text-sm font-medium">
-                {t("pages.agent.tools.mcp.discovery.use_bm25", "Use BM25")}
+                {t("pages.agent.mcp.discovery.use_bm25", "Use BM25")}
               </Label>
               <p className="text-muted-foreground text-xs">
                 {t(
-                  "pages.agent.tools.mcp.discovery.use_bm25_description",
+                  "pages.agent.mcp.discovery.use_bm25_description",
                   "Enable natural language/keyword search for tools. Consumes more resources than regex search.",
                 )}
               </p>
@@ -322,11 +322,11 @@ function DiscoverySettings({
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <Label className="text-foreground/90 text-sm font-medium">
-                {t("pages.agent.tools.mcp.discovery.use_regex", "Use Regex")}
+                {t("pages.agent.mcp.discovery.use_regex", "Use Regex")}
               </Label>
               <p className="text-muted-foreground text-xs">
                 {t(
-                  "pages.agent.tools.mcp.discovery.use_regex_description",
+                  "pages.agent.mcp.discovery.use_regex_description",
                   "Enable regex pattern search for tools.",
                 )}
               </p>
@@ -401,7 +401,7 @@ function ServersList({
       <Card className="border-border/60 overflow-hidden rounded-2xl">
         <CardHeader className="bg-muted/30 border-border/60 flex flex-row items-center justify-between border-b px-6 py-4">
           <CardTitle className="text-foreground/90 text-base font-semibold">
-            {t("pages.agent.tools.mcp.servers.title", "MCP Servers")}
+            {t("pages.agent.mcp.servers.title", "MCP Servers")}
           </CardTitle>
           <Button
             onClick={addServer}
@@ -410,14 +410,14 @@ function ServersList({
             className="h-8 gap-1.5 rounded-lg"
           >
             <IconPlus className="size-4" />
-            {t("pages.agent.tools.mcp.servers.add", "Add Server")}
+            {t("pages.agent.mcp.servers.add", "Add Server")}
           </Button>
         </CardHeader>
         <CardContent className="space-y-4 p-6">
           {draft.servers.length === 0 ? (
             <div className="text-muted-foreground py-8 text-center text-sm">
               {t(
-                "pages.agent.tools.mcp.servers.empty",
+                "pages.agent.mcp.servers.empty",
                 'No MCP servers configured. Click "Add Server" to add one.',
               )}
             </div>
@@ -442,11 +442,11 @@ function ServersList({
         <AlertDialogContent size="sm">
           <AlertDialogHeader>
             <AlertDialogTitle>
-              {t("pages.agent.tools.mcp.servers.delete_title", "Delete Server")}
+              {t("pages.agent.mcp.servers.delete_title", "Delete Server")}
             </AlertDialogTitle>
             <AlertDialogDescription>
               {t(
-                "pages.agent.tools.mcp.servers.delete_description",
+                "pages.agent.mcp.servers.delete_description",
                 'Are you sure you want to delete the server "{{name}}"? This action cannot be undone.',
                 { name: serverToDelete?.name },
               )}
@@ -463,7 +463,7 @@ function ServersList({
               }
             >
               <IconTrash className="mr-2 size-4" />
-              {t("pages.agent.tools.mcp.servers.delete_confirm", "Delete")}
+              {t("pages.agent.mcp.servers.delete_confirm", "Delete")}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -491,7 +491,7 @@ function ServerCard({
         <div className="flex items-center gap-3">
           <h4 className="text-foreground/90 text-sm font-medium">
             {t(
-              "pages.agent.tools.mcp.servers.server_title",
+              "pages.agent.mcp.servers.server_title",
               "Server {{index}}",
               {
                 index: index + 1,
@@ -506,8 +506,8 @@ function ServerCard({
             }`}
           >
             {server.enabled
-              ? t("pages.agent.tools.mcp.servers.enabled", "Enabled")
-              : t("pages.agent.tools.mcp.servers.disabled", "Disabled")}
+              ? t("pages.agent.mcp.servers.enabled", "Enabled")
+              : t("pages.agent.mcp.servers.disabled", "Disabled")}
           </div>
         </div>
         <Button
@@ -524,11 +524,11 @@ function ServerCard({
         <div className="flex items-center justify-between md:col-span-2">
           <div className="space-y-1">
             <Label className="text-foreground/90 text-sm font-medium">
-              {t("pages.agent.tools.mcp.servers.enable", "Enable Server")}
+              {t("pages.agent.mcp.servers.enable", "Enable Server")}
             </Label>
             <p className="text-muted-foreground text-xs">
               {t(
-                "pages.agent.tools.mcp.servers.enable_description",
+                "pages.agent.mcp.servers.enable_description",
                 "Enable this MCP server to make it available to agents.",
               )}
             </p>
@@ -541,7 +541,7 @@ function ServerCard({
 
         <div className="space-y-2">
           <Label className="text-xs font-medium">
-            {t("pages.agent.tools.mcp.servers.name", "Name")}
+            {t("pages.agent.mcp.servers.name", "Name")}
           </Label>
           <Input
             value={server.name}
@@ -553,7 +553,7 @@ function ServerCard({
 
         <div className="space-y-2">
           <Label className="text-xs font-medium">
-            {t("pages.agent.tools.mcp.servers.type", "Type")}
+            {t("pages.agent.mcp.servers.type", "Type")}
           </Label>
           <select
             value={server.type || "stdio"}
@@ -570,7 +570,7 @@ function ServerCard({
           <>
             <div className="space-y-2">
               <Label className="text-xs font-medium">
-                {t("pages.agent.tools.mcp.servers.command", "Command")}
+                {t("pages.agent.mcp.servers.command", "Command")}
               </Label>
               <Input
                 value={server.command || ""}
@@ -582,7 +582,7 @@ function ServerCard({
 
             <div className="space-y-2">
               <Label className="text-xs font-medium">
-                {t("pages.agent.tools.mcp.servers.args", "Arguments")}
+                {t("pages.agent.mcp.servers.args", "Arguments")}
               </Label>
               <Input
                 value={(server.args || []).join(" ")}
@@ -601,13 +601,13 @@ function ServerCard({
             <div className="space-y-2 md:col-span-2">
               <Label className="text-xs font-medium">
                 {t(
-                  "pages.agent.tools.mcp.servers.env",
+                  "pages.agent.mcp.servers.env",
                   "Environment Variables",
                 )}
               </Label>
               <p className="text-muted-foreground text-xs">
                 {t(
-                  "pages.agent.tools.mcp.servers.env_description",
+                  "pages.agent.mcp.servers.env_description",
                   "Environment variables for the server process (one per line, format: KEY=value)",
                 )}
               </p>
@@ -636,7 +636,7 @@ function ServerCard({
           <>
             <div className="space-y-2 md:col-span-2">
               <Label className="text-xs font-medium">
-                {t("pages.agent.tools.mcp.servers.url", "URL")}
+                {t("pages.agent.mcp.servers.url", "URL")}
               </Label>
               <Input
                 value={server.url || ""}
@@ -647,11 +647,11 @@ function ServerCard({
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label className="text-xs font-medium">
-                {t("pages.agent.tools.mcp.servers.headers", "Headers")}
+                {t("pages.agent.mcp.servers.headers", "Headers")}
               </Label>
               <p className="text-muted-foreground text-xs">
                 {t(
-                  "pages.agent.tools.mcp.servers.headers_description",
+                  "pages.agent.mcp.servers.headers_description",
                   "HTTP headers to send with requests (one per line, format: Key: Value)",
                 )}
               </p>
@@ -680,7 +680,7 @@ function ServerCard({
           <div className="space-y-2 md:col-span-2">
             <Label className="text-xs font-medium">
               {t(
-                "pages.agent.tools.mcp.servers.env_file",
+                "pages.agent.mcp.servers.env_file",
                 "Env File (optional)",
               )}
             </Label>
