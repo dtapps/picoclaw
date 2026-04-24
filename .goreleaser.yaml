@@ -40,7 +40,7 @@ builds:
       - arm64
       # - riscv64
       # - loong64
-      # - arm
+      - arm
       # - s390x
       # - mipsle
     goarm:
@@ -49,9 +49,9 @@ builds:
     gomips:
       - softfloat
     main: ./cmd/picoclaw
-    # ignore:
-    #   - goos: windows
-    #     goarch: arm
+    ignore:
+      - goos: windows
+        goarch: arm
     #   - goos: netbsd
     #     goarch: s390x
     #   - goos: netbsd
@@ -85,7 +85,7 @@ builds:
       - arm64
       # - riscv64
       # - loong64
-      # - arm
+      - arm
       # - s390x
       # - mipsle
     goarm:
@@ -94,9 +94,9 @@ builds:
     gomips:
       - softfloat
     main: ./web/backend
-    # ignore:
-    #   - goos: windows
-    #     goarch: arm
+    ignore:
+      - goos: windows
+        goarch: arm
     #   - goos: netbsd
     #     goarch: s390x
     #   - goos: netbsd
@@ -130,7 +130,7 @@ builds:
       - arm64
       # - riscv64
       # - loong64
-      # - arm
+      - arm
       # - s390x
       # - mipsle
     goarm:
@@ -139,9 +139,9 @@ builds:
     gomips:
       - softfloat
     main: ./cmd/picoclaw-launcher-tui
-    # ignore:
-    #   - goos: windows
-    #     goarch: arm
+    ignore:
+      - goos: windows
+        goarch: arm
     #   - goos: netbsd
     #     goarch: s390x
     #   - goos: netbsd
@@ -235,7 +235,7 @@ nfpms:
     description: picoclaw - a tool for managing and running tasks
     license: MIT
     formats:
-      # - rpm
+      - rpm
       - deb
     bindir: /usr/bin
     contents:
