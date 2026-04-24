@@ -353,6 +353,11 @@ func TestPrepareCommand_InjectEnvVarsWithIsolationEnabled(t *testing.T) {
 		t.Skipf("isolation not supported on %s", runtime.GOOS)
 	}
 
+	// 如果 bwrap 不可用则跳过测试
+	if _, err := exec.LookPath("bwrap"); err != nil {
+		t.Skipf("bwrap not available: %v", err)
+	}
+
 	// 设置配置，包含 env_vars，启用隔离
 	cfg := config.DefaultConfig()
 	cfg.Isolation.Enabled = true
