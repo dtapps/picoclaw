@@ -29,11 +29,6 @@ const tabs: Array<{
     translationKey: "pages.agent.tools.encyclopedia_search.title",
     defaultLabel: "Encyclopedia Search",
   },
-  {
-    key: "mcp",
-    translationKey: "pages.agent.tools.mcp.title",
-    defaultLabel: "MCP",
-  },
 ]
 
 export function ToolsTabs({ activeTab, onChange }: ToolsTabsProps) {

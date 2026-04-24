@@ -25,6 +25,7 @@
     "hub": "Hub",
     "skills": "技能",
     "tools": "工具",
+    "mcp": "MCP",
     "services": "服务",
     "channels_group": "频道",
     "show_more_channels": "更多",
@@ -741,6 +742,60 @@
           "requires_skills": "需要先启用 `tools.skills`，该技能注册表工具才能使用。",
           "requires_subagent": "需要先启用 `tools.subagent`，`spawn` 才能委派任务。",
           "requires_mcp_discovery": "需要先启用 `tools.mcp.discovery`，MCP 发现工具才会可用。"
+        }
+      },
+      "mcp": {
+        "title": "MCP 配置",
+        "description": "配置 MCP (Model Context Protocol) 服务器，扩展智能体的外部工具能力。",
+        "enabled": "已启用",
+        "disabled": "已禁用",
+        "load_error": "加载 MCP 配置失败。",
+        "save": "保存更改",
+        "save_success": "MCP 设置保存成功。",
+        "save_error": "保存 MCP 设置失败。",
+        "general": {
+          "title": "通用设置",
+          "enable": "启用 MCP",
+          "enable_description": "启用 MCP 以允许代理通过 Model Context Protocol 使用外部工具。",
+          "max_inline_text_chars": "最大内联文本字符数",
+          "max_inline_text_chars_description": "在保存为工件之前内联显示的最大文本长度。"
+        },
+        "discovery": {
+          "title": "发现设置",
+          "enable": "启用发现模式",
+          "enable_description": "启用时，所有 MCP 工具会被隐藏并通过搜索按需加载；禁用时，所有工具会加载到上下文中。",
+          "ttl": "TTL",
+          "ttl_description": "保持已发现工具解锁状态的对话轮数。",
+          "max_search_results": "最大搜索结果数",
+          "max_search_results_description": "每次搜索返回的最大工具数量。",
+          "use_bm25": "使用 BM25",
+          "use_bm25_description": "启用自然语言/关键词搜索工具。比正则搜索消耗更多资源。",
+          "use_regex": "使用正则",
+          "use_regex_description": "启用正则模式搜索工具。",
+          "engine_warning": "警告：启用发现模式时，必须启用至少一个搜索引擎（BM25 或正则）。"
+        },
+        "servers": {
+          "title": "MCP 服务器",
+          "add": "添加服务器",
+          "empty": "未配置 MCP 服务器。点击 \"添加服务器\" 来添加一个。",
+          "server_title": "服务器 {{index}}",
+          "enabled": "已启用",
+          "disabled": "已禁用",
+          "enable": "启用服务器",
+          "enable_description": "启用此 MCP 服务器，使其对代理可用。",
+          "name": "名称",
+          "type": "类型",
+          "command": "命令",
+          "args": "参数",
+          "env": "环境变量",
+          "env_description": "服务器进程的环境变量（每行一个，格式：KEY=value）",
+          "url": "URL",
+          "env_file": "环境文件 (可选)",
+          "headers": "请求头",
+          "headers_description": "随请求发送的 HTTP 头（每行一个，格式：Key: Value）",
+          "delete_title": "删除服务器",
+          "delete_description": "确定要删除服务器 \"{{name}}\" 吗？此操作无法撤销。",
+          "delete_confirm": "删除"
         }
       }
     },
