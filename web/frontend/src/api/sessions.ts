@@ -15,6 +15,7 @@ export interface SessionDetail {
   messages: {
     role: "user" | "assistant"
     content: string
+    kind?: "normal" | "thought"
     media?: string[]
     attachments?: {
       type?: "image" | "audio" | "video" | "file"

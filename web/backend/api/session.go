@@ -16,6 +16,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/memory"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/messageutil"
 	"github.com/sipeed/picoclaw/pkg/session"
 	"github.com/sipeed/picoclaw/pkg/utils"
 )
@@ -52,6 +53,7 @@ type sessionListItem struct {
 type sessionChatMessage struct {
 	Role        string                  `json:"role"`
 	Content     string                  `json:"content"`
+	Kind        string                  `json:"kind,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
 }
@@ -155,6 +157,9 @@ func (h *Handler) readSessionMessages(path string, skip int) ([]providers.Messag
 
 		var msg providers.Message
 		if err := json.Unmarshal(line, &msg); err != nil {
+			continue
+		}
+		if messageutil.IsTransientAssistantThoughtMessage(msg) {
 			continue
 		}
 		msgs = append(msgs, msg)
@@ -478,6 +483,18 @@ func sessionChatMessagePreview(msg sessionChatMessage) string {
 }
 
 func visibleSessionMessages(messages []providers.Message, toolFeedbackMaxArgsLength int) []sessionChatMessage {
+	return sessionTranscriptMessages(messages, toolFeedbackMaxArgsLength, false)
+}
+
+func detailSessionMessages(messages []providers.Message, toolFeedbackMaxArgsLength int) []sessionChatMessage {
+	return sessionTranscriptMessages(messages, toolFeedbackMaxArgsLength, true)
+}
+
+func sessionTranscriptMessages(
+	messages []providers.Message,
+	toolFeedbackMaxArgsLength int,
+	includeThoughts bool,
+) []sessionChatMessage {
 	transcript := make([]sessionChatMessage, 0, len(messages))
 
 	for _, msg := range messages {
@@ -499,10 +516,13 @@ func visibleSessionMessages(messages []providers.Message, toolFeedbackMaxArgsLen
 			}
 
 		case "assistant":
-			// Reasoning-only assistant messages are transient display artifacts and
-			// should not be restored from session history.
-			if assistantMessageTransientThought(msg) {
+			if messageutil.IsTransientAssistantThoughtMessage(msg) {
 				continue
+			}
+			if includeThoughts {
+				if thoughtMsg, ok := assistantThoughtMessage(msg); ok {
+					transcript = append(transcript, thoughtMsg)
+				}
 			}
 
 			toolSummaryMessages := visibleAssistantToolSummaryMessages(msg.ToolCalls, toolFeedbackMaxArgsLength)
@@ -685,16 +705,23 @@ func sessionAttachmentType(attachment providers.Attachment) string {
 	}
 }
 
-func assistantMessageTransientThought(msg providers.Message) bool {
-	return strings.TrimSpace(msg.Content) == "" &&
-		strings.TrimSpace(msg.ReasoningContent) != "" &&
-		len(msg.ToolCalls) == 0 &&
-		len(msg.Media) == 0 &&
-		len(msg.Attachments) == 0
-}
-
 func assistantMessageInternalOnly(msg providers.Message) bool {
 	return strings.TrimSpace(msg.Content) == handledToolResponseSummaryText
+}
+
+func assistantThoughtMessage(msg providers.Message) (sessionChatMessage, bool) {
+	reasoning := strings.TrimSpace(msg.ReasoningContent)
+	if reasoning == "" {
+		return sessionChatMessage{}, false
+	}
+	if reasoning == strings.TrimSpace(msg.Content) {
+		return sessionChatMessage{}, false
+	}
+	return sessionChatMessage{
+		Role:    "assistant",
+		Content: reasoning,
+		Kind:    "thought",
+	}, true
 }
 
 func visibleAssistantToolSummaryMessages(
@@ -990,7 +1017,7 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	messages := visibleSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
+	messages := detailSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{
