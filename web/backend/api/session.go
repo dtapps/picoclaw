@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -597,7 +598,15 @@ func toolSummaryContainsContent(summary, content string) bool {
 	}
 
 	_, body, hasBody := strings.Cut(summary, "\n")
-	return hasBody && strings.TrimSpace(body) == content
+	if !hasBody {
+		return false
+	}
+	body = strings.TrimSpace(body)
+	if body == content {
+		return true
+	}
+	firstSection, _, _ := strings.Cut(body, "\n```")
+	return strings.TrimSpace(firstSection) == content
 }
 
 func sessionAttachments(msg providers.Message) []sessionChatAttachment {
@@ -718,7 +727,8 @@ func visibleAssistantToolSummaryMessages(
 			Role: "assistant",
 			Content: utils.FormatToolFeedbackMessage(
 				name,
-				visibleAssistantToolSummaryText(tc, toolFeedbackMaxArgsLength),
+				visibleAssistantToolFeedbackExplanation(tc, toolFeedbackMaxArgsLength),
+				visibleAssistantToolArgsPreview(tc, toolFeedbackMaxArgsLength),
 			),
 		})
 	}
@@ -726,7 +736,7 @@ func visibleAssistantToolSummaryMessages(
 	return messages
 }
 
-func visibleAssistantToolSummaryText(
+func visibleAssistantToolFeedbackExplanation(
 	tc providers.ToolCall,
 	toolFeedbackMaxArgsLength int,
 ) string {
@@ -735,18 +745,32 @@ func visibleAssistantToolSummaryText(
 			return utils.Truncate(explanation, toolFeedbackMaxArgsLength)
 		}
 	}
+	return ""
+}
 
+func visibleAssistantToolArgsPreview(
+	tc providers.ToolCall,
+	toolFeedbackMaxArgsLength int,
+) string {
 	argsJSON := ""
 	if tc.Function != nil {
 		argsJSON = tc.Function.Arguments
 	}
 	if strings.TrimSpace(argsJSON) == "" && len(tc.Arguments) > 0 {
-		if encodedArgs, err := json.Marshal(tc.Arguments); err == nil {
+		if encodedArgs, err := json.MarshalIndent(tc.Arguments, "", "  "); err == nil {
 			argsJSON = string(encodedArgs)
 		}
 	}
+	argsJSON = strings.TrimSpace(argsJSON)
+	if argsJSON == "" {
+		return ""
+	}
+	var pretty bytes.Buffer
+	if err := json.Indent(&pretty, []byte(argsJSON), "", "  "); err == nil {
+		argsJSON = pretty.String()
+	}
 
-	return utils.Truncate(strings.TrimSpace(argsJSON), toolFeedbackMaxArgsLength)
+	return utils.Truncate(argsJSON, toolFeedbackMaxArgsLength)
 }
 
 func visibleAssistantToolMessages(toolCalls []providers.ToolCall) []sessionChatMessage {
