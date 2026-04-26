@@ -78,6 +78,23 @@ Telegram 侧保留的是命令菜单注册能力；通用命令的实际执行�
 - `/use clear`
 - `/btw <question>`，用于发起一个不改动当前会话历史的即时旁支提问；`/btw` 会按一次无工具的直接问答处理，不会进入常规的工具执行流程
 
+**Exec 命令（仅 CLI）**
+
+`/exec` 命令允许直接从聊天界面执行 shell 命令。出于安全考虑，此命令默认**仅限于内部通道**（CLI）。要为远程通道启用它，请在配置中设置 `tools.exec.allow_remote: true`。
+
+- `/exec run <command>` - 执行 shell 命令并返回输出
+- `/exec sessions` - 列出活动的 exec 会话
+- `/exec kill <session-id>` - 终止正在运行的 exec 会话
+
+示例：
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **安全提示：** 默认情况下，exec 仅适用于 CLI 通道。除非通过配置明确启用，否则 Telegram、Discord 等远程通道无法使用 exec。
+
 </details>
 
 <a id="discord"></a>

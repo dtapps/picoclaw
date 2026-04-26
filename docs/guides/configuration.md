@@ -120,6 +120,23 @@ Examples:
 dammi le ultime news
 ```
 
+**Exec Command (CLI only)**
+
+The `/exec` command allows executing shell commands directly from the chat interface. For security reasons, this command is **restricted to internal channels only** (CLI) by default. To enable it for remote channels, set `tools.exec.allow_remote: true` in your configuration.
+
+- `/exec run <command>` - Execute a shell command and return output
+- `/exec sessions` - List active exec sessions
+- `/exec kill <session-id>` - Kill a running exec session
+
+Examples:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Security Note:** The `/exec` command allows direct system access. Use with caution and only enable it for remote channels if you fully understand the security implications and trust all users with channel access.
+
 ### Unified Command Execution Policy
 
 - Generic slash commands are executed through a single path in `pkg/agent/loop.go` via `commands.Executor`.

@@ -77,6 +77,23 @@ You can also inspect skills and MCP servers directly from Telegram:
 - `/use clear`
 - `/btw <question>` to ask an immediate side question without changing the active session history; `/btw` is handled as a no-tool query and does not enter the normal tool-execution flow
 
+**Exec Command (CLI only)**
+
+The `/exec` command allows executing shell commands directly from the chat interface. For security reasons, this command is **restricted to internal channels only** (CLI) by default. To enable it for remote channels, set `tools.exec.allow_remote: true` in your configuration.
+
+- `/exec run <command>` - Execute a shell command and return output
+- `/exec sessions` - List active exec sessions
+- `/exec kill <session-id>` - Kill a running exec session
+
+Examples:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Security Note:** By default, exec is only available from the CLI channel. Remote channels like Telegram, Discord, etc. cannot use exec unless explicitly enabled via configuration.
+
 **4. Advanced Formatting**
 You can set use_markdown_v2: true to enable enhanced formatting options. This allows the bot to utilize the full range of Telegram MarkdownV2 features, including nested styles, spoilers, and custom fixed-width blocks.
 

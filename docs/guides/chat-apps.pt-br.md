@@ -151,6 +151,47 @@ picoclaw gateway
 
 </details>
 
+---
+
+## 🛠️ Comandos de Chat
+
+O PicoClaw suporta vários comandos de barra que podem ser usados em qualquer canal de chat:
+
+### Comandos Básicos
+
+- `/help` - Exibir ajuda e informações sobre comandos disponíveis
+- `/start` - Iniciar uma interação com o bot
+
+### Comandos de Skills
+
+- `/list skills` - Exibir skills instaladas disponíveis
+- `/use <skill> <message>` - Forçar o uso de uma skill específica para uma solicitação
+- `/use <skill>` - Preparar uma skill para a próxima mensagem
+- `/use clear` - Cancelar a seleção de skill pendente
+- `/btw <question>` - Fazer uma pergunta lateral imediata sem alterar o histórico da sessão ativa
+
+### Comandos de Exibição
+
+- `/show <caminho>` - Exibir o conteúdo de um arquivo
+- `/list <diretório>` - Listar o conteúdo de um diretório
+
+**Comando Exec (Apenas CLI)**
+
+O comando `/exec` permite executar comandos shell diretamente da interface de chat. Por motivos de segurança, este comando é **restrito apenas a canais internos** (CLI) por padrão. Para habilitá-lo para canais remotos, defina `tools.exec.allow_remote: true` em sua configuração.
+
+- `/exec run <comando>` - Executar um comando shell e retornar a saída
+- `/exec sessions` - Listar sessões exec ativas
+- `/exec kill <session-id>` - Encerrar uma sessão exec em execução
+
+Exemplos:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Nota de Segurança:** O comando exec permite acesso direto ao sistema. Use com cautela e não o habilite para canais remotos a menos que entenda os riscos de segurança envolvidos.
+
 <a id="whatsapp"></a>
 <details>
 <summary><b>WhatsApp</b> (nativo via whatsmeow)</summary>

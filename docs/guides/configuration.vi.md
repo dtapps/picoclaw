@@ -101,6 +101,23 @@ Vi du:
 dammi le ultime news
 ```
 
+**Lệnh Exec (Chỉ CLI)**
+
+Lệnh `/exec` cho phép thực thi các lệnh shell trực tiếp từ giao diện chat. Vì lý do bảo mật, lệnh này **bị hạn chế chỉ cho các kênh nội bộ** (CLI) theo mặc định. Để bật cho các kênh từ xa, hãy đặt `tools.exec.allow_remote: true` trong cấu hình của bạn.
+
+- `/exec run <lệnh>` - Thực thi lệnh shell và trả về đầu ra
+- `/exec sessions` - Liệt kê các phiên exec đang hoạt động
+- `/exec kill <session-id>` - Kết thúc một phiên exec đang chạy
+
+Ví dụ:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Lưu ý Bảo Mật:** Lệnh `/exec` cho phép truy cập trực tiếp vào hệ thống. Hãy sử dụng cẩn thận và không bật cho các kênh từ xa trừ khi bạn hiểu các rủi ro bảo mật liên quan và tin tưởng tất cả ngườii dùng có quyền truy cập kênh.
+
 ### Chính Sách Thực Thi Lệnh Thống Nhất
 
 - Lệnh slash chung được thực thi qua một đường dẫn duy nhất trong `pkg/agent/loop.go` qua `commands.Executor`.
