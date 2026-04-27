@@ -521,6 +521,7 @@ type TeamsWebhookTarget struct {
 type WeiboSettings struct {
 	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_APP_ID"`
 	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_WEIBO_APP_SECRET"`
+	Proxy     string       `json:"proxy"               yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_PROXY"`
 }
 
 func (c *WeiboSettings) SetAppSecret(appSecret string) {
@@ -530,6 +531,7 @@ func (c *WeiboSettings) SetAppSecret(appSecret string) {
 type YuanbaoSettings struct {
 	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_APP_ID"`
 	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_YUANBAO_APP_SECRET"`
+	Proxy     string       `json:"proxy"               yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_PROXY"`
 }
 
 func (c *YuanbaoSettings) SetAppSecret(appSecret string) {

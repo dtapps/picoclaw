@@ -16,8 +16,8 @@ require (
 	github.com/caarlos0/env/v11 v11.4.0
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
-	github.com/dtapps/weibo-go v1.0.4
-	github.com/dtapps/yuanbao-go v1.0.5
+	github.com/dtapps/weibo-go v1.0.5
+	github.com/dtapps/yuanbao-go v1.0.6
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
 	github.com/gdamore/tcell/v2 v2.13.9
@@ -127,7 +127,7 @@ require (
 	github.com/github/copilot-sdk/go v0.2.2
 	github.com/go-resty/resty/v2 v2.17.2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/google/jsonschema-go v0.4.2 // indirect
+	github.com/google/jsonschema-go v0.4.2
 	github.com/grbit/go-json v0.11.0 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
