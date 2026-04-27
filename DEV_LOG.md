@@ -21,7 +21,7 @@
 | **定时任务**  | 暂无 UI 管理              | **新增 Web UI 管理页面**           | 可视化创建、编辑、启停定时任务，支持 Cron/Interval/One-time | [feat/cron-schedules-ui](https://github.com/dtapps/picoclaw/tree/feat/cron-schedules-ui)                                                                                                          |
 | **MCP**       | 暂无 UI 管理              | **新增 Web UI 管理页面**           | 可视化配置 MCP 服务器，支持 stdio/sse/http 类型，含完整参数 | [feature/mcp-server-config](https://github.com/dtapps/picoclaw/tree/feature/mcp-server-config) - [refactor/mcp-separate-page](https://github.com/dtapps/picoclaw/tree/refactor/mcp-separate-page) |
 | **环境变量**  | 暂无 环境变量 管理        | **新增环境变量配置 UI**            | 支持全局环境变量管理，自动注入到 Skills 和 MCP 执行环境     | [feat/env-vars-config](https://github.com/dtapps/picoclaw/tree/feat/env-vars-config)                                                                                                              |
-| **工具集**    | 已提交 PR                 | **新增 `get_current_time` 工具**   | 支持多种格式和时区，方便获取当前时间/日期                   | [feat/add-get-current-time-tool](https://github.com/dtapps/picoclaw/tree/feat/add-get-current-time-tool)                                                                                          |
+| **工具集**    | [已提交 PR #2691](https://github.com/sipeed/picoclaw/pull/2691)                 | **新增 `get_current_time` 工具**   | 支持多种格式和时区，方便获取当前时间/日期                   | [feat/add-get-current-time-tool](https://github.com/dtapps/picoclaw/tree/feat/add-get-current-time-tool)                                                                                          |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>
