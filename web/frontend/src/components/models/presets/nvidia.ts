@@ -121,6 +121,18 @@ export const PRESET_MODELS_NVIDIA_FREE: ModelTemplate[] = [
     name: "Falcon 3 7B (Nvidia Free)",
     tag: "free",
   },
+  {
+    provider: "nvidia",
+    model: "deepseek-ai/deepseek-v4-flash",
+    name: "DeepSeek V4 Flash (Nvidia Free)",
+    tag: "free",
+  },
+  {
+    provider: "nvidia",
+    model: "deepseek-ai/deepseek-v4-pro",
+    name: "DeepSeek V4 Pro (Nvidia Free)",
+    tag: "free",
+  },
 ]
 
 export const PRESET_MODELS_NVIDIA: ModelTemplate[] = [
