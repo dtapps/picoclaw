@@ -859,6 +859,7 @@ type ToolsConfig struct {
 	WebFetch        ToolConfig         `json:"web_fetch"         yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
 	WriteFile       ToolConfig         `json:"write_file"        yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
 	Browser         BrowserToolConfig  `json:"browser"           yaml:"browser,omitempty"`
+	GetCurrentTime  ToolConfig         `json:"get_current_time"  yaml:"-"                                                        envPrefix:"PICOCLAW_TOOLS_GET_CURRENT_TIME_"`
 }
 
 // IsFilterSensitiveDataEnabled returns true if sensitive data filtering is enabled
@@ -1472,7 +1473,7 @@ func SaveConfig(path string, cfg *Config) error {
 	cfg.EnvVars = EnvVarsConfig{}
 
 	if err := saveSecurityConfig(securityPath(path), cfg); err != nil {
-		logger.ErrorCF("config", "无法保存 .security.yml", map[string]any{"error": err})
+		logger.ErrorCF("config", "cannot save .security.yml", map[string]any{"error": err})
 		cfg.EnvVars = originalEnvVars
 		return err
 	}
@@ -1683,6 +1684,8 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.MCP.Enabled
 	case "browser":
 		return t.Browser.Enabled
+	case "get_current_time":
+		return t.GetCurrentTime.Enabled
 	default:
 		return true
 	}
