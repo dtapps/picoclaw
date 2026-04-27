@@ -184,7 +184,11 @@
     "export_error": "导出失败：{{error}}",
     "save_success": "环境变量保存成功",
     "save_error": "保存失败：{{error}}",
-    "key_required": "键不能为空"
+    "key_required": "键不能为空",
+    "confirm": "确认",
+    "saveChangesTitle": "有未保存的配置更改",
+    "restartRequiredTitle": "需要重启服务",
+    "restartRequiredDesc": "{{name}} 的最新配置已保存。重启服务后才能正式生效。"
   },
   "labels": {
     "loading": "加载中..."
@@ -262,6 +266,9 @@
   },
   "models": {
     "description": "为 AI 服务商配置 API Key。只有已配置的模型可用于对话。",
+    "defaultChangeSuccess": "默认模型已更新。",
+    "unsavedPrompt": "当前修改尚未保存，保存后才会写入模型配置。",
+    "restartHint": "模型配置保存后需要重启服务才能生效。",
     "loadError": "加载模型列表失败",
     "noDefaultHintPrefix": "尚未设置默认模型，点击",
     "noDefaultHintSuffix": "设为默认。",
@@ -305,6 +312,7 @@
       "errorRequired": "此字段为必填项。",
       "errorDuplicateModelName": "模型别名已存在，请使用其他名称。",
       "saveError": "添加模型失败",
+      "saveSuccess": "模型已添加。",
       "confirm": "添加模型"
     },
     "quickAdd": {
@@ -362,7 +370,8 @@
       "title": "配置 {{name}}",
       "apiKeyHint": "已设置 API Key，留空表示不修改。",
       "oauthNote": "该服务商使用 OAuth 认证，无需 API Key。",
-      "saveError": "保存失败"
+      "saveError": "保存失败",
+      "saveSuccess": "模型配置已保存。"
     }
   },
   "channels": {
@@ -452,6 +461,7 @@
       "notFound": "不支持频道“{{name}}”。",
       "saveSuccess": "频道配置已保存。",
       "saveError": "保存频道配置失败",
+      "savePrompt": "当前修改尚未保存，点击保存后才会写入频道配置。",
       "docLink": "配置文档",
       "enableLabel": "启用频道",
       "restartRequiredTitle": "需要重启服务",
@@ -625,6 +635,7 @@
         "web_search": {
           "title": "网页搜索",
           "description": "为智能体提供网页搜索能力。自动路由到当前处于激活状态的最佳服务。",
+          "unsaved_prompt": "当前修改尚未保存，点击保存后才会写入 Web Search 配置。",
           "global_settings": "常规",
           "providers_config": "集成",
           "load_error": "加载 Web Search 配置失败。",
@@ -797,6 +808,7 @@
       "server_port": "服务端口",
       "server_port_hint": "PicoClaw Web 的 HTTP 监听端口",
       "launcher_section_hint": "此分组中的改动需要在重启 launcher 后生效",
+      "gateway_restart_hint": "这组配置保存后，需要重启服务才能正式生效。",
       "dashboard_password": "登录密码",
       "dashboard_password_hint": "设置新的登录密码",
       "dashboard_password_placeholder": "至少 8 个字符",

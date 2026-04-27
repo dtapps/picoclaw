@@ -28,10 +28,12 @@ import { SlackForm } from "@/components/channels/channel-forms/slack-form"
 import { TelegramForm } from "@/components/channels/channel-forms/telegram-form"
 import { WecomForm } from "@/components/channels/channel-forms/wecom-form"
 import { WeixinForm } from "@/components/channels/channel-forms/weixin-form"
+import { ConfigChangeNotice } from "@/components/config-change-notice"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { useGateway } from "@/hooks/use-gateway"
+import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
 import { refreshGatewayState } from "@/store/gateway"
 
 interface ChannelConfigPageProps {
@@ -304,21 +306,34 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
   const [enabled, setEnabled] = useState(false)
   const [arrayFieldResetVersion, setArrayFieldResetVersion] = useState(0)
   const arrayFieldFlushersRef = useRef(new Map<string, ArrayFieldFlusher>())
+  const loadRequestIdRef = useRef(0)
+
+  const resetPageState = useCallback(() => {
+    arrayFieldFlushersRef.current.clear()
+    setChannel(null)
+    setBaseConfig({})
+    setEditConfig({})
+    setConfiguredSecrets([])
+    setEnabled(false)
+    setFetchError("")
+    setServerError("")
+    setFieldErrors({})
+    setArrayFieldResetVersion((version) => version + 1)
+  }, [])
 
   const loadData = useCallback(
     async (silent = false) => {
+      const requestId = loadRequestIdRef.current + 1
+      loadRequestIdRef.current = requestId
       if (!silent) setLoading(true)
       try {
         const catalog = await getChannelsCatalog()
+        if (loadRequestIdRef.current !== requestId) return
         const matched =
           catalog.channels.find((item) => item.name === channelName) ?? null
 
         if (!matched) {
-          setChannel(null)
-          setBaseConfig({})
-          setEditConfig({})
-          setConfiguredSecrets([])
-          setEnabled(false)
+          resetPageState()
           setFetchError(
             t("channels.page.notFound", {
               name: channelName,
@@ -328,6 +343,7 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
         }
 
         const channelConfig = await getChannelConfig(channelName)
+        if (loadRequestIdRef.current !== requestId) return
         const raw = asRecord(channelConfig.config)
         const normalized = normalizeConfig(matched, raw)
 
@@ -340,18 +356,23 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
         setServerError("")
         setFieldErrors({})
       } catch (e) {
+        if (loadRequestIdRef.current !== requestId) return
         setConfiguredSecrets([])
         setFetchError(e instanceof Error ? e.message : t("channels.loadError"))
       } finally {
-        if (!silent) setLoading(false)
+        if (!silent && loadRequestIdRef.current === requestId) {
+          setLoading(false)
+        }
       }
     },
-    [channelName, t],
+    [channelName, resetPageState, t],
   )
 
   useEffect(() => {
+    resetPageState()
+    setLoading(true)
     loadData()
-  }, [loadData])
+  }, [loadData, resetPageState])
 
   const previousGatewayStatusRef = useRef(gatewayState)
   useEffect(() => {
@@ -366,6 +387,17 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
     if (!channel) return false
     return isConfigured(channel, editConfig, configuredSecrets)
   }, [channel, configuredSecrets, editConfig])
+
+  const isDirty = useMemo(() => {
+    if (loading || !channel || channel.name !== channelName) return false
+    const basePayload = buildSavePayload(
+      channel,
+      buildEditConfig(channel.name, baseConfig),
+      asBool(baseConfig.enabled),
+    )
+    const currentPayload = buildSavePayload(channel, editConfig, enabled)
+    return JSON.stringify(basePayload) !== JSON.stringify(currentPayload)
+  }, [baseConfig, channel, channelName, editConfig, enabled, loading])
 
   const docsUrl = useMemo(() => {
     if (!channel) return ""
@@ -487,6 +519,13 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
         },
       })
       await loadData()
+      const gateway = await refreshGatewayState({ force: true })
+      showSaveSuccessOrRestartToast(
+        t,
+        t("channels.page.saveSuccess"),
+        channelDisplayName,
+        gateway?.restartRequired === true,
+      )
     } catch (e) {
       const message =
         e instanceof Error ? e.message : t("channels.page.saveError")
@@ -682,11 +721,23 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
               <p className="text-destructive text-sm">{serverError}</p>
             )}
 
+            {isDirty && (
+              <ConfigChangeNotice
+                kind="save"
+                title={t("common.saveChangesTitle")}
+                description={t("channels.page.savePrompt")}
+              />
+            )}
+
             <div className="border-border/60 flex justify-end gap-2 border-t py-4">
-              <Button variant="outline" onClick={handleReset} disabled={saving}>
+              <Button
+                variant="outline"
+                onClick={handleReset}
+                disabled={!isDirty || saving}
+              >
                 {t("common.reset")}
               </Button>
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} disabled={!isDirty || saving}>
                 {saving ? t("common.saving") : t("common.save")}
               </Button>
             </div>
