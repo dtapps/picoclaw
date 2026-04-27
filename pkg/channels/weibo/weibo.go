@@ -3,12 +3,18 @@ package weibo
 import (
 	"context"
 	"fmt"
+	"net/http"
+	"net/url"
 	"strings"
+	"time"
 
 	weibo "github.com/dtapps/weibo-go"
 	weiboConfig "github.com/dtapps/weibo-go/config"
+	weiboHttp "github.com/dtapps/weibo-go/http"
 	weiboLogger "github.com/dtapps/weibo-go/logger"
 	weiboTypes "github.com/dtapps/weibo-go/types"
+	weiboWs "github.com/dtapps/weibo-go/ws"
+	"github.com/gorilla/websocket"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
@@ -57,12 +63,44 @@ func NewWeiboChannel(
 
 func (c *WeiboChannel) Name() string { return config.ChannelWeibo }
 
+// applyWeiboProxy 根据配置应用代理设置
+func (c *WeiboChannel) applyWeiboProxy() error {
+	if c.config.Proxy != "" {
+		proxyURL, parseErr := url.Parse(c.config.Proxy)
+		if parseErr != nil {
+			return fmt.Errorf("invalid proxy URL %q: %w", c.config.Proxy, parseErr)
+		}
+		// 设置 HTTP 客户端代理
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				Proxy: http.ProxyURL(proxyURL),
+			},
+		}
+		weiboHttp.SetDefaultHTTPClient(httpClient)
+		// 设置 WebSocket Dialer 代理
+		dialer := &websocket.Dialer{
+			Proxy:            http.ProxyURL(proxyURL),
+			HandshakeTimeout: 45 * time.Second,
+		}
+		weiboWs.SetDefaultDialer(dialer)
+		logger.InfoCF(c.Name(), "Weibo channel using configured proxy", map[string]any{
+			"proxy": c.config.Proxy,
+		})
+	}
+	return nil
+}
+
 func (c *WeiboChannel) Start(ctx context.Context) error {
 	logger.InfoC(c.Name(), "Weibo channel started...")
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	var err error
+
+	// 应用代理设置
+	if err = c.applyWeiboProxy(); err != nil {
+		return err
+	}
 
 	// 创建配置
 	defaultCfg := weiboConfig.DefaultConfig()
