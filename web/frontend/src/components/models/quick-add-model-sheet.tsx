@@ -75,6 +75,7 @@ export function QuickAddModelSheet({
       await addModel({
         model_name: template.name,
         model: template.model,
+        provider: template.provider,
         api_base: PROVIDER_API_BASES[template.provider],
       })
       setImported(template.model)
