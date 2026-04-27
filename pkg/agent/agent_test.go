@@ -1892,7 +1892,7 @@ func TestToolFeedbackExplanationFromResponse_UsesCurrentContentFirst(t *testing.
 		{Role: "tool", Content: "tool output", ToolCallID: "call_1"},
 	}
 
-	got := toolFeedbackExplanationFromResponse(response, messages, 300)
+	got := toolFeedbackExplanationFromResponse(response, messages)
 	if got != "Read README.md first" {
 		t.Fatalf("toolFeedbackExplanationFromResponse() = %q, want current content", got)
 	}
@@ -1936,7 +1936,7 @@ func TestToolFeedbackExplanationFromResponse_UsesExplicitToolCallExtraContent(t 
 		{Role: "tool", Content: "tool output", ToolCallID: "call_1"},
 	}
 
-	got := toolFeedbackExplanationFromResponse(response, messages, 300)
+	got := toolFeedbackExplanationFromResponse(response, messages)
 	if got != "Read README.md first to confirm the current project structure." {
 		t.Fatalf("toolFeedbackExplanationFromResponse() = %q, want explicit tool feedback explanation", got)
 	}
@@ -1963,8 +1963,8 @@ func TestToolFeedbackExplanationForToolCall_PrefersToolSpecificExtraContent(t *t
 		},
 	}
 
-	got1 := toolFeedbackExplanationForToolCall(response, response.ToolCalls[0], nil, 300)
-	got2 := toolFeedbackExplanationForToolCall(response, response.ToolCalls[1], nil, 300)
+	got1 := toolFeedbackExplanationForToolCall(response, response.ToolCalls[0], nil)
+	got2 := toolFeedbackExplanationForToolCall(response, response.ToolCalls[1], nil)
 	if got1 != "Read README.md first." {
 		t.Fatalf("toolFeedbackExplanationForToolCall() first = %q, want tool-specific explanation", got1)
 	}
@@ -1993,7 +1993,7 @@ func TestToolFeedbackExplanationForToolCall_DoesNotReuseAnotherToolCallExplanati
 		{Role: "user", Content: "inspect the config and update the example"},
 	}
 
-	got := toolFeedbackExplanationForToolCall(response, response.ToolCalls[0], messages, 300)
+	got := toolFeedbackExplanationForToolCall(response, response.ToolCalls[0], messages)
 	want := utils.ToolFeedbackContinuationHint + ": inspect the config and update the example"
 	if got != want {
 		t.Fatalf("toolFeedbackExplanationForToolCall() = %q, want %q", got, want)
@@ -2012,10 +2012,28 @@ func TestToolFeedbackExplanationFromResponse_DoesNotUseReasoningContent(t *testi
 		{Role: "tool", Content: "tool output", ToolCallID: "call_1"},
 	}
 
-	got := toolFeedbackExplanationFromResponse(response, messages, 300)
+	got := toolFeedbackExplanationFromResponse(response, messages)
 	want := utils.ToolFeedbackContinuationHint + ": Inspect README.md and update the config example."
 	if got != want {
 		t.Fatalf("toolFeedbackExplanationFromResponse() = %q, want latest user content fallback", got)
+	}
+}
+
+func TestToolFeedbackExplanationForToolCall_DoesNotTruncateLongExplanation(t *testing.T) {
+	explanation := "Read README.md first to confirm the current project structure before editing the config example."
+	response := &providers.LLMResponse{
+		ToolCalls: []providers.ToolCall{{
+			ID:   "call_1",
+			Name: "read_file",
+			ExtraContent: &providers.ExtraContent{
+				ToolFeedbackExplanation: explanation,
+			},
+		}},
+	}
+
+	got := toolFeedbackExplanationForToolCall(response, response.ToolCalls[0], nil)
+	if got != explanation {
+		t.Fatalf("toolFeedbackExplanationForToolCall() = %q, want full explanation", got)
 	}
 }
 
@@ -2062,6 +2080,43 @@ func (m *picoInterleavedContentProvider) Chat(
 
 func (m *picoInterleavedContentProvider) GetDefaultModel() string {
 	return "pico-interleaved-content-model"
+}
+
+type picoDistinctToolCallContentProvider struct {
+	calls int
+}
+
+func (m *picoDistinctToolCallContentProvider) Chat(
+	ctx context.Context,
+	messages []providers.Message,
+	tools []providers.ToolDefinition,
+	model string,
+	opts map[string]any,
+) (*providers.LLMResponse, error) {
+	m.calls++
+	if m.calls == 1 {
+		return &providers.LLMResponse{
+			Content: "intermediate model text",
+			ToolCalls: []providers.ToolCall{{
+				ID:        "call_tool_limit_test",
+				Type:      "function",
+				Name:      "tool_limit_test_tool",
+				Arguments: map[string]any{"value": "x"},
+				ExtraContent: &providers.ExtraContent{
+					ToolFeedbackExplanation: "Read the file before replying.",
+				},
+			}},
+		}, nil
+	}
+
+	return &providers.LLMResponse{
+		Content:   "final model text",
+		ToolCalls: []providers.ToolCall{},
+	}, nil
+}
+
+func (m *picoDistinctToolCallContentProvider) GetDefaultModel() string {
+	return "pico-distinct-tool-call-content-model"
 }
 
 type toolLimitOnlyProvider struct{}
@@ -3987,6 +4042,7 @@ func TestProcessMessage_PublishesToolFeedbackWhenEnabled(t *testing.T) {
 
 	select {
 	case outbound := <-msgBus.OutboundChan():
+		escapedHeartbeatFile := strings.ReplaceAll(heartbeatFile, `\`, `\\`)
 		if outbound.Channel != "telegram" {
 			t.Fatalf("tool feedback channel = %q, want %q", outbound.Channel, "telegram")
 		}
@@ -4008,7 +4064,7 @@ func TestProcessMessage_PublishesToolFeedbackWhenEnabled(t *testing.T) {
 		if !strings.Contains(outbound.Content, "\"path\":") {
 			t.Fatalf("tool feedback content = %q, want serialized tool arguments", outbound.Content)
 		}
-		if !strings.Contains(outbound.Content, heartbeatFile) {
+		if !strings.Contains(outbound.Content, escapedHeartbeatFile) {
 			t.Fatalf("tool feedback content = %q, want tool argument value", outbound.Content)
 		}
 		if strings.Contains(outbound.Content, "Previous turn explanation") {
@@ -4250,6 +4306,7 @@ func TestProcessMessage_DoesNotLeakReasoningContentInToolFeedback(t *testing.T) 
 
 	select {
 	case outbound := <-msgBus.OutboundChan():
+		escapedHeartbeatFile := strings.ReplaceAll(heartbeatFile, `\`, `\\`)
 		if !strings.Contains(outbound.Content, "`read_file`") {
 			t.Fatalf("tool feedback content = %q, want read_file summary", outbound.Content)
 		}
@@ -4262,7 +4319,7 @@ func TestProcessMessage_DoesNotLeakReasoningContentInToolFeedback(t *testing.T) 
 		if !strings.Contains(outbound.Content, "\"path\":") {
 			t.Fatalf("tool feedback content = %q, want serialized tool arguments", outbound.Content)
 		}
-		if !strings.Contains(outbound.Content, heartbeatFile) {
+		if !strings.Contains(outbound.Content, escapedHeartbeatFile) {
 			t.Fatalf("tool feedback content = %q, want tool argument value", outbound.Content)
 		}
 		if strings.Contains(outbound.Content, "Read README.md first") {
@@ -4396,7 +4453,7 @@ func TestRun_PicoPublishesAssistantContentDuringToolCallsWithoutFinalDuplicate(t
 	}
 
 	msgBus := bus.NewMessageBus()
-	provider := &picoInterleavedContentProvider{}
+	provider := &picoDistinctToolCallContentProvider{}
 	al := NewAgentLoop(cfg, msgBus, provider)
 
 	agent := al.GetRegistry().GetDefaultAgent()
@@ -4422,22 +4479,28 @@ func TestRun_PicoPublishesAssistantContentDuringToolCallsWithoutFinalDuplicate(t
 		t.Fatalf("PublishInbound() error = %v", err)
 	}
 
-	outputs := make([]string, 0, 2)
+	outputs := make([]bus.OutboundMessage, 0, 3)
 	deadline := time.After(2 * time.Second)
-	for len(outputs) < 2 {
+	for len(outputs) < 3 {
 		select {
 		case outbound := <-msgBus.OutboundChan():
-			outputs = append(outputs, outbound.Content)
+			outputs = append(outputs, outbound)
 		case <-deadline:
 			t.Fatalf("timed out waiting for pico outputs, got %v", outputs)
 		}
 	}
 
-	if outputs[0] != "intermediate model text" {
-		t.Fatalf("first outbound content = %q, want %q", outputs[0], "intermediate model text")
+	if outputs[0].Content != "intermediate model text" {
+		t.Fatalf("first outbound content = %q, want %q", outputs[0].Content, "intermediate model text")
 	}
-	if outputs[1] != "final model text" {
-		t.Fatalf("second outbound content = %q, want %q", outputs[1], "final model text")
+	if outputs[1].Context.Raw[metadataKeyMessageKind] != messageKindToolCalls {
+		t.Fatalf("second outbound = %+v, want tool_calls message", outputs[1])
+	}
+	if !strings.Contains(outputs[1].Context.Raw[metadataKeyToolCalls], "tool_limit_test_tool") {
+		t.Fatalf("second outbound tool_calls = %q, want tool name", outputs[1].Context.Raw[metadataKeyToolCalls])
+	}
+	if outputs[2].Content != "final model text" {
+		t.Fatalf("third outbound content = %q, want %q", outputs[2].Content, "final model text")
 	}
 
 	runCancel()
@@ -4552,22 +4615,28 @@ func TestRun_PicoToolFeedbackSuppressesDuplicateInterimAssistantContent(t *testi
 		t.Fatalf("PublishInbound() error = %v", err)
 	}
 
-	outputs := make([]string, 0, 2)
+	outputs := make([]bus.OutboundMessage, 0, 3)
 	deadline := time.After(2 * time.Second)
 	for len(outputs) < 2 {
 		select {
 		case outbound := <-msgBus.OutboundChan():
-			outputs = append(outputs, outbound.Content)
+			outputs = append(outputs, outbound)
 		case <-deadline:
 			t.Fatalf("timed out waiting for pico outputs, got %v", outputs)
 		}
 	}
 
-	if outputs[0] != "🔧 `tool_limit_test_tool`\nintermediate model text\n```json\n{\n  \"value\": \"x\"\n}\n```" {
-		t.Fatalf("first outbound content = %q, want tool feedback summary", outputs[0])
+	if outputs[0].Context.Raw[metadataKeyMessageKind] != messageKindToolCalls {
+		t.Fatalf("first outbound = %+v, want tool_calls message", outputs[0])
 	}
-	if outputs[1] != "final model text" {
-		t.Fatalf("second outbound content = %q, want %q", outputs[1], "final model text")
+	if outputs[0].Content != "" {
+		t.Fatalf("first outbound content = %q, want empty tool_calls content", outputs[0].Content)
+	}
+	if !strings.Contains(outputs[0].Context.Raw[metadataKeyToolCalls], "tool_limit_test_tool") {
+		t.Fatalf("first outbound tool_calls = %q, want tool name", outputs[0].Context.Raw[metadataKeyToolCalls])
+	}
+	if outputs[1].Content != "final model text" {
+		t.Fatalf("second outbound content = %q, want %q", outputs[1].Content, "final model text")
 	}
 
 	runCancel()

@@ -134,6 +134,14 @@ func outboundMessageIsToolFeedback(msg bus.OutboundMessage) bool {
 	return strings.EqualFold(strings.TrimSpace(msg.Context.Raw["message_kind"]), "tool_feedback")
 }
 
+func outboundMessageBypassesPlaceholderEdit(msg bus.OutboundMessage) bool {
+	if len(msg.Context.Raw) == 0 {
+		return false
+	}
+	kind := strings.TrimSpace(msg.Context.Raw["message_kind"])
+	return strings.EqualFold(kind, "thought") || strings.EqualFold(kind, "tool_calls")
+}
+
 func outboundMediaChannel(msg bus.OutboundMediaMessage) string {
 	return msg.Context.Channel
 }
@@ -327,6 +335,12 @@ func (m *Manager) preSend(ctx context.Context, name string, msg bus.OutboundMess
 	if v, loaded := m.placeholders.LoadAndDelete(key); loaded {
 		if entry, ok := v.(placeholderEntry); ok && entry.id != "" {
 			if isToolFeedback && separateToolFeedbackMessages {
+				if deleter, ok := ch.(MessageDeleter); ok {
+					deleter.DeleteMessage(ctx, chatID, entry.id) // best effort
+				}
+				return nil, false
+			}
+			if outboundMessageBypassesPlaceholderEdit(msg) {
 				if deleter, ok := ch.(MessageDeleter); ok {
 					deleter.DeleteMessage(ctx, chatID, entry.id) // best effort
 				}
