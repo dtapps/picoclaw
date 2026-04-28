@@ -35,6 +35,8 @@ type YuanbaoChannel struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	progress *channels.ToolFeedbackAnimator
 }
 
 func NewYuanbaoChannel(
@@ -58,12 +60,14 @@ func NewYuanbaoChannel(
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)
 
-	return &YuanbaoChannel{
+	ch := &YuanbaoChannel{
 		BaseChannel: base,
 		bc:          bc,
 		config:      cfg,
 		chatType:    sync.Map{},
-	}, nil
+	}
+	ch.progress = channels.NewToolFeedbackAnimator(ch.EditMessage)
+	return ch, nil
 }
 
 func (c *YuanbaoChannel) Name() string { return config.ChannelYuanbao }
@@ -294,4 +298,10 @@ func (c *YuanbaoChannel) getChatKind(chatID string) string {
 		"chat_id": chatID,
 	})
 	return ""
+}
+
+// EditMessage implements channels.MessageEditor.
+// Note: Yuanbao API does not support editing messages, so this returns an error.
+func (c *YuanbaoChannel) EditMessage(ctx context.Context, chatID string, messageID string, content string) error {
+	return fmt.Errorf("yuanbao does not support editing messages")
 }
