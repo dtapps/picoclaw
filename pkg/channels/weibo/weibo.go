@@ -32,6 +32,8 @@ type WeiboChannel struct {
 
 	ctx    context.Context
 	cancel context.CancelFunc
+
+	progress *channels.ToolFeedbackAnimator
 }
 
 func NewWeiboChannel(
@@ -54,11 +56,13 @@ func NewWeiboChannel(
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)
 
-	return &WeiboChannel{
+	ch := &WeiboChannel{
 		BaseChannel: base,
 		bc:          bc,
 		config:      cfg,
-	}, nil
+	}
+	ch.progress = channels.NewToolFeedbackAnimator(ch.EditMessage)
+	return ch, nil
 }
 
 func (c *WeiboChannel) Name() string { return config.ChannelWeibo }
@@ -239,4 +243,10 @@ func (c *WeiboChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]str
 	}
 
 	return messageIDs, nil
+}
+
+// EditMessage implements channels.MessageEditor.
+// Note: Weibo API does not support editing messages, so this returns an error.
+func (c *WeiboChannel) EditMessage(ctx context.Context, chatID string, messageID string, content string) error {
+	return fmt.Errorf("weibo does not support editing messages")
 }
