@@ -663,3 +663,72 @@ export function DevicesSection({
     </ConfigSectionCard>
   )
 }
+
+// EmptyResponseRetrySection 空响应自动重试配置区域
+// 当大模型返回空内容或格式异常的响应时，自动重新请求
+interface EmptyResponseRetrySectionProps {
+  form: CoreConfigForm
+  onFieldChange: UpdateCoreField
+}
+
+export function EmptyResponseRetrySection({
+  form,
+  onFieldChange,
+}: EmptyResponseRetrySectionProps) {
+  const { t } = useTranslation()
+
+  return (
+    <ConfigSectionCard
+      title={t("pages.config.sections.empty_response_retry")}
+      description={t("pages.config.empty_response_retry_description")}
+    >
+      <SwitchCardField
+        label={t("pages.config.empty_response_retry_enabled")}
+        hint={t("pages.config.empty_response_retry_enabled_hint")}
+        layout="setting-row"
+        checked={form.emptyResponseRetryEnabled}
+        onCheckedChange={(checked) =>
+          onFieldChange("emptyResponseRetryEnabled", checked)
+        }
+      />
+
+      {form.emptyResponseRetryEnabled && (
+        <>
+          <Field
+            label={t("pages.config.empty_response_retry_max_retries")}
+            hint={t("pages.config.empty_response_retry_max_retries_hint")}
+            layout="setting-row"
+          >
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={form.emptyResponseRetryMaxRetries}
+              onChange={(e) =>
+                onFieldChange("emptyResponseRetryMaxRetries", e.target.value)
+              }
+            />
+          </Field>
+
+          <Field
+            label={t("pages.config.empty_response_retry_patterns")}
+            hint={t("pages.config.empty_response_retry_patterns_hint")}
+            layout="setting-row"
+            controlClassName="md:max-w-md"
+          >
+            <Textarea
+              value={form.emptyResponseRetryPatternsText}
+              placeholder={t(
+                "pages.config.empty_response_retry_patterns_placeholder",
+              )}
+              className="min-h-[88px]"
+              onChange={(e) =>
+                onFieldChange("emptyResponseRetryPatternsText", e.target.value)
+              }
+            />
+          </Field>
+        </>
+      )}
+    </ConfigSectionCard>
+  )
+}

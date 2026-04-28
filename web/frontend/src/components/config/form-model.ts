@@ -25,6 +25,10 @@ export interface CoreConfigForm {
   heartbeatInterval: string
   devicesEnabled: boolean
   monitorUSB: boolean
+  // 空响应自动重试配置
+  emptyResponseRetryEnabled: boolean
+  emptyResponseRetryMaxRetries: string
+  emptyResponseRetryPatternsText: string
 }
 
 export interface LauncherForm {
@@ -91,6 +95,10 @@ export const EMPTY_FORM: CoreConfigForm = {
   heartbeatInterval: "30",
   devicesEnabled: false,
   monitorUSB: true,
+  // 空响应自动重试默认值
+  emptyResponseRetryEnabled: false,
+  emptyResponseRetryMaxRetries: "3",
+  emptyResponseRetryPatternsText: "",
 }
 
 export const EMPTY_LAUNCHER_FORM: LauncherForm = {
@@ -228,6 +236,28 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
       devices.monitor_usb === undefined
         ? EMPTY_FORM.monitorUSB
         : asBool(devices.monitor_usb),
+    // 解析空响应自动重试配置（agents.defaults.empty_response_retry）
+    emptyResponseRetryEnabled: (() => {
+      const retry = asRecord(defaults.empty_response_retry)
+      return retry.enabled === undefined
+        ? EMPTY_FORM.emptyResponseRetryEnabled
+        : asBool(retry.enabled)
+    })(),
+    emptyResponseRetryMaxRetries: (() => {
+      const retry = asRecord(defaults.empty_response_retry)
+      return asNumberString(
+        retry.max_retries,
+        EMPTY_FORM.emptyResponseRetryMaxRetries,
+      )
+    })(),
+    emptyResponseRetryPatternsText: (() => {
+      const retry = asRecord(defaults.empty_response_retry)
+      return Array.isArray(retry.patterns)
+        ? (retry.patterns as unknown[])
+            .filter((v): v is string => typeof v === "string")
+            .join("\n")
+        : EMPTY_FORM.emptyResponseRetryPatternsText
+    })(),
   }
 }
 
