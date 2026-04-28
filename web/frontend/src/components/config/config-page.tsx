@@ -20,6 +20,7 @@ import {
   AgentDefaultsSection,
   CronSection,
   DevicesSection,
+  EmptyResponseRetrySection,
   ExecSection,
   LauncherSection,
   RuntimeSection,
@@ -237,6 +238,13 @@ export function ConfigPage() {
           }
         }
 
+        // 解析空响应自动重试配置
+        const emptyResponseRetryMaxRetries = parseIntField(
+          form.emptyResponseRetryMaxRetries,
+          "Empty response retry max retries",
+          { min: 1, max: 10 },
+        )
+
         await patchAppConfig({
           agents: {
             defaults: {
@@ -253,6 +261,14 @@ export function ConfigPage() {
               max_tool_iterations: maxToolIterations,
               summarize_message_threshold: summarizeMessageThreshold,
               summarize_token_percent: summarizeTokenPercent,
+              // 空响应自动重试配置
+              empty_response_retry: {
+                enabled: form.emptyResponseRetryEnabled,
+                max_retries: emptyResponseRetryMaxRetries,
+                patterns: parseMultilineList(
+                  form.emptyResponseRetryPatternsText,
+                ),
+              },
             },
           },
           session: {
@@ -430,6 +446,11 @@ export function ConfigPage() {
                   saving
                 }
                 onAutoStartChange={setAutoStartEnabled}
+              />
+
+              <EmptyResponseRetrySection
+                form={form}
+                onFieldChange={updateField}
               />
 
               {!isDirty && actionButtons}

@@ -350,6 +350,69 @@ func (p *Pipeline) CallLLM(
 		return ControlBreak, fmt.Errorf("LLM call failed after retries: %w", err)
 	}
 
+	// 空响应自动重试逻辑
+	// 当 LLM 返回的响应没有 tool calls 且内容匹配空响应模式时，自动重新请求
+	// 典型场景：kimi-k2 返回 [{'type': 'text', 'text': ''}] 这种格式异常的响应
+	if p.Cfg != nil && p.Cfg.Agents.Defaults.IsEmptyResponseRetryEnabled() {
+		patterns := p.Cfg.Agents.Defaults.GetEmptyResponsePatterns()
+		maxRetries := p.Cfg.Agents.Defaults.GetEmptyResponseMaxRetries()
+		// 条件：无 tool calls 且内容匹配空响应模式
+		if len(exec.response.ToolCalls) == 0 && matchesEmptyResponsePattern(exec.response.Content, patterns) {
+			logger.WarnCF("agent", "LLM 返回空响应或格式异常，正在重试",
+				map[string]any{
+					"agent_id":    ts.agent.ID,
+					"iteration":   iteration,
+					"content":     exec.response.Content,
+					"max_retries": maxRetries,
+				})
+
+			for retry := 0; retry < maxRetries; retry++ {
+				// 发送重试事件，用于前端展示和日志追踪
+				al.emitEvent(
+					EventKindLLMRetry,
+					ts.eventMeta("runTurn", "turn.llm.retry"),
+					LLMRetryPayload{
+						Attempt:    retry + 1,
+						MaxRetries: maxRetries,
+						Reason:     "empty_response",
+						Error:      fmt.Sprintf("响应内容匹配空响应模式: %q", exec.response.Content),
+					},
+				)
+
+				retryResp, retryErr := callLLM(exec.callMessages, exec.providerToolDefs)
+				if retryErr != nil {
+					// 重试请求失败，继续下一次重试
+					logger.WarnCF("agent", "空响应重试请求失败",
+						map[string]any{
+							"agent_id": ts.agent.ID,
+							"retry":    retry + 1,
+							"error":    retryErr.Error(),
+						})
+					continue
+				}
+
+				// 重试成功条件：有 tool calls，或内容不再匹配空响应模式
+				if len(retryResp.ToolCalls) > 0 || !matchesEmptyResponsePattern(retryResp.Content, patterns) {
+					exec.response = retryResp
+					logger.InfoCF("agent", "空响应重试成功",
+						map[string]any{
+							"agent_id":      ts.agent.ID,
+							"retry":         retry + 1,
+							"content_chars": len(retryResp.Content),
+						})
+					break
+				}
+
+				logger.WarnCF("agent", "空响应重试后仍返回空响应",
+					map[string]any{
+						"agent_id": ts.agent.ID,
+						"retry":    retry + 1,
+						"content":  retryResp.Content,
+					})
+			}
+		}
+	}
+
 	// AfterLLM hook
 	if p.Hooks != nil {
 		llmResp, decision := p.Hooks.AfterLLM(turnCtx, &LLMHookResponse{

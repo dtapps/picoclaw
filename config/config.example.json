@@ -15,6 +15,14 @@
         "enabled": false,
         "max_args_length": 300,
         "separate_messages": false
+      },
+      "empty_response_retry": {
+        "enabled": false,
+        "max_retries": 3,
+        "patterns": [
+          "[{'type': 'text', 'text': ''}]",
+          "re:^\\s*$"
+        ]
       }
     }
   },
@@ -94,7 +102,9 @@
       "token": "YOUR_TELEGRAM_BOT_TOKEN",
       "base_url": "",
       "proxy": "",
-      "allow_from": ["YOUR_USER_ID"],
+      "allow_from": [
+        "YOUR_USER_ID"
+      ],
       "use_markdown_v2": false,
       "reasoning_channel_id": "",
       "streaming": {
@@ -143,7 +153,11 @@
       "allow_from": [],
       "placeholder": {
         "enabled": true,
-        "text": ["Thinking...", "Processing...", "Typing..."]
+        "text": [
+          "Thinking...",
+          "Processing...",
+          "Typing..."
+        ]
       },
       "reasoning_channel_id": "",
       "random_reaction_emoji": [],
@@ -176,7 +190,11 @@
       },
       "placeholder": {
         "enabled": true,
-        "text": ["Thinking...", "Processing...", "Typing..."]
+        "text": [
+          "Thinking...",
+          "Processing...",
+          "Typing..."
+        ]
       },
       "reasoning_channel_id": "",
       "crypto_database_path": "",
@@ -239,8 +257,13 @@
       "nickserv_password": "",
       "sasl_user": "",
       "sasl_password": "",
-      "channels": ["#mychannel"],
-      "request_caps": ["server-time", "message-tags"],
+      "channels": [
+        "#mychannel"
+      ],
+      "request_caps": [
+        "server-time",
+        "message-tags"
+      ],
       "allow_from": [],
       "group_trigger": {
         "mention_only": true
@@ -270,7 +293,9 @@
       "brave": {
         "enabled": false,
         "api_key": "YOUR_BRAVE_API_KEY",
-        "api_keys": ["YOUR_BRAVE_API_KEY"],
+        "api_keys": [
+          "YOUR_BRAVE_API_KEY"
+        ],
         "max_results": 5
       },
       "tavily": {
@@ -291,7 +316,9 @@
       "perplexity": {
         "enabled": false,
         "api_key": "pplx-xxx",
-        "api_keys": ["pplx-xxx"],
+        "api_keys": [
+          "pplx-xxx"
+        ],
         "max_results": 5
       },
       "searxng": {
@@ -339,12 +366,19 @@
         "filesystem": {
           "enabled": false,
           "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-filesystem", "/tmp"]
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-filesystem",
+            "/tmp"
+          ]
         },
         "github": {
           "enabled": false,
           "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-github"],
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-github"
+          ],
           "env": {
             "GITHUB_PERSONAL_ACCESS_TOKEN": "YOUR_GITHUB_TOKEN"
           }
@@ -352,7 +386,10 @@
         "brave-search": {
           "enabled": false,
           "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-brave-search"],
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-brave-search"
+          ],
           "env": {
             "BRAVE_API_KEY": "YOUR_BRAVE_API_KEY"
           }
@@ -369,7 +406,10 @@
         "slack": {
           "enabled": false,
           "command": "npx",
-          "args": ["-y", "@modelcontextprotocol/server-slack"],
+          "args": [
+            "-y",
+            "@modelcontextprotocol/server-slack"
+          ],
           "env": {
             "SLACK_BOT_TOKEN": "YOUR_SLACK_BOT_TOKEN",
             "SLACK_TEAM_ID": "YOUR_SLACK_TEAM_ID"
