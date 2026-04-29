@@ -18,7 +18,6 @@ builds:
   - id: picoclaw
     env:
       - CGO_ENABLED=0
-      # - GOFLAGS=-x
     tags:
       - goolm
       - stdjson
@@ -63,7 +62,6 @@ builds:
     binary: picoclaw-launcher
     env:
       - CGO_ENABLED=0
-      # - GOFLAGS=-x
     tags:
       - goolm
       - stdjson
@@ -104,51 +102,6 @@ builds:
     #   - goos: netbsd
     #     goarch: arm
 
-  - id: picoclaw-launcher-tui
-    binary: picoclaw-launcher-tui
-    env:
-      - CGO_ENABLED=0
-      # - GOFLAGS=-x
-    tags:
-      - goolm
-      - stdjson
-      - whatsapp_native
-    ldflags:
-      - -s -w
-      - -X github.com/sipeed/picoclaw/pkg/config.Version={{ .Version }}
-      - -X github.com/sipeed/picoclaw/pkg/config.GitCommit={{ .ShortCommit }}
-      - -X github.com/sipeed/picoclaw/pkg/config.BuildTime={{ .Date }}
-      - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ with index .Env "GOVERSION" }}{{ . }}{{ else }}unknown{{ end }}
-    goos:
-      - linux
-      - windows
-      - darwin
-      # - freebsd
-      # - netbsd
-    goarch:
-      - amd64
-      - arm64
-      # - riscv64
-      # - loong64
-      - arm
-      # - s390x
-      # - mipsle
-    goarm:
-      - "6"
-      - "7"
-    gomips:
-      - softfloat
-    main: ./cmd/picoclaw-launcher-tui
-    ignore:
-      - goos: windows
-        goarch: arm
-    #   - goos: netbsd
-    #     goarch: s390x
-    #   - goos: netbsd
-    #     goarch: mips64
-    #   - goos: netbsd
-    #     goarch: arm
-
 dockers_v2:
   - id: picoclaw
     dockerfile: docker/Dockerfile.goreleaser
@@ -172,7 +125,6 @@ dockers_v2:
     ids:
       - picoclaw
       - picoclaw-launcher
-      - picoclaw-launcher-tui
     images:
       - "ghcr.io/{{ .Env.REPO_OWNER }}/picoclaw"
       - '{{ with .Env.DOCKERHUB_IMAGE_NAME }}docker.io/{{ . }}{{ end }}'
@@ -190,7 +142,6 @@ notarize:
       ids:
         - picoclaw
         - picoclaw-launcher
-        - picoclaw-launcher-tui
       sign:
         certificate: "{{.Env.MACOS_SIGN_P12}}"
         password: "{{.Env.MACOS_SIGN_PASSWORD}}"
@@ -221,7 +172,6 @@ nfpms:
     ids:
       - picoclaw
       - picoclaw-launcher
-      - picoclaw-launcher-tui
     package_name: picoclaw
     file_name_template: >-
       {{ .PackageName }}_
