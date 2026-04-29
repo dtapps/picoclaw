@@ -17,7 +17,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/creack/pty v1.1.24
 	github.com/dtapps/weibo-go v1.0.5
-	github.com/dtapps/yuanbao-go v1.0.6
+	github.com/dtapps/yuanbao-go v1.0.7
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
 	github.com/gdamore/tcell/v2 v2.13.9
