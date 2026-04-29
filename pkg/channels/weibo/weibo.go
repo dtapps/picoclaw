@@ -30,6 +30,9 @@ type WeiboChannel struct {
 
 	weiboClient *weibo.Client
 
+	// 令牌文件路径
+	tokensPath string
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -46,6 +49,7 @@ func NewWeiboChannel(
 		return nil, fmt.Errorf("weibo app_id and app_secret are required")
 	}
 
+	// 设置日志级别
 	weiboLogger.SetLevelByName(logLevel)
 
 	base := channels.NewBaseChannel(
@@ -60,6 +64,7 @@ func NewWeiboChannel(
 		BaseChannel: base,
 		bc:          bc,
 		config:      cfg,
+		tokensPath:  buildWeiboTokensPath(cfg),
 	}
 	ch.progress = channels.NewToolFeedbackAnimator(ch.EditMessage)
 	return ch, nil
@@ -87,7 +92,7 @@ func (c *WeiboChannel) applyWeiboProxy() error {
 			HandshakeTimeout: 45 * time.Second,
 		}
 		weiboWs.SetDefaultDialer(dialer)
-		logger.InfoCF(c.Name(), "Weibo channel using configured proxy", map[string]any{
+		logger.InfoCF(c.Name(), "微博频道使用配置的代理", map[string]any{
 			"proxy": c.config.Proxy,
 		})
 	}
@@ -95,7 +100,7 @@ func (c *WeiboChannel) applyWeiboProxy() error {
 }
 
 func (c *WeiboChannel) Start(ctx context.Context) error {
-	logger.InfoC(c.Name(), "Weibo channel started...")
+	logger.InfoC(c.Name(), "微博频道启动...")
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -111,29 +116,77 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	defaultCfg.AppID = c.config.AppID
 	defaultCfg.AppSecret = c.config.AppSecret.String()
 
+	// 设置 Token 回调
+	onToken := func(data *weiboTypes.TokenCallbackData) {
+		if data.Status == "success" {
+			// 保存 token 到文件
+			if saveErr := saveWeiboToken(c.tokensPath, data.AppID, data.Token, data.ExpiresIn); saveErr != nil {
+				logger.ErrorCF(c.Name(), "保存微博 token 失败", map[string]any{
+					"error": saveErr.Error(),
+					"path":  c.tokensPath,
+				})
+			} else {
+				logger.InfoCF(c.Name(), "微博 token 保存成功", map[string]any{
+					"path":       c.tokensPath,
+					"expires_in": data.ExpiresIn,
+					"app_id":     data.AppID,
+				})
+			}
+		} else {
+			logger.ErrorCF(c.Name(), "微博 token 回调错误", map[string]any{
+				"status": data.Status,
+				"error":  data.Error,
+			})
+		}
+	}
+
 	// 创建客户端
 	c.weiboClient, err = weibo.NewClient("default", &weiboTypes.Config{
 		Weibo: defaultCfg,
-	})
+	}, weibo.WithTokenCallback(onToken))
 	if err != nil {
 		return fmt.Errorf("weibo new client failed: %w", err)
 	}
 
+	// 设置 Token 回调
+	c.weiboClient.OnToken(func(data *weiboTypes.TokenCallbackData) {
+		if data.Status == "success" {
+			// 保存 token 到文件
+			if saveErr := saveWeiboToken(c.tokensPath, data.AppID, data.Token, data.ExpiresIn); saveErr != nil {
+				logger.ErrorCF(c.Name(), "保存微博 token 失败", map[string]any{
+					"error": saveErr.Error(),
+					"path":  c.tokensPath,
+				})
+			} else {
+				logger.InfoCF(c.Name(), "微博 token 保存成功", map[string]any{
+					"path":       c.tokensPath,
+					"expires_in": data.ExpiresIn,
+					"app_id":     data.AppID,
+				})
+			}
+		} else {
+			logger.ErrorCF(c.Name(), "微博 token 回调错误", map[string]any{
+				"status": data.Status,
+				"error":  data.Error,
+			})
+		}
+	})
+
 	// 设置连接成功回调
 	c.weiboClient.OnConnected(func() {
-		logger.InfoC(c.Name(), "Weibo channel connected...")
+		logger.InfoC(c.Name(), "微博频道已连接...")
 		c.SetRunning(true)
 	})
 
 	// 设置断开连接回调
 	c.weiboClient.OnDisconnected(func() {
-		logger.InfoC(c.Name(), "Weibo channel disconnected...")
+		logger.InfoC(c.Name(), "微博频道已断开...")
 		c.SetRunning(false)
 	})
 
 	// 设置错误回调
 	c.weiboClient.OnError(func(err error) {
-		logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
+		logger.ErrorCF(c.Name(), "微博频道错误", map[string]any{
 			"error": err.Error(),
 		})
 		c.SetRunning(false)
@@ -142,8 +195,8 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 	// 设置消息处理回调
 	c.weiboClient.OnMessage(func(msg *weiboTypes.InboundMessage) {
 		if msg == nil {
-			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
-				"error": "message is nil",
+			logger.ErrorCF(c.Name(), "微博频道错误", map[string]any{
+				"error": "消息为 nil",
 			})
 			return
 		}
@@ -153,8 +206,8 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 			content += strings.TrimSpace(segment.Text)
 		}
 		if content == "" {
-			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
-				"error": "message is empty",
+			logger.ErrorCF(c.Name(), "微博频道错误", map[string]any{
+				"error": "消息为空",
 			})
 			return // 忽略空消息
 		}
@@ -170,8 +223,8 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 
 		// 权限校验
 		if !c.IsAllowedSender(sender) {
-			logger.ErrorCF(c.Name(), "Weibo channel error", map[string]any{
-				"error": "sender not allowed to send",
+			logger.ErrorCF(c.Name(), "微博频道错误", map[string]any{
+				"error": "发送者不在白名单中",
 			})
 			return
 		}
@@ -213,7 +266,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 }
 
 func (c *WeiboChannel) Stop(ctx context.Context) error {
-	logger.InfoC(c.Name(), "Stopping Weibo channel...")
+	logger.InfoC(c.Name(), "正在停止微博频道...")
 
 	if c.cancel != nil {
 		c.cancel()
@@ -248,7 +301,7 @@ func (c *WeiboChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]str
 // EditMessage implements channels.MessageEditor.
 // Note: Weibo API does not support editing messages, so this just logs and returns nil.
 func (c *WeiboChannel) EditMessage(ctx context.Context, chatID string, messageID string, content string) error {
-	logger.DebugCF(c.Name(), "EditMessage called but not supported by Weibo API", map[string]any{
+	logger.DebugCF(c.Name(), "EditMessage 不支持（微博 API 无法编辑消息）", map[string]any{
 		"chat_id":    chatID,
 		"message_id": messageID,
 	})
