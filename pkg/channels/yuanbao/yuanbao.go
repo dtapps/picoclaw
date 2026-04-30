@@ -125,6 +125,11 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 
 	// 设置 Token 回调
 	onToken := func(data *yuanbaoTypes.TokenCallbackData) {
+		logger.InfoCF(c.Name(), "元宝 token 回调", map[string]any{
+			"status":     data.Status,
+			"app_id":     data.AppID,
+			"expires_in": data.ExpiresIn,
+		})
 		if data.Status == "success" {
 			// 保存 token 到文件
 			if saveErr := saveYuanbaoToken(c.tokensPath, data.AppID, data.Token, data.ExpiresIn); saveErr != nil {
@@ -154,30 +159,6 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("yuanbao new client failed: %w", err)
 	}
-
-	// 设置 Token 回调
-	c.yuanbaoClient.OnToken(func(data *yuanbaoTypes.TokenCallbackData) {
-		if data.Status == "success" {
-			// 保存 token 到文件
-			if saveErr := saveYuanbaoToken(c.tokensPath, data.AppID, data.Token, data.ExpiresIn); saveErr != nil {
-				logger.ErrorCF(c.Name(), "保存元宝 token 失败", map[string]any{
-					"error": saveErr.Error(),
-					"path":  c.tokensPath,
-				})
-			} else {
-				logger.InfoCF(c.Name(), "元宝 token 保存成功", map[string]any{
-					"path":       c.tokensPath,
-					"expires_in": data.ExpiresIn,
-					"app_id":     data.AppID,
-				})
-			}
-		} else {
-			logger.ErrorCF(c.Name(), "元宝 token 回调错误", map[string]any{
-				"status": data.Status,
-				"error":  data.Error,
-			})
-		}
-	})
 
 	// 设置连接成功回调
 	c.yuanbaoClient.OnConnected(func() {
