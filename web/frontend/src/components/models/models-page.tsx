@@ -1,9 +1,23 @@
-import { IconBolt, IconLoader2, IconPlus, IconStar } from "@tabler/icons-react"
+import {
+  IconBolt,
+  IconLoader2,
+  IconPlus,
+  IconSettings,
+  IconStar,
+} from "@tabler/icons-react"
 import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
-import { type ModelInfo, getModels, setDefaultModel } from "@/api/models"
+import {
+  type ModelInfo,
+  getModels,
+  setDefaultModel,
+} from "@/api/models"
+import {
+  getModelSettings,
+  updateModelSettings,
+} from "@/api/model-settings"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
@@ -12,6 +26,7 @@ import { refreshGatewayState } from "@/store/gateway"
 import { AddModelSheet } from "./add-model-sheet"
 import { DeleteModelDialog } from "./delete-model-dialog"
 import { EditModelSheet } from "./edit-model-sheet"
+import { ModelSettingsDialog } from "./model-settings-dialog"
 import { getProviderKey, getProviderLabel } from "./provider-label"
 import { ProviderSection } from "./provider-section"
 import { QuickAddModelSheet } from "./quick-add-model-sheet"
@@ -70,9 +85,17 @@ export function ModelsPage() {
     null,
   )
 
+  const [activeModel, setActiveModel] = useState("")
+  const [fallbacks, setFallbacks] = useState<string[]>([])
+  const [savingGlobal, setSavingGlobal] = useState(false)
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false)
+
   const fetchModels = useCallback(async () => {
     try {
-      const data = await getModels()
+      const [data, settings] = await Promise.all([
+        getModels(),
+        getModelSettings(),
+      ])
       const sorted = [...data.models].sort((a, b) => {
         if (a.is_default && !b.is_default) return -1
         if (!a.is_default && b.is_default) return 1
@@ -81,6 +104,8 @@ export function ModelsPage() {
         return a.model_name.localeCompare(b.model_name)
       })
       setModels(sorted)
+      setActiveModel(settings.model_name)
+      setFallbacks(settings.model_fallbacks || [])
       setFetchError("")
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : t("models.loadError"))
@@ -116,6 +141,40 @@ export function ModelsPage() {
     } finally {
       setSettingDefaultIndex(null)
     }
+  }
+
+  const handleSaveGlobalSettings = async () => {
+    if (!activeModel) return
+    setSavingGlobal(true)
+    try {
+      await updateModelSettings({
+        model_name: activeModel,
+        model_fallbacks: fallbacks,
+      })
+      await fetchModels()
+      const gateway = await refreshGatewayState({ force: true })
+      showSaveSuccessOrRestartToast(
+        t,
+        t("models.settingsSaved"),
+        activeModel,
+        gateway?.restartRequired === true,
+      )
+      setGlobalSettingsOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("models.loadError"))
+    } finally {
+      setSavingGlobal(false)
+    }
+  }
+
+  const addFallback = (modelName: string) => {
+    if (!modelName || fallbacks.includes(modelName) || modelName === activeModel)
+      return
+    setFallbacks((prev) => [...prev, modelName])
+  }
+
+  const removeFallback = (modelName: string) => {
+    setFallbacks((prev) => prev.filter((f) => f !== modelName))
   }
 
   const grouped: Record<string, { label: string; models: ModelInfo[] }> = {}
@@ -166,6 +225,14 @@ export function ModelsPage() {
     <div className="flex h-full flex-col">
       <PageHeader title={t("navigation.models")}>
         <div className="flex items-center gap-3">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setGlobalSettingsOpen(true)}
+          >
+            <IconSettings className="size-4" />
+            {t("models.globalSettings.configure", "Configure")}
+          </Button>
           <Button
             size="sm"
             variant="outline"
@@ -224,6 +291,19 @@ export function ModelsPage() {
           </div>
         )}
       </div>
+
+      <ModelSettingsDialog
+        open={globalSettingsOpen}
+        onOpenChange={setGlobalSettingsOpen}
+        models={models}
+        activeModel={activeModel}
+        fallbacks={fallbacks}
+        saving={savingGlobal}
+        onActiveModelChange={setActiveModel}
+        onAddFallback={addFallback}
+        onRemoveFallback={removeFallback}
+        onSave={handleSaveGlobalSettings}
+      />
 
       <EditModelSheet
         model={editingModel}
