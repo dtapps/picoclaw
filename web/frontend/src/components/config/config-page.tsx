@@ -22,6 +22,7 @@ import {
   DevicesSection,
   EmptyResponseRetrySection,
   ExecSection,
+  InlineToolCallsSection,
   LauncherSection,
   RuntimeSection,
 } from "@/components/config/config-sections"
@@ -269,6 +270,10 @@ export function ConfigPage() {
                   form.emptyResponseRetryPatternsText,
                 ),
               },
+              // 内联工具调用提取配置
+              inline_tool_calls: {
+                enabled: form.inlineToolCallsEnabled,
+              },
             },
           },
           session: {
@@ -449,6 +454,11 @@ export function ConfigPage() {
               />
 
               <EmptyResponseRetrySection
+                form={form}
+                onFieldChange={updateField}
+              />
+
+              <InlineToolCallsSection
                 form={form}
                 onFieldChange={updateField}
               />

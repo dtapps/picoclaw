@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/sipeed/picoclaw/pkg/providers/common"
 	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
 )
 
@@ -111,4 +112,10 @@ func (e *FailoverError) IsRetriable() bool {
 type ModelConfig struct {
 	Primary   string
 	Fallbacks []string
+}
+
+// NormalizeInlineToolCalls 对 LLMResponse 进行后处理：提取部分模型（如 kimi-k2）
+// 嵌入在 content 文本中的内联工具调用，并将其转换为标准 tool_calls 字段。
+func NormalizeInlineToolCalls(resp *LLMResponse) {
+	common.NormalizeInlineToolCalls(resp)
 }

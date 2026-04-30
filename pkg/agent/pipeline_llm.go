@@ -350,6 +350,13 @@ func (p *Pipeline) CallLLM(
 		return ControlBreak, fmt.Errorf("LLM call failed after retries: %w", err)
 	}
 
+	// 内联工具调用提取逻辑
+	// 当 LLM 返回的响应没有标准 tool_calls 但 content 中包含内联工具调用模式时，
+	// 自动提取并转换为标准格式。典型场景：kimi-k2 将工具调用写在 content 文本中
+	if p.Cfg != nil && p.Cfg.Agents.Defaults.IsInlineToolCallsEnabled() {
+		providers.NormalizeInlineToolCalls(exec.response)
+	}
+
 	// 空响应自动重试逻辑
 	// 当 LLM 返回的响应没有 tool calls 且内容匹配空响应模式时，自动重新请求
 	// 典型场景：kimi-k2 返回 [{'type': 'text', 'text': ''}] 这种格式异常的响应

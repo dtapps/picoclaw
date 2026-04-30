@@ -543,12 +543,13 @@ func parseStreamResponse(
 		finishReason = "stop"
 	}
 
-	return &LLMResponse{
+	resp := &LLMResponse{
 		Content:      textContent.String(),
 		ToolCalls:    toolCalls,
 		FinishReason: finishReason,
 		Usage:        usage,
-	}, nil
+	}
+	return resp, nil
 }
 
 func normalizeModel(model, apiBase string) string {

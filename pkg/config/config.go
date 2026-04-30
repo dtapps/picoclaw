@@ -267,6 +267,13 @@ type EmptyResponseRetryConfig struct {
 	Patterns []string `json:"patterns,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_EMPTY_RESPONSE_RETRY_PATTERNS"`
 }
 
+// InlineToolCallsConfig 内联工具调用提取配置
+// 用于处理 kimi-k2 等模型将工具调用写在 content 文本中而非标准 tool_calls 字段的情况
+type InlineToolCallsConfig struct {
+	// Enabled 是否启用内联工具调用提取
+	Enabled bool `json:"enabled" env:"PICOCLAW_AGENTS_DEFAULTS_INLINE_TOOL_CALLS_ENABLED"`
+}
+
 type AgentDefaults struct {
 	Workspace                 string                   `json:"workspace"                        env:"PICOCLAW_AGENTS_DEFAULTS_WORKSPACE"`
 	RestrictToWorkspace       bool                     `json:"restrict_to_workspace"            env:"PICOCLAW_AGENTS_DEFAULTS_RESTRICT_TO_WORKSPACE"`
@@ -289,6 +296,7 @@ type AgentDefaults struct {
 	SubTurn                   SubTurnConfig            `json:"subturn"                                                                                      envPrefix:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_"`
 	ToolFeedback              ToolFeedbackConfig       `json:"tool_feedback,omitempty"`
 	EmptyResponseRetry        EmptyResponseRetryConfig `json:"empty_response_retry,omitempty"`                                                  // 空响应自动重试配置
+	InlineToolCalls           InlineToolCallsConfig    `json:"inline_tool_calls,omitempty"`                                                     // 内联工具调用提取配置
 	SplitOnMarker             bool                     `json:"split_on_marker"                  env:"PICOCLAW_AGENTS_DEFAULTS_SPLIT_ON_MARKER"` // split messages on <|[SPLIT]|> marker
 	ContextManager            string                   `json:"context_manager,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER"`
 	ContextManagerConfig      json.RawMessage          `json:"context_manager_config,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER_CONFIG"`
@@ -321,6 +329,11 @@ func (d *AgentDefaults) GetEmptyResponseMaxRetries() int {
 // GetEmptyResponsePatterns 获取空响应匹配模式列表
 func (d *AgentDefaults) GetEmptyResponsePatterns() []string {
 	return d.EmptyResponseRetry.Patterns
+}
+
+// IsInlineToolCallsEnabled 判断是否启用内联工具调用提取
+func (d *AgentDefaults) IsInlineToolCallsEnabled() bool {
+	return d.InlineToolCalls.Enabled
 }
 
 // GetToolFeedbackMaxArgsLength returns the max visible text length for tool argument previews.
