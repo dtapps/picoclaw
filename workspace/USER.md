@@ -1,21 +1,21 @@
-# User
+# 用户
 
-Information about the user goes here.
+用户信息放在这里。
 
-## Preferences
+## 偏好设置
 
-- Communication style: (casual/formal)
-- Timezone: (your timezone)
-- Language: (your preferred language)
+- 沟通风格：（随意/正式）
+- 时区：（你的时区）
+- 语言：（你的首选语言）
 
-## Personal Information
+## 个人信息
 
-- Name: (optional)
-- Location: (optional)
-- Occupation: (optional)
+- 姓名：（可选）
+- 位置：（可选）
+- 职业：（可选）
 
-## Learning Goals
+## 学习目标
 
-- What the user wants to learn from AI
-- Preferred interaction style
-- Areas of interest
+- 用户想从 AI 学习什么
+- 首选的交互方式
+- 感兴趣的领域
