@@ -225,7 +225,7 @@ func (hs *HeartbeatService) buildPrompt() string {
 	data, err := os.ReadFile(heartbeatPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			hs.createDefaultHeartbeatTemplateCN()
+			hs.createDefaultHeartbeatTemplate()
 			return ""
 		}
 		hs.logErrorf("Error reading HEARTBEAT.md: %v", err)
@@ -238,6 +238,22 @@ func (hs *HeartbeatService) buildPrompt() string {
 	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
+
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+		return fmt.Sprintf(`# 心跳检查
+
+当前时间: %s
+
+你是一个主动式 AI 助手。这是一个定时心跳检查。
+请查看以下任务并使用可用技能执行必要的操作。
+如果没有任何需要注意的事项，请仅回复: HEARTBEAT_OK
+
+%s
+`, now, content)
+	}
+
 	return fmt.Sprintf(`# Heartbeat Check
 
 Current time: %s
@@ -278,18 +294,10 @@ This file contains tasks for the heartbeat service to check periodically.
 Add your heartbeat tasks below this line:
 `
 
-	if err := fileutil.WriteFileAtomic(heartbeatPath, []byte(defaultContent), 0o644); err != nil {
-		hs.logErrorf("Failed to create default HEARTBEAT.md: %v", err)
-	} else {
-		hs.logInfof("Created default HEARTBEAT.md template")
-	}
-}
-
-// createDefaultHeartbeatTemplateCN 创建默认的中文版 HEARTBEAT.md 文件
-func (hs *HeartbeatService) createDefaultHeartbeatTemplateCN() {
-	heartbeatPath := filepath.Join(hs.workspace, "HEARTBEAT.md")
-
-	defaultContent := `# 心跳检查列表
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+		defaultContent = `# 心跳检查列表
 
 此文件包含心跳服务定期检查的任务。
 
@@ -312,11 +320,12 @@ func (hs *HeartbeatService) createDefaultHeartbeatTemplateCN() {
 
 在此行下方添加你的心跳任务：
 `
+	}
 
 	if err := fileutil.WriteFileAtomic(heartbeatPath, []byte(defaultContent), 0o644); err != nil {
-		hs.logErrorf("创建默认 HEARTBEAT.md 失败: %v", err)
+		hs.logErrorf("Failed to create default HEARTBEAT.md: %v", err)
 	} else {
-		hs.logInfof("已创建默认 HEARTBEAT.md 模板 (中文)")
+		hs.logInfof("Created default HEARTBEAT.md template")
 	}
 }
 
