@@ -267,6 +267,17 @@
   "models": {
     "description": "Configure API keys for AI providers. Only configured models are available for chat.",
     "defaultChangeSuccess": "Default model updated.",
+    "settingsSaved": "Model settings saved.",
+    "globalSettings": {
+      "title": "Active Model Settings",
+      "activeModel": "Active Model",
+      "activeModelDescription": "The model currently used by agents for inference.",
+      "selectModel": "Select a model",
+      "fallbackModels": "Fallback Models",
+      "fallbackDescription": "Models to fall back to when the active model fails.",
+      "addFallback": "Add fallback model...",
+      "configure": "Configure"
+    },
     "unsavedPrompt": "This change has not been saved yet. Save to write it into the model configuration.",
     "restartHint": "Model configuration changes take effect after the gateway restarts.",
     "loadError": "Failed to load models",

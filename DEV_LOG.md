@@ -23,6 +23,7 @@
 | **环境变量**  | 暂无 环境变量 管理                                              | **新增环境变量配置 UI**            | 支持全局环境变量管理，自动注入到 Skills 和 MCP 执行环境                                | [feat/env-vars-config](https://github.com/dtapps/picoclaw/tree/feat/env-vars-config)                                                                                                              |
 | **工具集**    | [已提交 PR #2691](https://github.com/sipeed/picoclaw/pull/2691) | **新增 `get_current_time` 工具**   | 支持多种格式和时区，方便获取当前时间/日期                                              | [feat/add-get-current-time-tool](https://github.com/dtapps/picoclaw/tree/feat/add-get-current-time-tool)                                                                                          |
 | **核心逻辑**  | 空响应无处理                                                    | **新增空响应自动重试机制**         | 当大模型返回空内容或格式异常响应时自动重试，支持配置匹配模式和重试次数，含 Web UI 配置 | [fix/empty-response-retry](https://github.com/dtapps/picoclaw/tree/fix/empty-response-retry)                                                                                                      |
+| **模型配置**  | 手动编辑配置文件          | **新增 Web UI 管理页面** | 可视化配置活动模型和备选模型 | [feat/model-settings-ui](https://github.com/dtapps/picoclaw/tree/feat/model-settings-ui) |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>

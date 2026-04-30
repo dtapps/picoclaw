@@ -267,6 +267,17 @@
   "models": {
     "description": "为 AI 服务商配置 API Key。只有已配置的模型可用于对话。",
     "defaultChangeSuccess": "默认模型已更新。",
+    "settingsSaved": "模型设置已保存。",
+    "globalSettings": {
+      "title": "活动模型设置",
+      "activeModel": "活动模型",
+      "activeModelDescription": "智能体当前用于推理的模型。",
+      "selectModel": "选择模型",
+      "fallbackModels": "备选模型",
+      "fallbackDescription": "活动模型失败时回退使用的模型。",
+      "addFallback": "添加备选模型...",
+      "configure": "配置"
+    },
     "unsavedPrompt": "当前修改尚未保存，保存后才会写入模型配置。",
     "restartHint": "模型配置保存后需要重启服务才能生效。",
     "loadError": "加载模型列表失败",
