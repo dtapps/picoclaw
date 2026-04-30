@@ -225,7 +225,7 @@ func (hs *HeartbeatService) buildPrompt() string {
 	data, err := os.ReadFile(heartbeatPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			hs.createDefaultHeartbeatTemplate()
+			hs.createDefaultHeartbeatTemplateCN()
 			return ""
 		}
 		hs.logErrorf("Error reading HEARTBEAT.md: %v", err)
@@ -282,6 +282,41 @@ Add your heartbeat tasks below this line:
 		hs.logErrorf("Failed to create default HEARTBEAT.md: %v", err)
 	} else {
 		hs.logInfof("Created default HEARTBEAT.md template")
+	}
+}
+
+// createDefaultHeartbeatTemplateCN 创建默认的中文版 HEARTBEAT.md 文件
+func (hs *HeartbeatService) createDefaultHeartbeatTemplateCN() {
+	heartbeatPath := filepath.Join(hs.workspace, "HEARTBEAT.md")
+
+	defaultContent := `# 心跳检查列表
+
+此文件包含心跳服务定期检查的任务。
+
+## 示例
+
+- 检查未读消息
+- 查看即将到来的日历事件
+- 检查设备状态（例如 MaixCam）
+
+## 说明
+
+- 执行下面列出的**所有**任务，不要跳过任何任务。
+- 对于简单任务（例如报告当前时间），直接响应。
+- 对于可能需要时间的复杂任务，使用 spawn 工具创建子代理。
+- spawn 工具是异步的 - 子代理结果将自动发送给用户。
+- 生成子代理后，**继续**处理剩余任务。
+- 只有当**所有**任务完成且**没有**需要注意的事项时，才回复 HEARTBEAT_OK。
+
+---
+
+在此行下方添加你的心跳任务：
+`
+
+	if err := fileutil.WriteFileAtomic(heartbeatPath, []byte(defaultContent), 0o644); err != nil {
+		hs.logErrorf("创建默认 HEARTBEAT.md 失败: %v", err)
+	} else {
+		hs.logInfof("已创建默认 HEARTBEAT.md 模板 (中文)")
 	}
 }
 
