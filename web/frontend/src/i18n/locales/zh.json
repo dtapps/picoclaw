@@ -825,6 +825,8 @@
       "inline_tool_calls_description": "自动提取模型响应中内嵌的工具调用（如 kimi-k2），并转换为标准格式。",
       "inline_tool_calls_enabled": "启用内联工具调用",
       "inline_tool_calls_enabled_hint": "启用后，当大模型将工具调用写在 content 文本中而非标准 tool_calls 字段时，将自动解析并执行。",
+      "clean_content_enabled": "清理模型响应内容",
+      "clean_content_enabled_hint": "启用后，将自动移除模型响应中的 Anthropic 风格包装和特殊 token。例如 [{'type': 'text', 'text': '...'}<|tool_call_end|>] 将被清理为实际文本内容。",
       "autostart_label": "开机自启",
       "autostart_hint": "登录系统后自动启动 PicoClaw Web",
       "autostart_unsupported": "当前平台不支持开机自启",

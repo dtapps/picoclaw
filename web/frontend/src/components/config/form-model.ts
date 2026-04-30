@@ -31,6 +31,8 @@ export interface CoreConfigForm {
   emptyResponseRetryPatternsText: string
   // 内联工具调用提取配置
   inlineToolCallsEnabled: boolean
+  // 模型响应内容清理配置
+  cleanContentEnabled: boolean
 }
 
 export interface LauncherForm {
@@ -103,6 +105,8 @@ export const EMPTY_FORM: CoreConfigForm = {
   emptyResponseRetryPatternsText: "",
   // 内联工具调用提取默认值
   inlineToolCallsEnabled: false,
+  // 模型响应内容清理默认值
+  cleanContentEnabled: false,
 }
 
 export const EMPTY_LAUNCHER_FORM: LauncherForm = {
@@ -268,6 +272,13 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
       return itc.enabled === undefined
         ? EMPTY_FORM.inlineToolCallsEnabled
         : asBool(itc.enabled)
+    })(),
+    // 解析模型响应内容清理配置（agents.defaults.inline_tool_calls.clean_content）
+    cleanContentEnabled: (() => {
+      const itc = asRecord(defaults.inline_tool_calls)
+      return itc.clean_content === undefined
+        ? EMPTY_FORM.cleanContentEnabled
+        : asBool(itc.clean_content)
     })(),
   }
 }

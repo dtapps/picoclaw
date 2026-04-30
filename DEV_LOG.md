@@ -26,6 +26,7 @@
 | **模型配置**  | 手动编辑配置文件          | **新增 Web UI 管理页面** | 可视化配置活动模型和备选模型 | [feat/model-settings-ui](https://github.com/dtapps/picoclaw/tree/feat/model-settings-ui) |
 | **MCP**       | [已提交 PR #2725](https://github.com/sipeed/picoclaw/pull/2725) | **修复 MCP 初始化失败导致无响应**   | MCP 服务器不可达时降级为警告继续运行，添加 HTTP 30s 超时，避免应用僵尸状态              | [fix/mcp-init-non-fatal](https://github.com/dtapps/picoclaw/tree/fix/mcp-init-non-fatal)                                                                                                          |
 | **核心逻辑**  | 非标准 tool_calls 格式无法识别                                  | **新增内联工具调用提取**           | 当大模型（如 kimi-k2）将工具调用写在 content 文本中而非标准 tool_calls 字段时，自动提取并转换，支持配置开关 | [feat/inline-tool-calls](https://github.com/dtapps/picoclaw/tree/feat/inline-tool-calls)                                                                                                          |
+| **核心逻辑**  | 模型响应内容含 Anthropic 风格包装和特殊 token                    | **新增模型响应内容清理**           | 当大模型（如 kimi-k2）返回纯文本响应被 `[{'type':'text','text':'...'}]` 包装并附加 `<|tool_call_end|>` 等特殊 token 时，自动提取实际文本内容，支持配置开关 | [feat/clean-anthropic-wrapper](https://github.com/dtapps/picoclaw/tree/feat/clean-anthropic-wrapper) |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>

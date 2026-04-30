@@ -265,3 +265,67 @@ func TestFindMatchingBraceInString(t *testing.T) {
 		})
 	}
 }
+
+func TestCleanModelContent_AnthropicWrapperWithText(t *testing.T) {
+	// 纯文本响应被 Anthropic 风格包装并附加特殊 token 的典型场景
+	content := `[{'type': 'text', 'text': '好，我重新来一遍！'}<|tool_call_end|><|tool_calls_section_end|>`
+	expected := "好，我重新来一遍！"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestCleanModelContent_AnthropicWrapperDoubleQuotes(t *testing.T) {
+	content := `[{"type": "text", "text": "Hello world"}]<|tool_call_end|>`
+	expected := "Hello world"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestCleanModelContent_SpecialTokensOnly(t *testing.T) {
+	// 只有特殊 token 没有包装
+	content := `Hello<|tool_call_end|><|tool_calls_section_end|>`
+	expected := "Hello"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestCleanModelContent_NormalContent(t *testing.T) {
+	// 普通内容不变
+	content := "Hello, how can I help you?"
+
+	result := CleanModelContent(content)
+	if result != content {
+		t.Errorf("expected content unchanged, got %q", result)
+	}
+}
+
+func TestCleanModelContent_TextWithSpecialChars(t *testing.T) {
+	// 正文含有花括号，不应影响提取
+	content := `[{'type': 'text', 'text': 'hello } world'}]`
+	expected := "hello } world"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestCleanModelContent_TextWithBraces(t *testing.T) {
+	// 正文含有花括号对
+	content := `[{'type': 'text', 'text': 'hello {world}'}]`
+	expected := "hello {world}"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}

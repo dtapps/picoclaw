@@ -420,6 +420,22 @@ func (p *Pipeline) CallLLM(
 		}
 	}
 
+	// 模型响应内容清理逻辑
+	// 在空响应重试之后执行，确保最终 content 不包含 Anthropic 风格包装和特殊 token
+	// 典型场景：kimi-k2 返回 [{'type': 'text', 'text': '好，我重新来一遍！'}<|tool_call_end|><|tool_calls_section_end|>
+	if p.Cfg != nil && p.Cfg.Agents.Defaults.IsCleanContentEnabled() {
+		cleaned := providers.CleanModelContent(exec.response.Content)
+		if cleaned != exec.response.Content {
+			logger.WarnCF("agent", "清理模型响应内容",
+				map[string]any{
+					"agent_id":         ts.agent.ID,
+					"original_content": exec.response.Content,
+					"cleaned_content":  cleaned,
+				})
+			exec.response.Content = cleaned
+		}
+	}
+
 	// AfterLLM hook
 	if p.Hooks != nil {
 		llmResp, decision := p.Hooks.AfterLLM(turnCtx, &LLMHookResponse{

@@ -273,6 +273,7 @@ export function ConfigPage() {
               // 内联工具调用提取配置
               inline_tool_calls: {
                 enabled: form.inlineToolCallsEnabled,
+                clean_content: form.cleanContentEnabled,
               },
             },
           },

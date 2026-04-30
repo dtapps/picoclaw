@@ -825,6 +825,8 @@
       "inline_tool_calls_description": "Automatically extract tool calls embedded inline in model responses (e.g., kimi-k2) and convert them to the standard format.",
       "inline_tool_calls_enabled": "Enable Inline Tool Calls",
       "inline_tool_calls_enabled_hint": "When enabled, tool calls written in the content text instead of the standard tool_calls field will be automatically parsed and executed.",
+      "clean_content_enabled": "Clean Model Content",
+      "clean_content_enabled_hint": "When enabled, Anthropic-style wrappers and special tokens in model responses will be removed. For example, [{'type': 'text', 'text': '...'}<|tool_call_end|>] will be cleaned to show only the actual text.",
       "autostart_label": "Launch at Login",
       "autostart_hint": "Start PicoClaw Web automatically when you log in.",
       "autostart_unsupported": "Launch at login is not supported on this platform.",
