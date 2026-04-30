@@ -25,6 +25,7 @@
 | **核心逻辑**  | 空响应无处理                                                    | **新增空响应自动重试机制**         | 当大模型返回空内容或格式异常响应时自动重试，支持配置匹配模式和重试次数，含 Web UI 配置 | [fix/empty-response-retry](https://github.com/dtapps/picoclaw/tree/fix/empty-response-retry)                                                                                                      |
 | **模型配置**  | 手动编辑配置文件          | **新增 Web UI 管理页面** | 可视化配置活动模型和备选模型 | [feat/model-settings-ui](https://github.com/dtapps/picoclaw/tree/feat/model-settings-ui) |
 | **MCP**       | [已提交 PR #2725](https://github.com/sipeed/picoclaw/pull/2725) | **修复 MCP 初始化失败导致无响应**   | MCP 服务器不可达时降级为警告继续运行，添加 HTTP 30s 超时，避免应用僵尸状态              | [fix/mcp-init-non-fatal](https://github.com/dtapps/picoclaw/tree/fix/mcp-init-non-fatal)                                                                                                          |
+| **核心逻辑**  | 非标准 tool_calls 格式无法识别                                  | **新增内联工具调用提取**           | 当大模型（如 kimi-k2）将工具调用写在 content 文本中而非标准 tool_calls 字段时，自动提取并转换，支持配置开关 | [feat/inline-tool-calls](https://github.com/dtapps/picoclaw/tree/feat/inline-tool-calls)                                                                                                          |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>

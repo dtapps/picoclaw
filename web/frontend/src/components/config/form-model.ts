@@ -29,6 +29,8 @@ export interface CoreConfigForm {
   emptyResponseRetryEnabled: boolean
   emptyResponseRetryMaxRetries: string
   emptyResponseRetryPatternsText: string
+  // 内联工具调用提取配置
+  inlineToolCallsEnabled: boolean
 }
 
 export interface LauncherForm {
@@ -99,6 +101,8 @@ export const EMPTY_FORM: CoreConfigForm = {
   emptyResponseRetryEnabled: false,
   emptyResponseRetryMaxRetries: "3",
   emptyResponseRetryPatternsText: "",
+  // 内联工具调用提取默认值
+  inlineToolCallsEnabled: false,
 }
 
 export const EMPTY_LAUNCHER_FORM: LauncherForm = {
@@ -257,6 +261,13 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
             .filter((v): v is string => typeof v === "string")
             .join("\n")
         : EMPTY_FORM.emptyResponseRetryPatternsText
+    })(),
+    // 解析内联工具调用提取配置（agents.defaults.inline_tool_calls）
+    inlineToolCallsEnabled: (() => {
+      const itc = asRecord(defaults.inline_tool_calls)
+      return itc.enabled === undefined
+        ? EMPTY_FORM.inlineToolCallsEnabled
+        : asBool(itc.enabled)
     })(),
   }
 }

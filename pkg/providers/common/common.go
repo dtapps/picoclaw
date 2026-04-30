@@ -326,6 +326,27 @@ func ParseResponse(body io.Reader) (*LLMResponse, error) {
 	}, nil
 }
 
+// NormalizeInlineToolCalls 对 LLMResponse 进行后处理：提取部分模型（如 kimi-k2）
+// 嵌入在 content 文本中的内联工具调用，并将其转换为标准 tool_calls 字段。
+// 当响应没有标准 tool_calls 但 content 中包含内联工具调用模式时，
+// 提取并更新响应。
+func NormalizeInlineToolCalls(resp *LLMResponse) {
+	if resp == nil || len(resp.ToolCalls) > 0 {
+		return
+	}
+
+	extracted, cleanedContent := ExtractInlineToolCalls(resp.Content)
+	if len(extracted) == 0 {
+		return
+	}
+
+	resp.ToolCalls = extracted
+	resp.Content = cleanedContent
+	if resp.FinishReason == "" || resp.FinishReason == "stop" {
+		resp.FinishReason = "tool_calls"
+	}
+}
+
 // normalizeFinishReason normalizes finish_reason values across providers.
 // Converts "length" to "truncated" for consistent handling.
 func normalizeFinishReason(reason string) string {

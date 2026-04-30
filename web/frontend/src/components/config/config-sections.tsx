@@ -664,6 +664,37 @@ export function DevicesSection({
   )
 }
 
+// InlineToolCallsSection 内联工具调用提取配置区域
+// 当大模型将工具调用写在 content 文本中而非标准 tool_calls 字段时，自动提取并转换
+interface InlineToolCallsSectionProps {
+  form: CoreConfigForm
+  onFieldChange: UpdateCoreField
+}
+
+export function InlineToolCallsSection({
+  form,
+  onFieldChange,
+}: InlineToolCallsSectionProps) {
+  const { t } = useTranslation()
+
+  return (
+    <ConfigSectionCard
+      title={t("pages.config.sections.inline_tool_calls")}
+      description={t("pages.config.inline_tool_calls_description")}
+    >
+      <SwitchCardField
+        label={t("pages.config.inline_tool_calls_enabled")}
+        hint={t("pages.config.inline_tool_calls_enabled_hint")}
+        layout="setting-row"
+        checked={form.inlineToolCallsEnabled}
+        onCheckedChange={(checked) =>
+          onFieldChange("inlineToolCallsEnabled", checked)
+        }
+      />
+    </ConfigSectionCard>
+  )
+}
+
 // EmptyResponseRetrySection 空响应自动重试配置区域
 // 当大模型返回空内容或格式异常的响应时，自动重新请求
 interface EmptyResponseRetrySectionProps {
