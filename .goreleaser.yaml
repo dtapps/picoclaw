@@ -12,7 +12,7 @@ before:
     - go generate ./...
     - sh -c 'cd web/frontend && CI=true pnpm install --frozen-lockfile && pnpm build:backend'
     - sh -c 'GOBIN="$(go env GOPATH)/bin"; mkdir -p "$GOBIN"; go install github.com/tc-hib/go-winres@v0.3.3 && "$GOBIN/go-winres" make --in web/backend/winres/winres.json --out web/backend/rsrc --product-version={{ .Version }} --file-version={{ .Version }}'
-    - sh -c 'if [ "${INCLUDE_ANDROID_BUNDLE:-}" = "true" ]; then make build-android-bundle; fi'
+    # - sh -c 'if [ "${INCLUDE_ANDROID_BUNDLE:-}" = "true" ]; then make build-android-bundle; fi'
 
 builds:
   - id: picoclaw
@@ -30,8 +30,8 @@ builds:
       - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ with index .Env "GOVERSION" }}{{ . }}{{ else }}unknown{{ end }}
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
       # - freebsd
       # - netbsd
     goarch:
@@ -48,9 +48,9 @@ builds:
     gomips:
       - softfloat
     main: ./cmd/picoclaw
-    ignore:
-      - goos: windows
-        goarch: arm
+    # ignore:
+    #   - goos: windows
+    #     goarch: arm
     #   - goos: netbsd
     #     goarch: s390x
     #   - goos: netbsd
@@ -74,8 +74,8 @@ builds:
       - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ with index .Env "GOVERSION" }}{{ . }}{{ else }}unknown{{ end }}
     goos:
       - linux
-      - windows
-      - darwin
+      # - windows
+      # - darwin
       # - freebsd
       # - netbsd
     goarch:
@@ -92,9 +92,9 @@ builds:
     gomips:
       - softfloat
     main: ./web/backend
-    ignore:
-      - goos: windows
-        goarch: arm
+    # ignore:
+    #   - goos: windows
+    #     goarch: arm
     #   - goos: netbsd
     #     goarch: s390x
     #   - goos: netbsd
