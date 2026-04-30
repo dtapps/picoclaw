@@ -25,7 +25,8 @@
         ]
       },
       "inline_tool_calls": {
-        "enabled": false
+        "enabled": false,
+        "clean_content": false
       }
     }
   },

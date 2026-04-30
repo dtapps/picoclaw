@@ -307,3 +307,25 @@ func TestCleanModelContent_NormalContent(t *testing.T) {
 		t.Errorf("expected content unchanged, got %q", result)
 	}
 }
+
+func TestCleanModelContent_TextWithSpecialChars(t *testing.T) {
+	// 正文含有花括号，不应影响提取
+	content := `[{'type': 'text', 'text': 'hello } world'}]`
+	expected := "hello } world"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestCleanModelContent_TextWithBraces(t *testing.T) {
+	// 正文含有花括号对
+	content := `[{'type': 'text', 'text': 'hello {world}'}]`
+	expected := "hello {world}"
+
+	result := CleanModelContent(content)
+	if result != expected {
+		t.Errorf("expected %q, got %q", expected, result)
+	}
+}

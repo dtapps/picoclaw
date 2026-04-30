@@ -236,9 +236,10 @@ func extractAnthropicTextValue(content string) (string, bool) {
 	}
 
 	// 尝试单引号格式：'text': '...'
+	// 使用 LastIndex 从末尾倒查结束标记，避免正文含有 '} 导致提前截断
 	if idx := strings.Index(inner, "'text': '"); idx != -1 {
 		start := idx + len("'text': '")
-		end := strings.Index(inner[start:], "'}")
+		end := strings.LastIndex(inner[start:], "'}")
 		if end != -1 {
 			return inner[start : start+end], true
 		}
@@ -247,7 +248,7 @@ func extractAnthropicTextValue(content string) (string, bool) {
 	// 尝试双引号格式："text": "..."
 	if idx := strings.Index(inner, `"text": "`); idx != -1 {
 		start := idx + len(`"text": "`)
-		end := strings.Index(inner[start:], `"}`)
+		end := strings.LastIndex(inner[start:], `"}`)
 		if end != -1 {
 			return inner[start : start+end], true
 		}
