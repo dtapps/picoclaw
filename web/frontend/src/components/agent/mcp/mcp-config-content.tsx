@@ -49,7 +49,7 @@ export function MCPConfigContent({
   const isValid = draft ? isDiscoveryValid(draft.discovery) : true
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-2 space-y-12 pt-2 duration-500">
+    <div className="animate-in fade-in slide-in-from-bottom-2 space-y-5 pt-2 duration-500">
       {hasError ? (
         <div className="py-20 text-center">
           <p className="text-destructive font-medium">
@@ -98,7 +98,7 @@ export function MCPConfigContent({
             </Button>
           </div>
 
-          <div className="space-y-10">
+          <div className="space-y-4">
             <GeneralSettings draft={draft} onUpdateDraft={onUpdateDraft} />
             <DiscoverySettings draft={draft} onUpdateDraft={onUpdateDraft} />
             <ServersList draft={draft} onUpdateDraft={onUpdateDraft} />
@@ -119,13 +119,13 @@ function GeneralSettings({
   const { t } = useTranslation()
 
   return (
-    <Card className="border-border/60 overflow-hidden rounded-2xl">
-      <CardHeader className="bg-muted/30 border-border/60 border-b px-6 py-4">
-        <CardTitle className="text-foreground/90 text-base font-semibold">
+    <Card className="border-border/60 overflow-hidden rounded-xl">
+      <CardHeader className="bg-muted/30 border-border/60 border-b px-4 py-2">
+        <CardTitle className="text-foreground/90 text-sm font-semibold">
           {t("pages.agent.mcp.general.title", "General Settings")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <Label className="text-foreground/90 text-sm font-medium">
@@ -149,7 +149,7 @@ function GeneralSettings({
           />
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           <Label className="text-foreground/90 text-sm font-medium">
             {t(
               "pages.agent.mcp.general.max_inline_text_chars",
@@ -171,7 +171,7 @@ function GeneralSettings({
                 max_inline_text_chars: parseInt(e.target.value) || 16384,
               }))
             }
-            className="h-10 max-w-xs rounded-xl"
+            className="h-9 max-w-xs rounded-lg"
             min={1024}
             max={102400}
             step={1024}
@@ -195,13 +195,13 @@ function DiscoverySettings({
   const showEngineWarning = draft.discovery.enabled && !hasSearchEngine
 
   return (
-    <Card className="border-border/60 overflow-hidden rounded-2xl">
-      <CardHeader className="bg-muted/30 border-border/60 border-b px-6 py-4">
-        <CardTitle className="text-foreground/90 text-base font-semibold">
+    <Card className="border-border/60 overflow-hidden rounded-xl">
+      <CardHeader className="bg-muted/30 border-border/60 border-b px-4 py-2">
+        <CardTitle className="text-foreground/90 text-sm font-semibold">
           {t("pages.agent.mcp.discovery.title", "Discovery Settings")}
         </CardTitle>
       </CardHeader>
-      <CardContent className="space-y-6 p-6">
+      <CardContent className="space-y-3 p-4">
         <div className="flex items-center justify-between">
           <div className="space-y-1">
             <Label className="text-foreground/90 text-sm font-medium">
@@ -225,123 +225,127 @@ function DiscoverySettings({
           />
         </div>
 
-        {showEngineWarning && (
-          <div className="bg-destructive/10 text-destructive rounded-lg px-4 py-3 text-sm">
-            {t(
-              "pages.agent.mcp.discovery.engine_warning",
-              "Warning: At least one search engine (BM25 or Regex) must be enabled when Discovery is enabled.",
+        {draft.discovery.enabled && (
+          <>
+            {showEngineWarning && (
+              <div className="bg-destructive/10 text-destructive rounded-lg px-4 py-3 text-sm">
+                {t(
+                  "pages.agent.mcp.discovery.engine_warning",
+                  "Warning: At least one search engine (BM25 or Regex) must be enabled when Discovery is enabled.",
+                )}
+              </div>
             )}
-          </div>
+
+            <div className="grid gap-6 md:grid-cols-2">
+              <div className="space-y-1.5">
+                <Label className="text-foreground/90 text-sm font-medium">
+                  {t("pages.agent.mcp.discovery.ttl", "TTL")}
+                </Label>
+                <p className="text-muted-foreground text-xs">
+                  {t(
+                    "pages.agent.mcp.discovery.ttl_description",
+                    "Number of conversation rounds to keep discovered tools unlocked.",
+                  )}
+                </p>
+                <Input
+                  type="number"
+                  value={draft.discovery.ttl}
+                  onChange={(e) =>
+                    onUpdateDraft((current) => ({
+                      ...current,
+                      discovery: {
+                        ...current.discovery,
+                        ttl: parseInt(e.target.value) || 5,
+                      },
+                    }))
+                  }
+                  className="h-9 rounded-lg"
+                  min={1}
+                  max={100}
+                />
+              </div>
+
+              <div className="space-y-3">
+                <Label className="text-foreground/90 text-sm font-medium">
+                  {t(
+                    "pages.agent.mcp.discovery.max_search_results",
+                    "Max Search Results",
+                  )}
+                </Label>
+                <p className="text-muted-foreground text-xs">
+                  {t(
+                    "pages.agent.mcp.discovery.max_search_results_description",
+                    "Maximum number of tools to return per search.",
+                  )}
+                </p>
+                <Input
+                  type="number"
+                  value={draft.discovery.max_search_results}
+                  onChange={(e) =>
+                    onUpdateDraft((current) => ({
+                      ...current,
+                      discovery: {
+                        ...current.discovery,
+                        max_search_results: parseInt(e.target.value) || 5,
+                      },
+                    }))
+                  }
+                  className="h-9 rounded-lg"
+                  min={1}
+                  max={50}
+                />
+              </div>
+            </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="text-foreground/90 text-sm font-medium">
+                    {t("pages.agent.mcp.discovery.use_bm25", "Use BM25")}
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    {t(
+                      "pages.agent.mcp.discovery.use_bm25_description",
+                      "Enable natural language/keyword search for tools. Consumes more resources than regex search.",
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={draft.discovery.use_bm25}
+                  onCheckedChange={(checked) =>
+                    onUpdateDraft((current) => ({
+                      ...current,
+                      discovery: { ...current.discovery, use_bm25: checked },
+                    }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label className="text-foreground/90 text-sm font-medium">
+                    {t("pages.agent.mcp.discovery.use_regex", "Use Regex")}
+                  </Label>
+                  <p className="text-muted-foreground text-xs">
+                    {t(
+                      "pages.agent.mcp.discovery.use_regex_description",
+                      "Enable regex pattern search for tools.",
+                    )}
+                  </p>
+                </div>
+                <Switch
+                  checked={draft.discovery.use_regex}
+                  onCheckedChange={(checked) =>
+                    onUpdateDraft((current) => ({
+                      ...current,
+                      discovery: { ...current.discovery, use_regex: checked },
+                    }))
+                  }
+                />
+              </div>
+            </div>
+          </>
         )}
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-3">
-            <Label className="text-foreground/90 text-sm font-medium">
-              {t("pages.agent.mcp.discovery.ttl", "TTL")}
-            </Label>
-            <p className="text-muted-foreground text-xs">
-              {t(
-                "pages.agent.mcp.discovery.ttl_description",
-                "Number of conversation rounds to keep discovered tools unlocked.",
-              )}
-            </p>
-            <Input
-              type="number"
-              value={draft.discovery.ttl}
-              onChange={(e) =>
-                onUpdateDraft((current) => ({
-                  ...current,
-                  discovery: {
-                    ...current.discovery,
-                    ttl: parseInt(e.target.value) || 5,
-                  },
-                }))
-              }
-              className="h-10 rounded-xl"
-              min={1}
-              max={100}
-            />
-          </div>
-
-          <div className="space-y-3">
-            <Label className="text-foreground/90 text-sm font-medium">
-              {t(
-                "pages.agent.mcp.discovery.max_search_results",
-                "Max Search Results",
-              )}
-            </Label>
-            <p className="text-muted-foreground text-xs">
-              {t(
-                "pages.agent.mcp.discovery.max_search_results_description",
-                "Maximum number of tools to return per search.",
-              )}
-            </p>
-            <Input
-              type="number"
-              value={draft.discovery.max_search_results}
-              onChange={(e) =>
-                onUpdateDraft((current) => ({
-                  ...current,
-                  discovery: {
-                    ...current.discovery,
-                    max_search_results: parseInt(e.target.value) || 5,
-                  },
-                }))
-              }
-              className="h-10 rounded-xl"
-              min={1}
-              max={50}
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-6 md:grid-cols-2">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="text-foreground/90 text-sm font-medium">
-                {t("pages.agent.mcp.discovery.use_bm25", "Use BM25")}
-              </Label>
-              <p className="text-muted-foreground text-xs">
-                {t(
-                  "pages.agent.mcp.discovery.use_bm25_description",
-                  "Enable natural language/keyword search for tools. Consumes more resources than regex search.",
-                )}
-              </p>
-            </div>
-            <Switch
-              checked={draft.discovery.use_bm25}
-              onCheckedChange={(checked) =>
-                onUpdateDraft((current) => ({
-                  ...current,
-                  discovery: { ...current.discovery, use_bm25: checked },
-                }))
-              }
-            />
-          </div>
-
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label className="text-foreground/90 text-sm font-medium">
-                {t("pages.agent.mcp.discovery.use_regex", "Use Regex")}
-              </Label>
-              <p className="text-muted-foreground text-xs">
-                {t(
-                  "pages.agent.mcp.discovery.use_regex_description",
-                  "Enable regex pattern search for tools.",
-                )}
-              </p>
-            </div>
-            <Switch
-              checked={draft.discovery.use_regex}
-              onCheckedChange={(checked) =>
-                onUpdateDraft((current) => ({
-                  ...current,
-                  discovery: { ...current.discovery, use_regex: checked },
-                }))
-              }
-            />
-          </div>
-        </div>
       </CardContent>
     </Card>
   )
@@ -398,24 +402,24 @@ function ServersList({
 
   return (
     <>
-      <Card className="border-border/60 overflow-hidden rounded-2xl">
-        <CardHeader className="bg-muted/30 border-border/60 flex flex-row items-center justify-between border-b px-6 py-4">
-          <CardTitle className="text-foreground/90 text-base font-semibold">
+      <Card className="border-border/60 overflow-hidden rounded-xl">
+        <CardHeader className="bg-muted/30 border-border/60 flex flex-row items-center justify-between border-b px-4 py-2">
+          <CardTitle className="text-foreground/90 text-sm font-semibold">
             {t("pages.agent.mcp.servers.title", "MCP Servers")}
           </CardTitle>
           <Button
             onClick={addServer}
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 rounded-lg"
+            className="h-7 gap-1.5 rounded-md px-2.5 text-xs"
           >
-            <IconPlus className="size-4" />
+            <IconPlus className="size-3.5" />
             {t("pages.agent.mcp.servers.add", "Add Server")}
           </Button>
         </CardHeader>
-        <CardContent className="space-y-4 p-6">
+        <CardContent className="space-y-3 p-4">
           {draft.servers.length === 0 ? (
-            <div className="text-muted-foreground py-8 text-center text-sm">
+            <div className="text-muted-foreground py-4 text-center text-sm">
               {t(
                 "pages.agent.mcp.servers.empty",
                 'No MCP servers configured. Click "Add Server" to add one.',
@@ -486,7 +490,7 @@ function ServerCard({
   const { t } = useTranslation()
 
   return (
-    <div className="bg-muted/30 border-border/60 space-y-4 rounded-xl border p-4">
+    <div className="bg-muted/30 border-border/60 space-y-2 rounded-lg border p-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <h4 className="text-foreground/90 text-sm font-medium">
@@ -699,9 +703,9 @@ function ServerCard({
 
 function LoadingState() {
   return (
-    <div className="space-y-8">
-      <Skeleton className="h-24 rounded-2xl" />
-      <Skeleton className="h-64 rounded-2xl" />
+    <div className="space-y-5">
+      <Skeleton className="h-20 rounded-xl" />
+      <Skeleton className="h-48 rounded-xl" />
     </div>
   )
 }
