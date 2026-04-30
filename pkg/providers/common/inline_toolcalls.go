@@ -181,6 +181,81 @@ func findMatchingBraceInString(s string, start int) int {
 	return -1
 }
 
+// CleanModelContent 清理模型响应 content 中的 Anthropic 风格包装和特殊 token。
+// 典型场景：kimi-k2 返回纯文本响应时，内容被包装为
+//
+//	[{'type': 'text', 'text': '好，我重新来一遍！'}<|tool_call_end|><|tool_calls_section_end|>
+//
+// 此函数提取其中的实际文本内容，移除包装和特殊 token。
+func CleanModelContent(content string) string {
+	if content == "" {
+		return content
+	}
+
+	// 移除特殊 token
+	content = strings.ReplaceAll(content, inlineToolCallEndToken, "")
+	content = strings.ReplaceAll(content, inlineToolCallsSectionEndToken, "")
+	content = strings.TrimSpace(content)
+
+	// 尝试提取 Anthropic 风格包装中的文本值
+	if extracted, ok := extractAnthropicTextValue(content); ok {
+		return extracted
+	}
+
+	return content
+}
+
+// extractAnthropicTextValue 尝试从 Anthropic 风格的内容块中提取文本值。
+// 匹配模式：[{'type': 'text', 'text': '实际内容'}] 或 [{"type": "text", "text": "实际内容"}]
+// 也支持缺少末尾 ] 的变体，如 [{'type': 'text', 'text': '实际内容'}}
+// 返回提取的文本值和是否匹配 Anthropic 风格包装。
+func extractAnthropicTextValue(content string) (string, bool) {
+	trimmed := strings.TrimSpace(content)
+
+	// 必须以 [{' 开头
+	if !strings.HasPrefix(trimmed, "[{") {
+		return "", false
+	}
+
+	// 必须以 '}]' 或 '}' 结尾（部分模型如 kimi-k2 可能省略末尾的 ]）
+	if !strings.HasSuffix(trimmed, "}]") && !strings.HasSuffix(trimmed, "}") {
+		return "", false
+	}
+
+	// 必须包含 'type' 和 'text' 键（单引号或双引号格式）
+	hasType := strings.Contains(trimmed, "'type'") || strings.Contains(trimmed, `"type"`)
+	hasText := strings.Contains(trimmed, "'text'") || strings.Contains(trimmed, `"text"`)
+	if !hasType || !hasText {
+		return "", false
+	}
+
+	inner := trimmed[1:] // 去除开头的 [
+	// 如果末尾有 ]，也去除
+	if strings.HasSuffix(trimmed, "}]") {
+		inner = trimmed[1 : len(trimmed)-1] // 去除 [ 和 ]
+	}
+
+	// 尝试单引号格式：'text': '...'
+	if idx := strings.Index(inner, "'text': '"); idx != -1 {
+		start := idx + len("'text': '")
+		end := strings.Index(inner[start:], "'}")
+		if end != -1 {
+			return inner[start : start+end], true
+		}
+	}
+
+	// 尝试双引号格式："text": "..."
+	if idx := strings.Index(inner, `"text": "`); idx != -1 {
+		start := idx + len(`"text": "`)
+		end := strings.Index(inner[start:], `"}`)
+		if end != -1 {
+			return inner[start : start+end], true
+		}
+	}
+
+	return "", false
+}
+
 // stripInlineToolTokens 清除与内联工具调用关联的特殊 token（如
 // <|tool_call_end|>、<|tool_calls_section_end|>），并清理周围的空白和
 // Anthropic 风格包装模式。

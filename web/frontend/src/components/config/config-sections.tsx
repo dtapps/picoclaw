@@ -691,6 +691,16 @@ export function InlineToolCallsSection({
           onFieldChange("inlineToolCallsEnabled", checked)
         }
       />
+
+      <SwitchCardField
+        label={t("pages.config.clean_content_enabled")}
+        hint={t("pages.config.clean_content_enabled_hint")}
+        layout="setting-row"
+        checked={form.cleanContentEnabled}
+        onCheckedChange={(checked) =>
+          onFieldChange("cleanContentEnabled", checked)
+        }
+      />
     </ConfigSectionCard>
   )
 }

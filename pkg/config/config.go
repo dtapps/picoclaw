@@ -272,6 +272,8 @@ type EmptyResponseRetryConfig struct {
 type InlineToolCallsConfig struct {
 	// Enabled 是否启用内联工具调用提取
 	Enabled bool `json:"enabled" env:"PICOCLAW_AGENTS_DEFAULTS_INLINE_TOOL_CALLS_ENABLED"`
+	// CleanContent 是否启用模型响应内容清理（移除 Anthropic 风格包装和特殊 token）
+	CleanContent bool `json:"clean_content,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_INLINE_TOOL_CALLS_CLEAN_CONTENT"`
 }
 
 type AgentDefaults struct {
@@ -334,6 +336,11 @@ func (d *AgentDefaults) GetEmptyResponsePatterns() []string {
 // IsInlineToolCallsEnabled 判断是否启用内联工具调用提取
 func (d *AgentDefaults) IsInlineToolCallsEnabled() bool {
 	return d.InlineToolCalls.Enabled
+}
+
+// IsCleanContentEnabled 判断是否启用模型响应内容清理
+func (d *AgentDefaults) IsCleanContentEnabled() bool {
+	return d.InlineToolCalls.CleanContent
 }
 
 // GetToolFeedbackMaxArgsLength returns the max visible text length for tool argument previews.
