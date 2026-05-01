@@ -331,14 +331,25 @@ func ParseResponse(body io.Reader) (*LLMResponse, error) {
 // 当响应没有标准 tool_calls 但 content 中包含内联工具调用模式时，
 // 提取并更新响应。
 func NormalizeInlineToolCalls(resp *LLMResponse) {
-	if resp == nil || len(resp.ToolCalls) > 0 {
+	if resp == nil {
+		return
+	}
+	if len(resp.ToolCalls) > 0 {
+		log.Printf("common: NormalizeInlineToolCalls 跳过：响应已有 %d 个标准 tool_calls", len(resp.ToolCalls))
 		return
 	}
 
 	extracted, cleanedContent := ExtractInlineToolCalls(resp.Content)
 	if len(extracted) == 0 {
+		log.Printf("common: NormalizeInlineToolCalls 未提取到内联工具调用，content 长度=%d", len(resp.Content))
 		return
 	}
+
+	toolNames := make([]string, 0, len(extracted))
+	for _, tc := range extracted {
+		toolNames = append(toolNames, tc.Name)
+	}
+	log.Printf("common: NormalizeInlineToolCalls 提取到 %d 个内联工具调用: %v", len(extracted), toolNames)
 
 	resp.ToolCalls = extracted
 	resp.Content = cleanedContent
