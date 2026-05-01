@@ -445,6 +445,12 @@ func (p *Pipeline) CallLLM(
 					})
 			}
 		}
+	} else if p.Cfg != nil && len(exec.response.ToolCalls) == 0 && matchesEmptyResponsePattern(exec.response.Content, p.Cfg.Agents.Defaults.GetEmptyResponsePatterns()) {
+		logger.DebugCF("agent", "检测到空响应但功能未启用",
+			map[string]any{
+				"agent_id": ts.agent.ID,
+				"hint":     "请启用 agents.defaults.empty_response_retry.enabled 配置",
+			})
 	}
 
 	// 模型响应内容清理逻辑
