@@ -354,7 +354,34 @@ func (p *Pipeline) CallLLM(
 	// 当 LLM 返回的响应没有标准 tool_calls 但 content 中包含内联工具调用模式时，
 	// 自动提取并转换为标准格式。典型场景：kimi-k2 将工具调用写在 content 文本中
 	if p.Cfg != nil && p.Cfg.Agents.Defaults.IsInlineToolCallsEnabled() {
+		toolCallsBefore := len(exec.response.ToolCalls)
+		contentBefore := exec.response.Content
 		providers.NormalizeInlineToolCalls(exec.response)
+		toolCallsAfter := len(exec.response.ToolCalls)
+		if toolCallsAfter > toolCallsBefore {
+			logger.InfoCF("agent", "内联工具调用提取成功",
+				map[string]any{
+					"agent_id":          ts.agent.ID,
+					"iteration":         iteration,
+					"tool_calls_before": toolCallsBefore,
+					"tool_calls_after":  toolCallsAfter,
+					"original_content":  contentBefore,
+					"cleaned_content":   exec.response.Content,
+				})
+		} else if strings.Contains(contentBefore, "[tool_use: ") {
+			logger.WarnCF("agent", "内联工具调用提取失败：检测到 [tool_use: 标记但未能提取",
+				map[string]any{
+					"agent_id":  ts.agent.ID,
+					"iteration": iteration,
+					"content":   contentBefore,
+				})
+		}
+	} else if len(exec.response.ToolCalls) == 0 && strings.Contains(exec.response.Content, "[tool_use: ") {
+		logger.DebugCF("agent", "检测到内联工具调用但功能未启用",
+			map[string]any{
+				"agent_id": ts.agent.ID,
+				"hint":     "请启用 agents.defaults.inline_tool_calls.enabled 配置",
+			})
 	}
 
 	// 空响应自动重试逻辑
