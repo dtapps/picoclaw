@@ -513,6 +513,16 @@ func hasMediaRefs(messages []providers.Message) bool {
 	return false
 }
 
+// needsCleanContent 检测响应内容是否包含 Anthropic 风格包装或特殊 token，
+// 即是否需要 CleanModelContent 处理。
+func needsCleanContent(content string) bool {
+	return strings.Contains(content, "<|tool_call_end|>") ||
+		strings.Contains(content, "<|tool_calls_section_end|>") ||
+		(strings.HasPrefix(strings.TrimSpace(content), "[{") &&
+			(strings.Contains(content, "'type'") || strings.Contains(content, `"type"`)) &&
+			(strings.Contains(content, "'text'") || strings.Contains(content, `"text"`)))
+}
+
 func sideQuestionModelName(agent *AgentInstance, usedLight bool) string {
 	if usedLight && len(agent.LightCandidates) > 0 {
 		// Use the first light candidate's model

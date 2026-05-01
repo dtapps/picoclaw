@@ -453,7 +453,7 @@ func (p *Pipeline) CallLLM(
 	if p.Cfg != nil && p.Cfg.Agents.Defaults.IsCleanContentEnabled() {
 		cleaned := providers.CleanModelContent(exec.response.Content)
 		if cleaned != exec.response.Content {
-			logger.WarnCF("agent", "清理模型响应内容",
+			logger.InfoCF("agent", "清理模型响应内容",
 				map[string]any{
 					"agent_id":         ts.agent.ID,
 					"original_content": exec.response.Content,
@@ -461,6 +461,12 @@ func (p *Pipeline) CallLLM(
 				})
 			exec.response.Content = cleaned
 		}
+	} else if p.Cfg != nil && needsCleanContent(exec.response.Content) {
+		logger.DebugCF("agent", "检测到需要清理的响应内容但功能未启用",
+			map[string]any{
+				"agent_id": ts.agent.ID,
+				"hint":     "请启用 agents.defaults.inline_tool_calls.clean_content 配置",
+			})
 	}
 
 	// AfterLLM hook
