@@ -92,13 +92,17 @@ func parseInlineToolCall(content string, start int) (ToolCall, int, bool) {
 		return ToolCall{}, start, false
 	}
 
-	// 查找与起始花括号匹配的结束花括号
-	jsonEnd := findMatchingBraceInString(afterArgs, jsonStart)
+	// 处理转义的双引号：部分模型（如 kimi-k2）可能在 JSON 参数中使用 \" 而非 "
+	// 这会导致 findMatchingBraceInString 函数错误识别字符串边界
+	// 解决方案：先将 \" 替换为 "，然后查找匹配花括号
+	normalizedArgs := strings.ReplaceAll(afterArgs, `\"`, `"`)
+	jsonEnd := findMatchingBraceInString(normalizedArgs, jsonStart)
 	if jsonEnd == -1 {
 		return ToolCall{}, start, false
 	}
 
-	jsonStr := afterArgs[jsonStart : jsonEnd+1]
+	// 从规范化后的字符串中提取 JSON
+	jsonStr := normalizedArgs[jsonStart : jsonEnd+1]
 
 	// 解析 JSON 参数
 	var args map[string]any
@@ -107,17 +111,70 @@ func parseInlineToolCall(content string, start int) (ToolCall, int, bool) {
 		return ToolCall{}, start, false
 	}
 
+	// 计算原始字符串中的结束位置
+	// 由于 normalizedArgs 是将 afterArgs 中的 \" 替换为 " 得到的
+	// 需要遍历找到 afterArgs 中对应 jsonEnd 的位置
+	normalizedPos := 0
+	afterArgsPos := 0
+	for normalizedPos <= jsonEnd && afterArgsPos < len(afterArgs) {
+		if normalizedArgs[normalizedPos] == '"' && afterArgsPos+1 < len(afterArgs) && afterArgs[afterArgsPos] == '\\' &&
+			afterArgs[afterArgsPos+1] == '"' {
+			// 这是一个转义的双引号，在 afterArgs 中占 2 个字符
+			afterArgsPos += 2
+		} else {
+			afterArgsPos++
+		}
+		normalizedPos++
+	}
+	originalJsonEnd := afterArgsPos - 1
+
+	// 边界检查：确保 originalJsonEnd 不超过 afterArgs 的长度
+	if originalJsonEnd+1 > len(afterArgs) {
+		return ToolCall{}, start, false
+	}
+
 	// 跳过 [tool_use: ...] 的结束方括号 ']'
-	remaining := afterArgs[jsonEnd+1:]
+	remaining := afterArgs[originalJsonEnd+1:]
 	closeBracket := strings.Index(remaining, "]")
 	var endPos int
 	if closeBracket != -1 {
 		endPos = start + len(inlineToolUseMarker) + len(afterMarker[:argsIdx]) +
-			len(inlineToolArgsSeparator) + len(afterArgs[:jsonEnd+1]) + closeBracket + 1
+			len(inlineToolArgsSeparator) + len(afterArgs[:originalJsonEnd+1]) + closeBracket + 1
+
+		// 跳过 ] 后面可能存在的残留字符
+		// kimi-k2 等模型可能会在工具调用结束后附加 Anthropic 风格包装的残留部分
+		// 典型格式：\"}]" 或 }]" 或 "} 等
+		afterBracket := remaining[closeBracket+1:]
+		for len(afterBracket) > 0 {
+			if strings.HasPrefix(afterBracket, `\"`) {
+				endPos += 2
+				afterBracket = afterBracket[2:]
+			} else if strings.HasPrefix(afterBracket, `"}]`) {
+				endPos += 3
+				afterBracket = afterBracket[3:]
+			} else if strings.HasPrefix(afterBracket, `"}]`) {
+				endPos += 3
+				afterBracket = afterBracket[3:]
+			} else if strings.HasPrefix(afterBracket, `}]`) {
+				endPos += 2
+				afterBracket = afterBracket[2:]
+			} else if strings.HasPrefix(afterBracket, `"`) {
+				endPos += 1
+				afterBracket = afterBracket[1:]
+			} else if strings.HasPrefix(afterBracket, `}`) {
+				endPos += 1
+				afterBracket = afterBracket[1:]
+			} else if strings.HasPrefix(afterBracket, `]`) {
+				endPos += 1
+				afterBracket = afterBracket[1:]
+			} else {
+				break
+			}
+		}
 	} else {
 		// 没有结束方括号；消耗到 JSON 对象末尾
 		endPos = start + len(inlineToolUseMarker) + len(afterMarker[:argsIdx]) +
-			len(inlineToolArgsSeparator) + len(afterArgs[:jsonEnd+1])
+			len(inlineToolArgsSeparator) + len(afterArgs[:originalJsonEnd+1])
 	}
 
 	argsJSON := jsonStr
@@ -265,8 +322,32 @@ func stripInlineToolTokens(content string) string {
 	content = strings.ReplaceAll(content, inlineToolCallEndToken, "")
 	content = strings.ReplaceAll(content, inlineToolCallsSectionEndToken, "")
 
+	// 移除 kimi-k2 等模型在工具调用结束后附加的多余字符
+	// 典型格式：\"}] 或 "}] 或 }]"
+	// 这些是 Anthropic 风格包装的残留部分
+	content = strings.TrimPrefix(content, `\"}]`)
+	content = strings.TrimPrefix(content, `"}]`)
+	content = strings.TrimPrefix(content, `}]`)
+
 	// 移除 kimi-k2 等模型在工具调用外层附加的 Anthropic 风格包装
 	content = stripAnthropicStyleWrapper(content)
+
+	// 处理不完整的 Anthropic 风格包装
+	// 如 [{'type': 'text', 'text': " 或 [{'type': 'text', 'text': \"
+	// 这些是工具调用被提取后残留的包装部分
+	trimmed := strings.TrimSpace(content)
+	if strings.HasPrefix(trimmed, "[{'type': 'text', 'text': ") {
+		// 检查是否只有包装的开始部分，没有实际内容
+		inner := strings.TrimPrefix(trimmed, "[{'type': 'text', 'text': ")
+		inner = strings.TrimPrefix(inner, `"`)
+		inner = strings.TrimPrefix(inner, `\"`)
+		inner = strings.TrimSuffix(inner, `"`)
+		inner = strings.TrimSuffix(inner, `\"`)
+		inner = strings.TrimSpace(inner)
+		if inner == "" {
+			return ""
+		}
+	}
 
 	return strings.TrimSpace(content)
 }
@@ -294,8 +375,13 @@ func isEmptyAnthropicWrapper(content string) bool {
 		return false
 	}
 
-	// 必须以 [{' 开头、以 '}]' 结尾
-	if !strings.HasPrefix(content, "[{") || !strings.HasSuffix(content, "}]") {
+	// 必须以 [{' 开头
+	if !strings.HasPrefix(content, "[{") {
+		return false
+	}
+
+	// 必须以 '}]' 或 '\"}' 结尾（kimi-k2 有时使用后者）
+	if !strings.HasSuffix(content, "}]") && !strings.HasSuffix(content, "\"}") {
 		return false
 	}
 
@@ -329,6 +415,28 @@ func isEmptyAnthropicWrapper(content string) bool {
 	if idx := strings.Index(inner, `"text": "`); idx != -1 {
 		start := idx + len(`"text": "`)
 		end := strings.Index(inner[start:], `"}`)
+		if end != -1 {
+			textValue := inner[start : start+end]
+			return strings.TrimSpace(textValue) == ""
+		}
+	}
+
+	// 尝试转义双引号格式：'text': \"...\"
+	// kimi-k2 有时会使用这种格式
+	if idx := strings.Index(inner, `'text': \"`); idx != -1 {
+		start := idx + len(`'text': \"`)
+		end := strings.Index(inner[start:], `\"`)
+		if end != -1 {
+			textValue := inner[start : start+end]
+			return strings.TrimSpace(textValue) == ""
+		}
+	}
+
+	// 尝试直接双引号格式：'text': "..."
+	// kimi-k2 在工具调用被提取后，残留的包装可能使用这种格式
+	if idx := strings.Index(inner, `'text': "`); idx != -1 {
+		start := idx + len(`'text': "`)
+		end := strings.Index(inner[start:], `"`)
 		if end != -1 {
 			textValue := inner[start : start+end]
 			return strings.TrimSpace(textValue) == ""
