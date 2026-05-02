@@ -39,6 +39,58 @@ func TestExtractInlineToolCalls_KimiK2Format(t *testing.T) {
 	}
 }
 
+func TestExtractInlineToolCalls_KimiK2FormatA(t *testing.T) {
+	// kimi-k2 格式A：双引号未转义
+	// 来自 response-body-gid___axonhub_Request_551.json
+	content := `[{'type': 'text', 'text': '[tool_use: exec, args: {"action":"run","command":"git push -u origin master","cwd":"/root/.picoclaw/workspace/news"}]'}]<|tool_call_end|><|tool_calls_section_end|>`
+
+	toolCalls, cleaned := ExtractInlineToolCalls(content)
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+
+	tc := toolCalls[0]
+	if tc.Name != "exec" {
+		t.Errorf("expected tool name %q, got %q", "exec", tc.Name)
+	}
+	if tc.Arguments["action"] != "run" {
+		t.Errorf("expected args.action=%q, got %v", "run", tc.Arguments["action"])
+	}
+	if tc.Arguments["command"] != "git push -u origin master" {
+		t.Errorf("expected args.command=%q, got %v", "git push -u origin master", tc.Arguments["command"])
+	}
+	if tc.Arguments["cwd"] != "/root/.picoclaw/workspace/news" {
+		t.Errorf("expected args.cwd=%q, got %v", "/root/.picoclaw/workspace/news", tc.Arguments["cwd"])
+	}
+
+	if cleaned != "" {
+		t.Errorf("expected empty cleaned content, got %q", cleaned)
+	}
+}
+
+func TestExtractInlineToolCalls_KimiK2FormatB(t *testing.T) {
+	// kimi-k2 格式B：双引号转义，工具调用结束后有残留字符
+	// 来自 response-body-gid___axonhub_Request_1058.json
+	content := `[{'type': 'text', 'text': "[tool_use: read_file, args: {\"path\":\"/root/.picoclaw/workspace/news/README.md\"}]\"}]"}<|tool_call_end|><|tool_calls_section_end|>`
+
+	toolCalls, cleaned := ExtractInlineToolCalls(content)
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+
+	tc := toolCalls[0]
+	if tc.Name != "read_file" {
+		t.Errorf("expected tool name %q, got %q", "read_file", tc.Name)
+	}
+	if tc.Arguments["path"] != "/root/.picoclaw/workspace/news/README.md" {
+		t.Errorf("expected args.path=%q, got %v", "/root/.picoclaw/workspace/news/README.md", tc.Arguments["path"])
+	}
+
+	if cleaned != "" {
+		t.Errorf("expected empty cleaned content, got %q", cleaned)
+	}
+}
+
 func TestExtractInlineToolCalls_SimpleFormat(t *testing.T) {
 	content := `[tool_use: get_weather, args: {"city": "SF"}]`
 
@@ -327,5 +379,35 @@ func TestCleanModelContent_TextWithBraces(t *testing.T) {
 	result := CleanModelContent(content)
 	if result != expected {
 		t.Errorf("expected %q, got %q", expected, result)
+	}
+}
+
+func TestExtractInlineToolCalls_KimiK2EscapedQuotes(t *testing.T) {
+	// kimi-k2 返回的 content 中 JSON 参数的双引号被转义为 \"
+	// 这是用户实际遇到的响应格式
+	content := `[{'type': 'text', 'text': "[tool_use: read_file, args: {\"path\":\"/root/.picoclaw/workspace/news/README.md\"}]\"}]"}<|tool_call_end|><|tool_calls_section_end|>`
+
+	toolCalls, cleaned := ExtractInlineToolCalls(content)
+	if len(toolCalls) != 1 {
+		t.Fatalf("expected 1 tool call, got %d", len(toolCalls))
+	}
+
+	tc := toolCalls[0]
+	if tc.Name != "read_file" {
+		t.Errorf("expected tool name %q, got %q", "read_file", tc.Name)
+	}
+	if tc.Arguments["path"] != "/root/.picoclaw/workspace/news/README.md" {
+		t.Errorf("expected args.path=%q, got %v", "/root/.picoclaw/workspace/news/README.md", tc.Arguments["path"])
+	}
+	if tc.Function == nil {
+		t.Fatal("expected Function to be set")
+	}
+	if tc.Function.Name != "read_file" {
+		t.Errorf("expected Function.Name=%q, got %q", "read_file", tc.Function.Name)
+	}
+
+	// The cleaned content should be empty since there's no text besides the tool call
+	if cleaned != "" {
+		t.Errorf("expected empty cleaned content, got %q", cleaned)
 	}
 }
