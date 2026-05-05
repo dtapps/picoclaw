@@ -26,7 +26,7 @@ require (
 	github.com/larksuite/oapi-sdk-go/v3 v3.6.1
 	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/minio/selfupdate v0.6.0
-	github.com/modelcontextprotocol/go-sdk v1.5.0
+	github.com/modelcontextprotocol/go-sdk v1.6.0
 	github.com/muesli/termenv v0.16.0
 	github.com/mymmrac/telego v1.8.0
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
