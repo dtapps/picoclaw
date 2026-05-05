@@ -372,6 +372,8 @@
       "maxTokensHint": "Maximum tokens allowed for a single request. 0 = use default configuration.",
       "maxTokensField": "Max Tokens Field",
       "maxTokensFieldHint": "Override the request field name for max tokens, e.g. max_completion_tokens.",
+      "toolSchemaTransform": "Tool Schema Transform",
+      "toolSchemaTransformHint": "Optional compatibility transform for tool JSON schemas. Leave blank for native behavior. Supported values: simple.",
       "extraBody": "Extra Body",
       "extraBodyHint": "Additional JSON fields to inject into the request body, e.g. {\"reasoning_split\": true}.",
       "customHeaders": "Custom Headers",

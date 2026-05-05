@@ -39,6 +39,7 @@ interface EditForm {
   maxTokensField: string
   requestTimeout: string
   thinkingLevel: string
+  toolSchemaTransform: string
   extraBody: string
   customHeaders: string
 }
@@ -65,6 +66,7 @@ function buildInitialEditForm(model: ModelInfo): EditForm {
     maxTokensField: model.max_tokens_field ?? "",
     requestTimeout: model.request_timeout ? String(model.request_timeout) : "",
     thinkingLevel: model.thinking_level ?? "",
+    toolSchemaTransform: model.tool_schema_transform ?? "", // <-- AGGIUNGI QUESTA RIGA
     extraBody: model.extra_body
       ? JSON.stringify(model.extra_body, null, 2)
       : "",
@@ -95,6 +97,7 @@ export function EditModelSheet({
     maxTokensField: "",
     requestTimeout: "",
     thinkingLevel: "",
+    toolSchemaTransform: "",
     extraBody: "",
     customHeaders: "",
   })
@@ -108,12 +111,12 @@ export function EditModelSheet({
       setAsDefault !== model.is_default)
 
   useEffect(() => {
-    if (model) {
-      setForm(buildInitialEditForm(model))
-      setSetAsDefault(model.is_default)
-      setError("")
-    }
-  }, [model])
+      if (model) {
+        setForm(buildInitialEditForm(model))
+        setSetAsDefault(model.is_default)
+        setError("")
+      }
+    }, [model])
 
   const setField =
     (key: keyof EditForm) =>
@@ -146,6 +149,7 @@ export function EditModelSheet({
           ? Number(form.requestTimeout)
           : undefined,
         thinking_level: form.thinkingLevel || undefined,
+        tool_schema_transform: form.toolSchemaTransform.trim() || undefined,
         extra_body: form.extraBody.trim()
           ? JSON.parse(form.extraBody.trim())
           : {},
@@ -356,6 +360,17 @@ export function EditModelSheet({
                   value={form.maxTokensField}
                   onChange={setField("maxTokensField")}
                   placeholder="max_completion_tokens"
+                />
+              </Field>
+
+              <Field
+                label={t("models.field.toolSchemaTransform")}
+                hint={t("models.field.toolSchemaTransformHint")}
+              >
+                <Input
+                  value={form.toolSchemaTransform}
+                  onChange={setField("toolSchemaTransform")}
+                  placeholder="google"
                 />
               </Field>
 

@@ -187,16 +187,17 @@ func TestExpandMultiKeyModels_Deduplication(t *testing.T) {
 
 func TestExpandMultiKeyModels_PreservesOtherFields(t *testing.T) {
 	modelCfg := &ModelConfig{
-		ModelName:      "gpt-4",
-		Provider:       "openrouter",
-		Model:          "openai/gpt-4o",
-		APIBase:        "https://api.example.com",
-		Proxy:          "http://proxy:8080",
-		RPM:            60,
-		MaxTokens:      1024,
-		MaxTokensField: "max_completion_tokens",
-		RequestTimeout: 30,
-		ThinkingLevel:  "high",
+		ModelName:           "gpt-4",
+		Provider:            "openrouter",
+		Model:               "openai/gpt-4o",
+		APIBase:             "https://api.example.com",
+		Proxy:               "http://proxy:8080",
+		RPM:                 60,
+		MaxTokens:           1024,
+		MaxTokensField:      "max_completion_tokens",
+		RequestTimeout:      30,
+		ThinkingLevel:       "high",
+		ToolSchemaTransform: "simple",
 	}
 	modelCfg.APIKeys = SimpleSecureStrings("key0", "key1") // Use internal field for multi-key testing
 	models := []*ModelConfig{modelCfg}
@@ -229,6 +230,9 @@ func TestExpandMultiKeyModels_PreservesOtherFields(t *testing.T) {
 	if primary.ThinkingLevel != "high" {
 		t.Errorf("expected thinking_level preserved, got %q", primary.ThinkingLevel)
 	}
+	if primary.ToolSchemaTransform != "simple" {
+		t.Errorf("expected tool_schema_transform preserved, got %q", primary.ToolSchemaTransform)
+	}
 
 	// Check additional entry also preserves fields
 	additional := result[0]
@@ -240,6 +244,9 @@ func TestExpandMultiKeyModels_PreservesOtherFields(t *testing.T) {
 	}
 	if additional.RPM != 60 {
 		t.Errorf("expected additional rpm preserved, got %d", additional.RPM)
+	}
+	if additional.ToolSchemaTransform != "simple" {
+		t.Errorf("expected additional tool_schema_transform preserved, got %q", additional.ToolSchemaTransform)
 	}
 }
 
