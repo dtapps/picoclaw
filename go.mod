@@ -31,7 +31,7 @@ require (
 	github.com/mymmrac/telego v1.8.0
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
 	github.com/openai/openai-go/v3 v3.34.0
-	github.com/pion/rtp v1.10.1
+	github.com/pion/rtp v1.10.2
 	github.com/pion/webrtc/v3 v3.3.6
 	github.com/rs/zerolog v1.35.1
 	github.com/slack-go/slack v0.23.0
@@ -40,7 +40,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tencent-connect/botgo v0.2.1
 	go.mau.fi/util v0.9.8
-	go.mau.fi/whatsmeow v0.0.0-20260427122815-7514259253a7
+	go.mau.fi/whatsmeow v0.0.0-20260505142014-6dd3d24c1ca6
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/term v0.42.0
 	golang.org/x/time v0.15.0
@@ -109,7 +109,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	golang.org/x/exp v0.0.0-20260410095643-746e56fc9e2f // indirect
 	golang.org/x/text v0.36.0 // indirect
-	modernc.org/libc v1.72.1 // indirect
+	modernc.org/libc v1.72.2 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
@@ -125,7 +125,7 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/jsonschema-go v0.4.3
 	github.com/grbit/go-json v0.11.0 // indirect
-	github.com/klauspost/compress v1.18.5 // indirect
+	github.com/klauspost/compress v1.18.6 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/tidwall/gjson v1.18.0 // indirect
 	github.com/tidwall/match v1.2.0 // indirect
@@ -133,7 +133,7 @@ require (
 	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/twitchyliquid64/golang-asm v0.15.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
-	github.com/valyala/fasthttp v1.70.0 // indirect
+	github.com/valyala/fasthttp v1.71.0 // indirect
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/arch v0.26.0 // indirect

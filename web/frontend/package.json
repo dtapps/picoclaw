@@ -29,7 +29,7 @@
     "highlight.js": "^11.11.1",
     "i18next": "^26.0.8",
     "i18next-browser-languagedetector": "^8.2.1",
-    "jotai": "^2.19.1",
+    "jotai": "^2.20.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.5",
     "react-dom": "19.2.5",
@@ -50,14 +50,14 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@tailwindcss/typography": "^0.5.19",
-    "@tanstack/router-plugin": "^1.167.23",
+    "@tanstack/router-plugin": "^1.167.34",
     "@trivago/prettier-plugin-sort-imports": "^6.0.2",
     "@types/node": "^25.6.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.2",
     "@vitejs/plugin-react": "^6.0.1",
-    "eslint": "^10.2.1",
+    "eslint": "^10.3.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
@@ -65,7 +65,7 @@
     "prettier": "^3.8.3",
     "prettier-plugin-tailwindcss": "^0.8.0",
     "typescript": "~6.0.3",
-    "typescript-eslint": "^8.59.1",
+    "typescript-eslint": "^8.59.2",
     "vite": "^8.0.10"
   }
 }
