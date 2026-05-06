@@ -21,6 +21,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 
 import type { MCPDraftUpdater } from "./types"
+import { MCPServerDetails } from "./mcp-server-details"
 
 interface MCPConfigContentProps {
   draft: MCPConfigResponse | null
@@ -696,6 +697,11 @@ function ServerCard({
             />
           </div>
         )}
+
+        {/* Server Details */}
+        <div className="md:col-span-2">
+          <MCPServerDetails serverName={server.name} />
+        </div>
       </div>
     </div>
   )

@@ -746,7 +746,16 @@
           "headers_description": "随请求发送的 HTTP 头（每行一个，格式：Key: Value）",
           "delete_title": "删除服务器",
           "delete_description": "确定要删除服务器 \"{{name}}\" 吗？此操作无法撤销。",
-          "delete_confirm": "删除"
+          "delete_confirm": "删除",
+          "show_details": "显示详情",
+          "hide_details": "隐藏详情",
+          "connected": "已连接",
+          "disconnected": "未连接",
+          "load_error": "加载服务器详情失败",
+          "tools": "工具",
+          "prompts": "提示",
+          "resources": "资源",
+          "no_capabilities": "此服务器没有可用的工具、提示或资源。"
         }
       }
     },

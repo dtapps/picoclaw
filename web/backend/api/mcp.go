@@ -1,12 +1,15 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/mcp"
 )
 
 // MCP config types
@@ -44,9 +47,45 @@ type mcpConfigRequest struct {
 	Servers            []mcpServerConfig  `json:"servers"`
 }
 
+// MCP server details types
+type mcpToolParameter struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Required    bool   `json:"required"`
+}
+
+type mcpTool struct {
+	Name        string             `json:"name"`
+	Description string             `json:"description"`
+	Parameters  []mcpToolParameter `json:"parameters"`
+}
+
+type mcpPrompt struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+type mcpResource struct {
+	URI         string `json:"uri"`
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	MimeType    string `json:"mime_type,omitempty"`
+}
+
+type mcpServerDetailsResponse struct {
+	ServerName string        `json:"server_name"`
+	Connected  bool          `json:"connected"`
+	Error      string        `json:"error,omitempty"`
+	Tools      []mcpTool     `json:"tools"`
+	Prompts    []mcpPrompt   `json:"prompts"`
+	Resources  []mcpResource `json:"resources"`
+}
+
 func (h *Handler) registerMCPRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/mcp/config", h.handleGetMCPConfig)
 	mux.HandleFunc("PUT /api/mcp/config", h.handleUpdateMCPConfig)
+	mux.HandleFunc("GET /api/mcp/servers/{name}/details", h.handleGetMCPServerDetails)
 }
 
 func (h *Handler) handleGetMCPConfig(w http.ResponseWriter, r *http.Request) {
@@ -155,4 +194,154 @@ func buildMCPConfigResponse(cfg *config.Config) mcpConfigResponse {
 		Discovery:          discovery,
 		Servers:            servers,
 	}
+}
+
+func (h *Handler) handleGetMCPServerDetails(w http.ResponseWriter, r *http.Request) {
+	serverName := r.PathValue("name")
+	if serverName == "" {
+		http.Error(w, "Server name is required", http.StatusBadRequest)
+		return
+	}
+
+	cfg, err := config.LoadConfig(h.configPath)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to load config: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	serverConfig, ok := cfg.Tools.MCP.Servers[serverName]
+	if !ok {
+		http.Error(w, fmt.Sprintf("Server %q not found", serverName), http.StatusNotFound)
+		return
+	}
+
+	if !cfg.Tools.MCP.Enabled || !serverConfig.Enabled {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(mcpServerDetailsResponse{
+			ServerName: serverName,
+			Connected:  false,
+			Error:      "MCP or server is disabled",
+			Tools:      []mcpTool{},
+			Prompts:    []mcpPrompt{},
+			Resources:  []mcpResource{},
+		})
+		return
+	}
+
+	details := probeMCPServerDetails(r.Context(), serverName, serverConfig, cfg.WorkspacePath())
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(details)
+}
+
+func probeMCPServerDetails(
+	ctx context.Context,
+	name string,
+	server config.MCPServerConfig,
+	workspacePath string,
+) mcpServerDetailsResponse {
+	mgr := mcp.NewManager()
+	defer func() { _ = mgr.Close() }()
+
+	server.Enabled = true
+	mcpCfg := config.MCPConfig{
+		ToolConfig: config.ToolConfig{Enabled: true},
+		Servers: map[string]config.MCPServerConfig{
+			name: server,
+		},
+	}
+
+	probeCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := mgr.LoadFromMCPConfig(probeCtx, mcpCfg, workspacePath); err != nil {
+		return mcpServerDetailsResponse{
+			ServerName: name,
+			Connected:  false,
+			Error:      err.Error(),
+			Tools:      []mcpTool{},
+			Prompts:    []mcpPrompt{},
+			Resources:  []mcpResource{},
+		}
+	}
+
+	conn, ok := mgr.GetServer(name)
+	if !ok {
+		return mcpServerDetailsResponse{
+			ServerName: name,
+			Connected:  false,
+			Error:      "server did not register a connection",
+			Tools:      []mcpTool{},
+			Prompts:    []mcpPrompt{},
+			Resources:  []mcpResource{},
+		}
+	}
+
+	tools := make([]mcpTool, 0, len(conn.Tools))
+	for _, tool := range conn.Tools {
+		tools = append(tools, mcpTool{
+			Name:        tool.Name,
+			Description: tool.Description,
+			Parameters:  extractMCPParameters(tool.InputSchema),
+		})
+	}
+
+	return mcpServerDetailsResponse{
+		ServerName: name,
+		Connected:  true,
+		Tools:      tools,
+		Prompts:    []mcpPrompt{},
+		Resources:  []mcpResource{},
+	}
+}
+
+func extractMCPParameters(schema any) []mcpToolParameter {
+	schemaMap, ok := schema.(map[string]any)
+	if !ok {
+		return nil
+	}
+
+	properties, ok := schemaMap["properties"].(map[string]any)
+	if !ok || len(properties) == 0 {
+		return nil
+	}
+
+	required := make(map[string]struct{})
+	switch raw := schemaMap["required"].(type) {
+	case []string:
+		for _, name := range raw {
+			required[name] = struct{}{}
+		}
+	case []any:
+		for _, value := range raw {
+			if name, ok := value.(string); ok {
+				required[name] = struct{}{}
+			}
+		}
+	}
+
+	params := make([]mcpToolParameter, 0, len(properties))
+	for paramName, prop := range properties {
+		param := mcpToolParameter{
+			Name:     paramName,
+			Required: false,
+		}
+
+		if _, ok := required[paramName]; ok {
+			param.Required = true
+		}
+
+		if propMap, ok := prop.(map[string]any); ok {
+			if desc, ok := propMap["description"].(string); ok {
+				param.Description = desc
+			}
+			if typ, ok := propMap["type"].(string); ok {
+				param.Type = typ
+			}
+		}
+
+		params = append(params, param)
+	}
+
+	return params
 }

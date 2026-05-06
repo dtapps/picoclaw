@@ -62,3 +62,46 @@ export async function updateMCPConfig(
     body: JSON.stringify(payload),
   })
 }
+
+// MCP Server Details Types
+export interface MCPToolParameter {
+  name: string
+  type: string
+  description: string
+  required: boolean
+}
+
+export interface MCPTool {
+  name: string
+  description: string
+  parameters: MCPToolParameter[]
+}
+
+export interface MCPPrompt {
+  name: string
+  description: string
+}
+
+export interface MCPResource {
+  uri: string
+  name: string
+  description?: string
+  mime_type?: string
+}
+
+export interface MCPServerDetailsResponse {
+  server_name: string
+  connected: boolean
+  error?: string
+  tools: MCPTool[]
+  prompts: MCPPrompt[]
+  resources: MCPResource[]
+}
+
+export async function getMCPServerDetails(
+  serverName: string,
+): Promise<MCPServerDetailsResponse> {
+  return request<MCPServerDetailsResponse>(
+    `/api/mcp/servers/${encodeURIComponent(serverName)}/details`,
+  )
+}
