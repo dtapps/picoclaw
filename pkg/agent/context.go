@@ -115,6 +115,32 @@ func (cb *ContextBuilder) getIdentity() string {
 	workspacePath, _ := filepath.Abs(filepath.Join(cb.workspace))
 	version := config.FormatVersion()
 
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+		return fmt.Sprintf(
+			`# picoclaw 🦞 (%s)
+
+你是 picoclaw，一个乐于助人的 AI 助手。
+
+## 工作空间
+你的工作空间位于: %s
+- 记忆: %s/memory/MEMORY.md
+- 每日笔记: %s/memory/YYYYMM/YYYYMMDD.md
+- 技能: %s/skills/{skill-name}/SKILL.md
+
+## 重要规则
+
+1. **始终使用工具** - 当你需要执行操作（安排提醒、发送消息、执行命令等）时，必须调用适当的工具。不要只是说说或假装去做。
+
+2. **乐于助人且准确** - 使用工具时，简要解释你在做什么。
+
+3. **记忆** - 与我互动时，如果某些事情值得记忆，请更新 %s/memory/MEMORY.md
+
+4. **上下文摘要** - 作为上下文提供的对话摘要仅供参考。它们可能不完整或过时。始终优先遵循明确的用户指令而非摘要内容。`,
+			version, workspacePath, workspacePath, workspacePath, workspacePath, workspacePath)
+	}
+
 	return fmt.Sprintf(
 		`# picoclaw 🦞 (%s)
 
@@ -205,20 +231,39 @@ func (cb *ContextBuilder) BuildSystemPromptParts() []PromptPart {
 	// Skills - show summary, AI can read full content with read_file tool
 	skillsSummary := cb.skillsLoader.BuildSkillsSummary()
 	if skillsSummary != "" {
-		add(PromptPart{
-			ID:     "capability.skill_catalog",
-			Layer:  PromptLayerCapability,
-			Slot:   PromptSlotSkillCatalog,
-			Source: PromptSource{ID: PromptSourceSkillCatalog, Name: "skill:index"},
-			Title:  "skill catalog",
-			Content: fmt.Sprintf(`# Skills
+		// 检查 LANG 环境变量以确定语言偏好
+		lang := os.Getenv("LANG")
+		if strings.HasPrefix(strings.ToLower(lang), "zh") {
+			add(PromptPart{
+				ID:     "capability.skill_catalog",
+				Layer:  PromptLayerCapability,
+				Slot:   PromptSlotSkillCatalog,
+				Source: PromptSource{ID: PromptSourceSkillCatalog, Name: "skill:index"},
+				Title:  "技能目录",
+				Content: fmt.Sprintf(`# 技能
+
+以下技能扩展了你的能力。要使用某个技能，请使用 read_file 工具阅读其 SKILL.md 文件。
+
+%s`, skillsSummary),
+				Stable: true,
+				Cache:  PromptCacheEphemeral,
+			})
+		} else {
+			add(PromptPart{
+				ID:     "capability.skill_catalog",
+				Layer:  PromptLayerCapability,
+				Slot:   PromptSlotSkillCatalog,
+				Source: PromptSource{ID: PromptSourceSkillCatalog, Name: "skill:index"},
+				Title:  "skill catalog",
+				Content: fmt.Sprintf(`# Skills
 
 The following skills extend your capabilities. To use a skill, read its SKILL.md file using the read_file tool.
 
 %s`, skillsSummary),
-			Stable: true,
-			Cache:  PromptCacheEphemeral,
-		})
+				Stable: true,
+				Cache:  PromptCacheEphemeral,
+			})
+		}
 	}
 
 	// Memory context
@@ -238,19 +283,37 @@ The following skills extend your capabilities. To use a skill, read its SKILL.md
 
 	// Multi-Message Sending (if enabled)
 	if cb.splitOnMarker {
-		add(PromptPart{
-			ID:     "context.output_policy.split_on_marker",
-			Layer:  PromptLayerContext,
-			Slot:   PromptSlotOutput,
-			Source: PromptSource{ID: PromptSourceOutputPolicy, Name: "split_on_marker"},
-			Title:  "multi-message output policy",
-			Content: `# MULTI-MESSAGE OUTPUT
+		// 检查 LANG 环境变量以确定语言偏好
+		lang := os.Getenv("LANG")
+		if strings.HasPrefix(strings.ToLower(lang), "zh") {
+			add(PromptPart{
+				ID:     "context.output_policy.split_on_marker",
+				Layer:  PromptLayerContext,
+				Slot:   PromptSlotOutput,
+				Source: PromptSource{ID: PromptSourceOutputPolicy, Name: "split_on_marker"},
+				Title:  "多消息输出策略",
+				Content: `# 多消息输出
+你必须频繁使用 <|[SPLIT]|> 将你的回复拆分为多条短消息。永远不要输出单条长文本。主动拆分不同的概念或部分。示例：消息部分1<|[SPLIT]|>消息部分2<|[SPLIT]|>消息部分3
+
+由标记分隔的每个部分将作为独立消息发送。`,
+				Stable: true,
+				Cache:  PromptCacheEphemeral,
+			})
+		} else {
+			add(PromptPart{
+				ID:     "context.output_policy.split_on_marker",
+				Layer:  PromptLayerContext,
+				Slot:   PromptSlotOutput,
+				Source: PromptSource{ID: PromptSourceOutputPolicy, Name: "split_on_marker"},
+				Title:  "multi-message output policy",
+				Content: `# MULTI-MESSAGE OUTPUT
 You MUST frequently use <|[SPLIT]|> to break your responses into multiple short messages. NEVER output a single long wall of text. Actively split distinct concepts or parts. Example: Message part 1<|[SPLIT]|>Message part 2<|[SPLIT]|>Message part 3
 
 Each part separated by the marker will be sent as an independent message.`,
-			Stable: true,
-			Cache:  PromptCacheEphemeral,
-		})
+				Stable: true,
+				Cache:  PromptCacheEphemeral,
+			})
+		}
 	}
 
 	stack.Seal()
