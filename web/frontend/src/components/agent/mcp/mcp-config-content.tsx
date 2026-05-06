@@ -23,15 +23,24 @@ import { Switch } from "@/components/ui/switch"
 import type { MCPDraftUpdater } from "./types"
 import { MCPServerDetails } from "./mcp-server-details"
 
+/**
+ * MCP 配置内容组件属性
+ */
 interface MCPConfigContentProps {
-  draft: MCPConfigResponse | null
-  isLoading: boolean
-  hasError: boolean
-  isSaving: boolean
-  onSave: () => void
-  onUpdateDraft: MCPDraftUpdater
+  draft: MCPConfigResponse | null // 当前配置草稿
+  isLoading: boolean // 是否正在加载
+  hasError: boolean // 是否有错误
+  isSaving: boolean // 是否正在保存
+  onSave: () => void // 保存回调
+  onUpdateDraft: MCPDraftUpdater // 更新草稿的回调
 }
 
+/**
+ * 验证发现模式配置是否有效
+ * 如果启用发现模式，至少需要选择一种搜索方式（BM25 或正则）
+ * @param discovery - 发现模式配置
+ * @returns 是否有效
+ */
 function isDiscoveryValid(discovery: MCPConfigResponse["discovery"]): boolean {
   if (!discovery.enabled) return true
   return discovery.use_bm25 || discovery.use_regex

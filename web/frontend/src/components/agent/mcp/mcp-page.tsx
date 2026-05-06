@@ -5,15 +5,21 @@ import { PageHeader } from "@/components/page-header"
 import { MCPConfigContent } from "./mcp-config-content"
 import { useMCPPage } from "./use-mcp-page"
 
+/**
+ * MCP 配置页面组件
+ * MCP (Model Context Protocol) 服务器配置的主页面
+ * 提供 MCP 服务器的添加、编辑、删除和详情查看功能
+ */
 export function MCPPage() {
   const { t } = useTranslation()
+  // 使用自定义 Hook 获取页面状态和数据操作
   const {
-    mcpDraft,
-    hasMCPError,
-    isMCPLoading,
-    isMCPSaving,
-    saveMCPConfig,
-    updateMCPDraft,
+    mcpDraft,        // 当前配置草稿
+    hasMCPError,     // 加载错误状态
+    isMCPLoading,    // 加载状态
+    isMCPSaving,     // 保存状态
+    saveMCPConfig,   // 保存配置函数
+    updateMCPDraft,  // 更新草稿函数
   } = useMCPPage()
 
   return (

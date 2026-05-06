@@ -23,14 +23,23 @@ import {
 } from "@/components/ui/collapsible"
 import { Skeleton } from "@/components/ui/skeleton"
 
+/**
+ * MCP 服务器详情组件属性
+ */
 interface MCPServerDetailsProps {
-  serverName: string
+  serverName: string // 要展示详情的服务器名称
 }
 
+/**
+ * MCP 服务器详情展示组件
+ * 可折叠面板，展示服务器的连接状态、工具列表、提示列表和资源列表
+ * @param serverName - 服务器名称
+ */
 export function MCPServerDetails({ serverName }: MCPServerDetailsProps) {
   const { t } = useTranslation()
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false) // 控制面板的展开/折叠状态
 
+  // 使用 React Query 获取服务器详情
   const {
     data: details,
     isLoading,
@@ -39,8 +48,8 @@ export function MCPServerDetails({ serverName }: MCPServerDetailsProps) {
   } = useQuery<MCPServerDetailsResponse>({
     queryKey: ["mcp-server-details", serverName],
     queryFn: () => getMCPServerDetails(serverName),
-    enabled: isOpen,
-    staleTime: 60000, // 1 minute
+    enabled: isOpen, // 只在面板展开时加载数据
+    staleTime: 60000, // 数据缓存 1 分钟
   })
 
   const hasTools = details && details.tools.length > 0
@@ -102,6 +111,12 @@ export function MCPServerDetails({ serverName }: MCPServerDetailsProps) {
   )
 }
 
+/**
+ * 连接状态展示组件
+ * 显示服务器连接成功或失败的状态
+ * @param connected - 是否已连接
+ * @param error - 错误信息（连接失败时）
+ */
 function ConnectionStatus({
   connected,
   error,
@@ -139,6 +154,11 @@ function ConnectionStatus({
   )
 }
 
+/**
+ * 工具列表展示组件
+ * 展示服务器提供的所有工具
+ * @param tools - 工具列表
+ */
 function ToolsSection({ tools }: { tools: MCPServerDetailsResponse["tools"] }) {
   const { t } = useTranslation()
 
@@ -162,8 +182,13 @@ function ToolsSection({ tools }: { tools: MCPServerDetailsResponse["tools"] }) {
   )
 }
 
+/**
+ * 单个工具项展示组件
+ * 可折叠显示工具的详细信息和参数
+ * @param tool - 工具定义
+ */
 function ToolItem({ tool }: { tool: MCPServerDetailsResponse["tools"][0] }) {
-  const [isOpen, setIsOpen] = useState(false)
+  const [isOpen, setIsOpen] = useState(false) // 控制参数展开/折叠
   const hasParameters = tool.parameters && tool.parameters.length > 0
 
   return (
@@ -231,6 +256,11 @@ function ToolItem({ tool }: { tool: MCPServerDetailsResponse["tools"][0] }) {
   )
 }
 
+/**
+ * 提示列表展示组件（预留）
+ * 展示服务器提供的提示模板
+ * @param prompts - 提示列表
+ */
 function PromptsSection({
   prompts,
 }: {
@@ -271,6 +301,11 @@ function PromptsSection({
   )
 }
 
+/**
+ * 资源列表展示组件（预留）
+ * 展示服务器可访问的资源
+ * @param resources - 资源列表
+ */
 function ResourcesSection({
   resources,
 }: {
@@ -319,6 +354,10 @@ function ResourcesSection({
   )
 }
 
+/**
+ * 加载状态组件
+ * 数据加载时显示的骨架屏
+ */
 function LoadingState() {
   return (
     <div className="space-y-3">
@@ -329,6 +368,12 @@ function LoadingState() {
   )
 }
 
+/**
+ * 错误状态组件
+ * 加载失败时显示错误信息和重试按钮
+ * @param error - 错误信息
+ * @param onRetry - 重试回调函数
+ */
 function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
   const { t } = useTranslation()
 
@@ -356,6 +401,10 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   )
 }
 
+/**
+ * 空状态组件
+ * 服务器没有提供任何能力时显示
+ */
 function EmptyState() {
   const { t } = useTranslation()
 
