@@ -746,7 +746,16 @@
           "headers_description": "HTTP headers to send with requests (one per line, format: Key: Value)",
           "delete_title": "Delete Server",
           "delete_description": "Are you sure you want to delete the server \"{{name}}\"? This action cannot be undone.",
-          "delete_confirm": "Delete"
+          "delete_confirm": "Delete",
+          "show_details": "Show Details",
+          "hide_details": "Hide Details",
+          "connected": "Connected",
+          "disconnected": "Disconnected",
+          "load_error": "Failed to load server details",
+          "tools": "Tools",
+          "prompts": "Prompts",
+          "resources": "Resources",
+          "no_capabilities": "No tools, prompts, or resources available from this server."
         }
       }
     },
