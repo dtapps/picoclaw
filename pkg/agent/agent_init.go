@@ -11,6 +11,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/audio/tts"
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
+	"github.com/sipeed/picoclaw/pkg/channels/browser"
 	"github.com/sipeed/picoclaw/pkg/commands"
 	"github.com/sipeed/picoclaw/pkg/config"
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
@@ -186,6 +187,30 @@ func registerSharedTools(
 				return err
 			})
 			agent.Tools.Register(reactionTool)
+		}
+
+		// browser_ext 工具回调：将操作转发给 browser channel
+		if browserExtTool, ok := agent.Tools.Get("browser_ext"); ok {
+			if extTool, ok := browserExtTool.(*tools.BrowserExtTool); ok {
+				extTool.SetActionCallback(
+					func(ctx context.Context, chatID, action string, params map[string]any) (map[string]any, error) {
+						if al.channelManager == nil {
+							return nil, fmt.Errorf("channel manager not configured")
+						}
+						// chatID 格式: "browser:<sessionID>"，提取 channel 名称
+						channelName := "browser"
+						ch, ok := al.channelManager.GetChannel(channelName)
+						if !ok {
+							return nil, fmt.Errorf("browser channel not found")
+						}
+						bc, ok := ch.(*browser.BrowserChannel)
+						if !ok {
+							return nil, fmt.Errorf("channel is not a browser channel")
+						}
+						return bc.ExecuteAction(ctx, chatID, action, params)
+					},
+				)
+			}
 		}
 
 		// Send file tool (outbound media via MediaStore — store injected later by SetMediaStore)

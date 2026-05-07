@@ -27,6 +27,9 @@
 | **核心逻辑**  | 非标准 tool_calls 格式无法识别                                  | **新增内联工具调用提取**           | 当大模型（如 kimi-k2）将工具调用写在 content 文本中而非标准 tool_calls 字段时，自动提取并转换，支持配置开关 | [feat/inline-tool-calls](https://github.com/dtapps/picoclaw/tree/feat/inline-tool-calls)                                                                                                          |
 | **核心逻辑**  | 模型响应内容含 Anthropic 风格包装和特殊 token                    | **新增模型响应内容清理**           | 当大模型（如 kimi-k2）返回纯文本响应被 `[{'type':'text','text':'...'}]` 包装并附加特殊 token 时，自动提取实际文本内容，支持配置开关 | [feat/clean-anthropic-wrapper](https://github.com/dtapps/picoclaw/tree/feat/clean-anthropic-wrapper) |
 | **MCP**       | 仅基础配置，无法查看服务器能力 | **新增服务器详情查看功能** | 可视化查看每个 MCP 服务器的工具列表、提示列表和资源列表 | [feat/mcp-server-details](https://github.com/dtapps/picoclaw/tree/feat/mcp-server-details) |
+| **频道**      | 无                                              | **新增 Browser 频道**              | 通过 WebSocket 直连浏览器扩展，支持 Token 认证，无需 Launcher 仪表板                   | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
+| **浏览器插件** | 无                                                              | **新增 Chrome 浏览器扩展**         | Sidepanel UI + Background 操作执行 + Content Script 注入，支持点击/输入/导航/截图等操作 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
+| **工具集**    | 无                                      | **新增 `browser_ext` 工具**        | 通过浏览器扩展执行操作（get_page_info/click/type/fill/scroll/screenshot 等），仅限 browser 频道使用 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>
