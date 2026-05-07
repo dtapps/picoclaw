@@ -117,7 +117,8 @@ func (cb *ContextBuilder) getIdentity() string {
 
 	// 检查 LANG 环境变量以确定语言偏好
 	lang := os.Getenv("LANG")
-	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
 		return fmt.Sprintf(
 			`# picoclaw 🦞 (%s)
 
@@ -233,7 +234,8 @@ func (cb *ContextBuilder) BuildSystemPromptParts() []PromptPart {
 	if skillsSummary != "" {
 		// 检查 LANG 环境变量以确定语言偏好
 		lang := os.Getenv("LANG")
-		if strings.HasPrefix(strings.ToLower(lang), "zh") {
+		isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+		if isZh {
 			add(PromptPart{
 				ID:     "capability.skill_catalog",
 				Layer:  PromptLayerCapability,
@@ -285,7 +287,8 @@ The following skills extend your capabilities. To use a skill, read its SKILL.md
 	if cb.splitOnMarker {
 		// 检查 LANG 环境变量以确定语言偏好
 		lang := os.Getenv("LANG")
-		if strings.HasPrefix(strings.ToLower(lang), "zh") {
+		isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+		if isZh {
 			add(PromptPart{
 				ID:     "context.output_policy.split_on_marker",
 				Layer:  PromptLayerContext,

@@ -3,7 +3,9 @@ package seahorse
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/sipeed/picoclaw/pkg/logger"
@@ -777,6 +779,36 @@ func buildLeafSummaryPrompt(sourceText, previousSummary string, targetTokens int
 	if previousSummary != "" {
 		prev = previousSummary
 	}
+
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
+		return fmt.Sprintf(`你总结一段对话内容供后续模型使用。
+将其视为增量内存压缩输入，而非完整对话总结。
+
+正常总结策略：
+- 保留关键决策、理由、约束条件和当前任务。
+- 保留继续工作所需的基本技术细节。
+- 删除明显的重复内容和对话填充。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 跟踪文件操作（创建、修改、删除、重命名），包含文件路径和当前状态。
+- 如果没有文件操作，请包含："Files: none"。
+- 以以下内容结尾："Expand for details about: <被删除或压缩的内容的逗号分隔列表>"。
+- 目标长度：约 %d 个 token 或更少。
+
+<previous_context>
+%s
+</previous_context>
+
+<conversation_segment>
+%s
+</conversation_segment>`, targetTokens, prev, sourceText)
+	}
+
 	return fmt.Sprintf(`You summarize a SEGMENT of a conversation for future model turns.
 Treat this as incremental memory compaction input, not a full-conversation summary.
 
@@ -803,6 +835,25 @@ Output requirements:
 }
 
 func buildCondensedSummaryPrompt(sourceText string, targetTokens int) string {
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
+		return fmt.Sprintf(`你将多个总结压缩为一个更高级别的总结。
+保留所有重要的决策、约束条件和结果。
+合并重叠的主题。保持技术细节完整。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 以以下内容结尾："Expand for details about: <逗号分隔列表>"。
+- 目标长度：约 %d 个 token 或更少。
+
+<summaries>
+%s
+</summaries>`, targetTokens, sourceText)
+	}
+
 	return fmt.Sprintf(`You condense multiple summaries into a single higher-level summary.
 Preserve all important decisions, constraints, and outcomes.
 Merge overlapping topics. Keep technical details intact.
@@ -823,6 +874,34 @@ func buildAggressiveLeafSummaryPrompt(sourceText, previousSummary string, target
 	if previousSummary != "" {
 		prev = previousSummary
 	}
+
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
+		return fmt.Sprintf(`你总结一段对话内容供后续模型使用。
+激进总结策略：
+- 仅保留持久性事实和当前任务状态。
+- 删除示例、重复内容和低价值的叙述细节。
+- 保留明确的 TODO、阻塞项、决策和约束条件。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 跟踪文件操作（创建、修改、删除、重命名），包含文件路径和当前状态。
+- 如果没有文件操作，请包含："Files: none"。
+- 以以下内容结尾："Expand for details about: <被删除或压缩的内容的逗号分隔列表>"。
+- 目标长度：约 %d 个 token 或更少。
+
+<previous_context>
+%s
+</previous_context>
+
+<conversation_segment>
+%s
+</conversation_segment>`, targetTokens, prev, sourceText)
+	}
+
 	return fmt.Sprintf(`You summarize a SEGMENT of a conversation for future model turns.
 Aggressive summary policy:
 - Keep only durable facts and current task state.
