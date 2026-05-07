@@ -59,6 +59,7 @@ export function ModelsPage() {
   )
   const addDisabled = loading || providerOptions.length === 0
 
+  // ModelSettings 相关状态
   const [activeModel, setActiveModel] = useState("")
   const [fallbacks, setFallbacks] = useState<string[]>([])
   const [savingGlobal, setSavingGlobal] = useState(false)
@@ -114,6 +115,7 @@ export function ModelsPage() {
     }
   }
 
+  // ModelSettings 保存全局设置
   const handleSaveGlobalSettings = async () => {
     if (!activeModel) return
     setSavingGlobal(true)
@@ -138,14 +140,35 @@ export function ModelsPage() {
     }
   }
 
+  // ModelSettings 添加备选模型
   const addFallback = (modelName: string) => {
     if (!modelName || fallbacks.includes(modelName) || modelName === activeModel)
       return
     setFallbacks((prev) => [...prev, modelName])
   }
 
+  // ModelSettings 移除备选模型
   const removeFallback = (modelName: string) => {
     setFallbacks((prev) => prev.filter((f) => f !== modelName))
+  }
+
+  // ModelSettings 移动备选模型位置（上移/下移）
+  const handleMoveFallback = (index: number, direction: "up" | "down") => {
+    setFallbacks((prev) => {
+      const newFallbacks = [...prev]
+      if (direction === "up" && index > 0) {
+        ;[newFallbacks[index], newFallbacks[index - 1]] = [
+          newFallbacks[index - 1],
+          newFallbacks[index],
+        ]
+      } else if (direction === "down" && index < newFallbacks.length - 1) {
+        ;[newFallbacks[index], newFallbacks[index + 1]] = [
+          newFallbacks[index + 1],
+          newFallbacks[index],
+        ]
+      }
+      return newFallbacks
+    })
   }
 
   const grouped: Record<string, { label: string; models: ModelInfo[] }> = {}
@@ -260,6 +283,7 @@ export function ModelsPage() {
         )}
       </div>
 
+      {/* ModelSettings 弹窗 */}
       <ModelSettingsDialog
         open={globalSettingsOpen}
         onOpenChange={setGlobalSettingsOpen}
@@ -270,6 +294,7 @@ export function ModelsPage() {
         onActiveModelChange={setActiveModel}
         onAddFallback={addFallback}
         onRemoveFallback={removeFallback}
+        onMoveFallback={handleMoveFallback}
         onSave={handleSaveGlobalSettings}
       />
 
