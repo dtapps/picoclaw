@@ -69,7 +69,9 @@
 | :----------------- | :---------------- | :------------------------------------- | :---------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------- |
 | **Workspace 文件** | 仅英文 `.md`      | **支持中英文双语 `.md`/`.zh.md`**      | 根据 `LANG` 环境变量自动选择语言，中文环境使用 `.zh.md` 文件                              | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 | **Skills**         | 仅英文 `SKILL.md` | **所有 Skills 添加中文 `SKILL.zh.md`** | weather, github, tmux, summarize, agent-browser, skill-creator, hardware 等技能完整中文化 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
-| **Heartbeat 日志** | 英文日志          | **日志消息中文化**                     | 心跳服务日志输出改为中文                                                                  | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
+| **Heartbeat 提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `service.go` 中的 `buildPrompt` 和 `createDefaultHeartbeatTemplate` 函数支持中文 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
+| **Agent 系统提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `context.go` 中的 `getIdentity`、`BuildSystemPromptParts` 等函数支持中文（身份介绍、技能目录、多消息输出策略等） | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
+| **Compaction 提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `short_compaction.go` 中的 `buildLeafSummaryPrompt`、`buildCondensedSummaryPrompt`、`buildAggressiveLeafSummaryPrompt` 函数支持中文 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 
 ---
 

@@ -241,7 +241,8 @@ func (hs *HeartbeatService) buildPrompt() string {
 
 	// 检查 LANG 环境变量以确定语言偏好
 	lang := os.Getenv("LANG")
-	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
 		return fmt.Sprintf(`# 心跳检查
 
 当前时间: %s
@@ -296,7 +297,8 @@ Add your heartbeat tasks below this line:
 
 	// 检查 LANG 环境变量以确定语言偏好
 	lang := os.Getenv("LANG")
-	if strings.HasPrefix(strings.ToLower(lang), "zh") {
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	if isZh {
 		defaultContent = `# 心跳检查列表
 
 此文件包含心跳服务定期检查的任务。
