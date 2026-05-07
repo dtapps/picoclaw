@@ -329,18 +329,6 @@
       "saveSuccess": "Model added.",
       "confirm": "Add Model"
     },
-    "quickAdd": {
-      "button": "Quick Add",
-      "title": "Quick Add Model",
-      "description": "Select a model from the list to quickly import it.",
-      "confirm": "Add Model",
-      "searchPlaceholder": "Search models...",
-      "noResults": "No models found",
-      "alreadyAdded": "Added",
-      "filterAll": "All",
-      "filterPopular": "Popular",
-      "filterFree": "Free"
-    },
     "delete": {
       "title": "Delete Model?",
       "description": "\"{{name}}\" will be permanently removed from your model list. This cannot be undone.",
