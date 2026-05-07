@@ -157,7 +157,10 @@
     "loading": "Loading...",
     "actions": "Actions",
     "save_changes": "Save Changes",
-    "add": "Add"
+    "add": "Add",
+    "saveChangesTitle": "You have unsaved configuration changes",
+    "restartRequiredTitle": "Gateway restart required",
+    "restartRequiredDesc": "The latest {{name}} configuration has been saved. Restart the gateway for it to take effect."
   },
   "environment": {
     "title": "Environment Variables",
@@ -184,11 +187,7 @@
     "export_error": "Failed to export: {{error}}",
     "save_success": "Environment variables saved successfully",
     "save_error": "Failed to save: {{error}}",
-    "key_required": "Key is required",
-    "confirm": "Confirm",
-    "saveChangesTitle": "You have unsaved configuration changes",
-    "restartRequiredTitle": "Gateway restart required",
-    "restartRequiredDesc": "The latest {{name}} configuration has been saved. Restart the gateway for it to take effect."
+    "key_required": "Key is required"
   },
   "labels": {
     "loading": "Loading..."

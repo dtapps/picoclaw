@@ -157,7 +157,10 @@
     "loading": "加载中...",
     "actions": "操作",
     "save_changes": "保存更改",
-    "add": "添加"
+    "add": "添加",
+    "saveChangesTitle": "有未保存的配置更改",
+    "restartRequiredTitle": "需要重启服务",
+    "restartRequiredDesc": "{{name}} 的最新配置已保存。重启服务后才能正式生效。"
   },
   "environment": {
     "title": "环境变量",
@@ -184,11 +187,7 @@
     "export_error": "导出失败：{{error}}",
     "save_success": "环境变量保存成功",
     "save_error": "保存失败：{{error}}",
-    "key_required": "键不能为空",
-    "confirm": "确认",
-    "saveChangesTitle": "有未保存的配置更改",
-    "restartRequiredTitle": "需要重启服务",
-    "restartRequiredDesc": "{{name}} 的最新配置已保存。重启服务后才能正式生效。"
+    "key_required": "键不能为空"
   },
   "labels": {
     "loading": "加载中..."
