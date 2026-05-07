@@ -1,5 +1,4 @@
 import {
-  IconBolt,
   IconLoader2,
   IconPlus,
   IconSettings,
@@ -11,6 +10,7 @@ import { toast } from "sonner"
 
 import {
   type ModelInfo,
+  type ModelProviderOption,
   getModels,
   setDefaultModel,
 } from "@/api/models"
@@ -27,41 +27,12 @@ import { AddModelSheet } from "./add-model-sheet"
 import { DeleteModelDialog } from "./delete-model-dialog"
 import { EditModelSheet } from "./edit-model-sheet"
 import { ModelSettingsDialog } from "./model-settings-dialog"
-import { getProviderKey, getProviderLabel } from "./provider-label"
+import {
+  PROVIDER_PRIORITY,
+  getProviderKey,
+  getProviderLabel,
+} from "./provider-label"
 import { ProviderSection } from "./provider-section"
-import { QuickAddModelSheet } from "./quick-add-model-sheet"
-
-const PROVIDER_PRIORITY: Record<string, number> = {
-  volcengine: 0,
-  openai: 1,
-  gemini: 2,
-  anthropic: 3,
-  zhipu: 4,
-  deepseek: 5,
-  openrouter: 6,
-  "qwen-portal": 7,
-  "qwen-intl": 8,
-  moonshot: 9,
-  groq: 10,
-  "github-copilot": 11,
-  antigravity: 12,
-  nvidia: 13,
-  cerebras: 14,
-  shengsuanyun: 15,
-  venice: 16,
-  vivgrid: 17,
-  minimax: 18,
-  longcat: 19,
-  modelscope: 20,
-  mistral: 21,
-  avian: 22,
-  azure: 23,
-  ollama: 24,
-  vllm: 25,
-  lmstudio: 26,
-  zai: 27,
-  mimo: 28,
-}
 
 interface ProviderGroup {
   key: string
@@ -74,16 +45,19 @@ interface ProviderGroup {
 export function ModelsPage() {
   const { t } = useTranslation()
   const [models, setModels] = useState<ModelInfo[]>([])
+  const [providerOptions, setProviderOptions] = useState<ModelProviderOption[]>(
+    [],
+  )
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState("")
 
   const [editingModel, setEditingModel] = useState<ModelInfo | null>(null)
   const [deletingModel, setDeletingModel] = useState<ModelInfo | null>(null)
   const [addOpen, setAddOpen] = useState(false)
-  const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [settingDefaultIndex, setSettingDefaultIndex] = useState<number | null>(
     null,
   )
+  const addDisabled = loading || providerOptions.length === 0
 
   const [activeModel, setActiveModel] = useState("")
   const [fallbacks, setFallbacks] = useState<string[]>([])
@@ -104,6 +78,7 @@ export function ModelsPage() {
         return a.model_name.localeCompare(b.model_name)
       })
       setModels(sorted)
+      setProviderOptions(data.provider_options ?? [])
       setActiveModel(settings.model_name)
       setFallbacks(settings.model_fallbacks || [])
       setFetchError("")
@@ -113,10 +88,6 @@ export function ModelsPage() {
       setLoading(false)
     }
   }, [t])
-
-  const handleQuickAddImported = useCallback(() => {
-    fetchModels()
-  }, [fetchModels])
 
   useEffect(() => {
     fetchModels()
@@ -236,12 +207,9 @@ export function ModelsPage() {
           <Button
             size="sm"
             variant="outline"
-            onClick={() => setQuickAddOpen(true)}
+            disabled={addDisabled}
+            onClick={() => setAddOpen(true)}
           >
-            <IconBolt className="size-4" />
-            {t("models.quickAdd.button")}
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
             <IconPlus className="size-4" />
             {t("models.add.button")}
           </Button>
@@ -307,6 +275,7 @@ export function ModelsPage() {
 
       <EditModelSheet
         model={editingModel}
+        providerOptions={providerOptions}
         open={editingModel !== null}
         onClose={() => setEditingModel(null)}
         onSaved={fetchModels}
@@ -314,15 +283,9 @@ export function ModelsPage() {
 
       <AddModelSheet
         open={addOpen}
+        providerOptions={providerOptions}
         onClose={() => setAddOpen(false)}
         onSaved={fetchModels}
-        existingModelNames={models.map((model) => model.model_name)}
-      />
-
-      <QuickAddModelSheet
-        open={quickAddOpen}
-        onClose={() => setQuickAddOpen(false)}
-        onImported={handleQuickAddImported}
         existingModelNames={models.map((model) => model.model_name)}
       />
 
