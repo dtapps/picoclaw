@@ -16,6 +16,7 @@ import (
 const (
 	ChannelPico           = "pico"
 	ChannelPicoClient     = "pico_client"
+	ChannelBrowser        = "browser"
 	ChannelTelegram       = "telegram"
 	ChannelDiscord        = "discord"
 	ChannelFeishu         = "feishu"
@@ -625,6 +626,7 @@ func filterSecureFields(r RawNode, secureFields map[string]struct{}) RawNode {
 var channelSettingsFactory = map[string]any{
 	ChannelPico:           (PicoSettings{}),
 	ChannelPicoClient:     (PicoClientSettings{}),
+	ChannelBrowser:        (BrowserSettings{}),
 	ChannelTelegram:       (TelegramSettings{}),
 	ChannelDiscord:        (DiscordSettings{}),
 	ChannelFeishu:         (FeishuSettings{}),

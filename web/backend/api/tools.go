@@ -184,6 +184,12 @@ var toolCatalog = []toolCatalogEntry{
 		ConfigKey:   "get_current_time",
 	},
 	{
+		Name:        "browser_ext",
+		Description: "Control the user's browser via the browser extension (click, type, navigate, etc.).",
+		Category:    "browser",
+		ConfigKey:   "browser_ext",
+	},
+	{
 		Name:        "tool_search_tool_regex",
 		Description: "Discover hidden MCP tools by regex search when tool discovery is enabled.",
 		Category:    "discovery",
@@ -277,6 +283,15 @@ func buildToolSupport(cfg *config.Config) []toolSupportItem {
 			status, reasonCode = resolveWebSearchToolSupport(cfg)
 		case "i2c", "spi":
 			status, reasonCode = resolveHardwareToolSupport(cfg.Tools.IsToolEnabled(entry.ConfigKey))
+		case "browser_ext":
+			if cfg.Tools.IsToolEnabled(entry.ConfigKey) {
+				if ch := cfg.Channels.Get("browser"); ch != nil && ch.Enabled {
+					status = "enabled"
+				} else {
+					status = "blocked"
+					reasonCode = "requires_browser_channel"
+				}
+			}
 		case "serial":
 			status, reasonCode = resolveSerialToolSupport(cfg.Tools.IsToolEnabled(entry.ConfigKey))
 		default:
@@ -392,6 +407,8 @@ func applyToolState(cfg *config.Config, toolName string, enabled bool) error {
 		cfg.Tools.Serial.Enabled = enabled
 	case "get_current_time":
 		cfg.Tools.GetCurrentTime.Enabled = enabled
+	case "browser_ext":
+		cfg.Tools.BrowserExt.Enabled = enabled
 	case "tool_search_tool_regex":
 		cfg.Tools.MCP.Discovery.UseRegex = enabled
 		if enabled {

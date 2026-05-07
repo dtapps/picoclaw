@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PicoClaw 浏览器助手 - 设置</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🦞</span>
+        <h1>PicoClaw 浏览器助手设置</h1>
+      </div>
+    </header>
+
+    <main class="main">
+      <!-- Connection Settings -->
+      <section class="section">
+        <h2>🔗 连接设置</h2>
+        
+        <div class="form-group">
+          <label for="serverUrl">PicoClaw 服务器地址</label>
+          <input type="text" id="serverUrl" placeholder="http://localhost:18800">
+          <p class="help-text">你的 PicoClaw Web 后端地址，默认端口 18800，例如 http://localhost:18800</p>
+        </div>
+
+        <div class="form-group">
+          <label for="password">PicoClaw 密码</label>
+          <input type="password" id="password" placeholder="输入 PicoClaw 登录密码">
+          <p class="help-text">用于登录 Web 启动器控制台</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="rememberPassword">
+            <span>记住密码</span>
+          </label>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoConnect">
+            <span>启动时自动连接</span>
+          </label>
+        </div>
+
+        <div class="form-actions">
+          <button id="testConnection" class="btn btn-secondary">测试连接</button>
+          <button id="saveConnection" class="btn btn-primary">保存连接设置</button>
+        </div>
+
+        <div id="connectionResult" class="result-message"></div>
+      </section>
+
+      <!-- General Settings -->
+      <section class="section">
+        <h2>⚙️ 通用设置</h2>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="showNotifications">
+            <span>显示通知</span>
+          </label>
+          <p class="help-text">当 AI 执行操作时显示浏览器通知</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="confirmActions">
+            <span>执行操作前确认</span>
+          </label>
+          <p class="help-text">在执行敏感操作（如点击、提交表单）前请求确认</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="highlightElements">
+            <span>高亮操作元素</span>
+          </label>
+          <p class="help-text">在执行操作时高亮显示相关页面元素</p>
+        </div>
+
+        <div class="form-group">
+          <label for="maxHistory">最大历史消息数</label>
+          <input type="number" id="maxHistory" min="10" max="200" value="50">
+          <p class="help-text">保留的最近对话消息数量</p>
+        </div>
+      </section>
+
+      <!-- Privacy Settings -->
+      <section class="section">
+        <h2>🔒 隐私设置</h2>
+        
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="sendPageInfo">
+            <span>发送页面信息</span>
+          </label>
+          <p class="help-text">允许将当前页面信息（URL、标题、元素等）发送给 AI</p>
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="excludePrivate">
+            <span>排除隐私页面</span>
+          </label>
+          <p class="help-text">不在银行、支付等敏感页面上激活扩展</p>
+        </div>
+
+        <div class="form-actions">
+          <button id="clearHistory" class="btn btn-danger">清空对话历史</button>
+          <button id="resetSettings" class="btn btn-secondary">恢复默认设置</button>
+        </div>
+      </section>
+
+      <!-- About -->
+      <section class="section">
+        <h2>ℹ️ 关于</h2>
+        <div class="about-content">
+          <p><strong>PicoClaw 浏览器助手</strong></p>
+          <p>版本: 1.0.0</p>
+          <p>连接到你的 PicoClaw AI 助手，控制浏览器，自动化网页操作。</p>
+          
+          <div class="links">
+            <a href="https://github.com/sipeed/picoclaw" target="_blank">GitHub</a>
+            <a href="#" id="viewLogs">查看日志</a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <button id="saveAll" class="btn btn-primary btn-large">保存所有设置</button>
+    </footer>
+  </div>
+
+  <!-- Logs Modal -->
+  <div id="logsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📋 扩展日志</h3>
+        <button id="closeLogs" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <pre id="logsContent" class="logs-content">加载中...</pre>
+      </div>
+      <div class="modal-footer">
+        <button id="clearLogs" class="btn btn-secondary">清空日志</button>
+        <button id="downloadLogs" class="btn btn-primary">下载日志</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

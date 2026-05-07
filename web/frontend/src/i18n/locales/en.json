@@ -396,6 +396,7 @@
       "whatsapp": "WhatsApp",
       "whatsapp_native": "WhatsApp Native",
       "pico": "Web",
+      "browser": "Browser",
       "maixcam": "MaixCam",
       "matrix": "Matrix",
       "irc": "IRC",

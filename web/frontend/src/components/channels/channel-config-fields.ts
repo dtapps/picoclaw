@@ -31,6 +31,7 @@ const CHANNEL_SECRET_FIELDS: Record<string, string[]> = {
   onebot: ["access_token"],
   wecom: ["secret"],
   pico: ["token"],
+  browser: ["token"],
   matrix: ["access_token"],
   irc: ["password", "nickserv_password", "sasl_password"],
   weibo: ["app_secret"],

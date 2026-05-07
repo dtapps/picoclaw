@@ -205,6 +205,8 @@ function isConfigured(
       return asBool(config.use_native)
     case "pico":
       return hasValue("token")
+    case "browser":
+      return hasValue("token")
     case "maixcam":
       return hasValue("host")
     case "matrix":
@@ -248,6 +250,8 @@ function getRequiredFieldKeys(channelName: string): string[] {
       return ["bridge_url"]
     case "pico":
       return ["token"]
+    case "browser":
+      return ["token"]
     case "maixcam":
       return ["host"]
     case "matrix":
@@ -282,6 +286,7 @@ function getChannelDocSlug(channelName: string): string {
 
 const CHANNELS_WITHOUT_DOCS = new Set([
   "pico",
+  "browser",
   "wecom",
   "matrix",
   "irc",
