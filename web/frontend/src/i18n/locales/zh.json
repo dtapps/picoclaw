@@ -276,7 +276,9 @@
       "fallbackModels": "备选模型",
       "fallbackDescription": "活动模型失败时回退使用的模型。",
       "addFallback": "添加备选模型...",
-      "configure": "配置"
+      "configure": "配置",
+      "moveUp": "上移",
+      "moveDown": "下移"
     },
     "unsavedPrompt": "当前修改尚未保存，保存后才会写入模型配置。",
     "restartHint": "模型配置保存后需要重启服务才能生效。",

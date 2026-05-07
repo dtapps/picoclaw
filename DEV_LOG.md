@@ -72,3 +72,19 @@
 | **Heartbeat 日志** | 英文日志          | **日志消息中文化**                     | 心跳服务日志输出改为中文                                                                  | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 
 ---
+
+## 📝 功能变更记录 (Change Log)
+
+记录功能的迭代变更历史。
+
+### 2026-05-07 - 模型设置功能优化
+
+**分支**: [feat/model-settings-reorder-fallbacks](https://github.com/dtapps/picoclaw/tree/feat/model-settings-reorder-fallbacks)
+
+基于 [feat/model-settings-ui](https://github.com/dtapps/picoclaw/tree/feat/model-settings-ui) 分支优化：
+
+- **备选模型排序**: 新增上移/下移按钮，支持调整备选模型优先级顺序
+- **UI 优化**: 备选模型从标签形式改为列表形式，操作更清晰
+- **代码注释**: 为模型设置相关代码添加中文注释
+
+---
