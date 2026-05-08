@@ -477,7 +477,7 @@ PicoClaw có thể tìm kiếm web để cung cấp thông tin cập nhật. C�
 | Công cụ Tìm kiếm | API Key | Gói miễn phí | Liên kết |
 |------------------|---------|--------------|----------|
 | DuckDuckGo | Không cần | Không giới hạn | Dự phòng tích hợp sẵn |
-| [Baidu Search](https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5) | Bắt buộc | 1000 truy vấn/ngày | AI, tối ưu cho tiếng Trung |
+| [Baidu Search](https://cloud.baidu.com/doc/qianfan-api/s/Wmbq4z7e5) | Bắt buộc | 1500 truy vấn/tháng (phân bổ hàng ngày) | AI, tối ưu cho tiếng Trung |
 | [Tavily](https://tavily.com) | Bắt buộc | 1000 truy vấn/tháng | Tối ưu cho AI Agent |
 | [Brave Search](https://brave.com/search/api) | Bắt buộc | 2000 truy vấn/tháng | Nhanh và riêng tư |
 | [Perplexity](https://www.perplexity.ai) | Bắt buộc | Trả phí | Tìm kiếm hỗ trợ AI |
