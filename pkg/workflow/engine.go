@@ -49,6 +49,7 @@ type Engine struct {
 	mu             sync.RWMutex                                               // 保护 running 和 cancelFuncs
 	running        map[string]*WorkflowInstance                               // 当前运行中的实例（按实例 ID 索引）
 	cancelFuncs    map[string]context.CancelFunc                              // 取消函数（按实例 ID 索引）
+	doneChs        map[string]chan struct{}                                   // 实例完成信号（用于等待异步 goroutine 退出）
 }
 
 // NewEngine 创建新的工作流引擎。
@@ -58,6 +59,7 @@ func NewEngine(store *PersistStore, executor *StepExecutor) *Engine {
 		executor:    executor,
 		running:     make(map[string]*WorkflowInstance),
 		cancelFuncs: make(map[string]context.CancelFunc),
+		doneChs:     make(map[string]chan struct{}),
 	}
 }
 
@@ -128,6 +130,7 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 	e.mu.Lock()
 	e.running[inst.ID] = inst
 	e.cancelFuncs[inst.ID] = cancel
+	e.doneChs[inst.ID] = make(chan struct{})
 	e.mu.Unlock()
 
 	// 持久化初始状态
@@ -142,27 +145,34 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 }
 
 // StopInstance 取消正在运行的工作流实例。
+// 仅取消上下文，由 executeWorkflow goroutine 负责更新状态和持久化，
+// 避免与正在运行的 goroutine 产生数据竞争。
 func (e *Engine) StopInstance(instanceID string) error {
 	e.mu.Lock()
-	defer e.mu.Unlock()
-
 	cancel, ok := e.cancelFuncs[instanceID]
 	if !ok {
+		e.mu.Unlock()
 		return fmt.Errorf("实例 %s 不存在或未在运行", instanceID)
 	}
 	cancel()
-
-	// 更新实例状态为已取消
-	if inst, ok := e.running[instanceID]; ok {
-		inst.Status = StatusCancelled
-		now := time.Now()
-		inst.FinishedAt = &now
-		_ = e.store.SaveInstance(inst)
-	}
-
 	delete(e.cancelFuncs, instanceID)
-	delete(e.running, instanceID)
+	e.mu.Unlock()
 	return nil
+}
+
+// WaitRunning 等待所有运行中的实例完成。
+// 用于服务停止时确保异步 goroutine 退出，避免临时目录清理时仍有文件写入。
+func (e *Engine) WaitRunning() {
+	e.mu.RLock()
+	chs := make([]chan struct{}, 0, len(e.doneChs))
+	for _, ch := range e.doneChs {
+		chs = append(chs, ch)
+	}
+	e.mu.RUnlock()
+
+	for _, ch := range chs {
+		<-ch
+	}
 }
 
 // GetRunningInstances 获取指定工作流的所有运行中实例。
@@ -218,6 +228,10 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		e.mu.Lock()
 		delete(e.running, inst.ID)
 		delete(e.cancelFuncs, inst.ID)
+		if ch, ok := e.doneChs[inst.ID]; ok {
+			delete(e.doneChs, inst.ID)
+			close(ch)
+		}
 		e.mu.Unlock()
 
 		// 执行完成回调（频道通知等）

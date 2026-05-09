@@ -24,6 +24,7 @@ type Service struct {
 	mu      sync.RWMutex  // 保护 workflows 等运行时状态
 	running bool          // 是否正在运行
 	stopCh  chan struct{} // 停止信号通道
+	doneCh  chan struct{} // runLoop 退出信号，用于同步等待
 
 	workflows map[string]*Workflow // 已加载的工作流定义
 
@@ -84,6 +85,7 @@ func (s *Service) Start() error {
 	}
 
 	s.stopCh = make(chan struct{})
+	s.doneCh = make(chan struct{})
 	s.running = true
 
 	// 启动主循环
@@ -96,9 +98,9 @@ func (s *Service) Start() error {
 // Stop 停止工作流服务。
 func (s *Service) Stop() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	if !s.running {
+		s.mu.Unlock()
 		return
 	}
 
@@ -112,6 +114,17 @@ func (s *Service) Stop() {
 		s.eventSub.Close()
 		s.eventSub = nil
 	}
+
+	doneCh := s.doneCh
+	s.mu.Unlock()
+
+	// 等待 runLoop goroutine 退出，避免临时目录清理时仍有文件写入
+	if doneCh != nil {
+		<-doneCh
+	}
+
+	// 等待所有运行中的工作流实例完成
+	s.engine.WaitRunning()
 
 	log.Printf("[workflow] 服务已停止")
 }
@@ -400,6 +413,8 @@ func (s *Service) DeleteInstance(workflowName, instanceID string) error {
 
 // runLoop 主事件循环，定期检查 cron 触发器和事件触发器。
 func (s *Service) runLoop() {
+	defer close(s.doneCh)
+
 	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 
