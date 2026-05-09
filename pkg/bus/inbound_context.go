@@ -1,8 +1,9 @@
 package bus
 
-import "maps"
-
-import "strings"
+import (
+	"maps"
+	"strings"
+)
 
 // NormalizeInboundMessage ensures the inbound context is normalized and keeps
 // convenience mirrors in sync for runtime consumers.

@@ -1,8 +1,9 @@
 package bus
 
-import "maps"
-
-import "strings"
+import (
+	"maps"
+	"strings"
+)
 
 // NewOutboundContext builds the minimal normalized addressing context required
 // to deliver an outbound text message or reply.

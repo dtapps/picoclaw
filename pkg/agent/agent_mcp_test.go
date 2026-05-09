@@ -17,9 +17,6 @@ import (
 	agenttools "github.com/sipeed/picoclaw/pkg/tools"
 )
 
-//go:fix inline
-func boolPtr(b bool) *bool { return new(b) }
-
 func TestMCPRuntimeResetClearsState(t *testing.T) {
 	var rt mcpRuntime
 	manager := mcp.NewManager()

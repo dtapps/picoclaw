@@ -1700,7 +1700,8 @@ func TestSelectShallowestCondensationWithNonConsecutiveDepths(t *testing.T) {
 	// Need > FreshTailCount(32) summaries so they are not all in fresh tail
 	// Depth 0: 3 summaries (not enough), Depth 1: 3 summaries (not enough)
 	// Depth 2: 0 summaries (missing), Depth 3: 40 summaries (enough)
-	depths := []int{0, 0, 0, 1, 1, 1}
+	depths := make([]int, 0, 46)
+	depths = append(depths, 0, 0, 0, 1, 1, 1)
 	for range 40 {
 		depths = append(depths, 3)
 	}

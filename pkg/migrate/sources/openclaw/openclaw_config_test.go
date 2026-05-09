@@ -819,13 +819,3 @@ func TestGetProviderConfigFromDirNotExist(t *testing.T) {
 		t.Errorf("expected 0 providers for nonexistent path, got %d", len(providers))
 	}
 }
-
-//go:fix inline
-func strPtr(s string) *string {
-	return new(s)
-}
-
-//go:fix inline
-func boolPtr(b bool) *bool {
-	return new(b)
-}

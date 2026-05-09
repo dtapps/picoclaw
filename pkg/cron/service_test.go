@@ -36,11 +36,6 @@ func TestSaveStore_FilePermissions(t *testing.T) {
 	}
 }
 
-//go:fix inline
-func int64Ptr(v int64) *int64 {
-	return new(v)
-}
-
 func setupService(handler JobHandler) (*CronService, string) {
 	tmpFile := fmt.Sprintf("test_cron_%d.json", time.Now().UnixNano())
 	cs := NewCronService(tmpFile, handler)

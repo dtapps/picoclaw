@@ -752,7 +752,6 @@ func setupConfigWatcherPolling(configPath string, debug bool) (chan *config.Conf
 	var wg sync.WaitGroup
 
 	wg.Go(func() {
-
 		lastModTime := getFileModTime(configPath)
 		lastSize := getFileSize(configPath)
 

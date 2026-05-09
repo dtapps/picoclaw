@@ -5,9 +5,10 @@
 
 package config
 
-import "slices"
-
-import "strings"
+import (
+	"slices"
+	"strings"
+)
 
 // isProvidersMapEmpty checks if a providers map has any non-empty provider configurations.
 func isProvidersMapEmpty(providers map[string]any) bool {

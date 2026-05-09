@@ -251,7 +251,7 @@ func TestCompactCondensedDoesNotOrphanSummaryWhenCandidatesRemovedConcurrently(t
 	convID := conv.ConversationID
 
 	// Create leaf summaries with enough tokens for condensation
-	var leafIDs []string
+	leafIDs := make([]string, 0, CondensedMinFanout)
 	for i := range CondensedMinFanout {
 		now := time.Now().UTC()
 		sum, err := s.CreateSummary(ctx, CreateSummaryInput{

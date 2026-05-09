@@ -33,19 +33,19 @@ func init() {
 // Config is the current config structure with version support.
 type Config struct {
 	// Config schema version for migration.
-	Version   int             `json:"version"             yaml:"-"`
-	Isolation IsolationConfig `json:"isolation" yaml:"-"`
-	Agents    AgentsConfig    `json:"agents"              yaml:"-"`
-	Session   SessionConfig   `json:"session"   yaml:"-"`
-	Channels  ChannelsConfig  `json:"channel_list"        yaml:"channel_list"`
-	ModelList SecureModelList `json:"model_list"          yaml:"model_list"` // New model-centric provider configuration
-	Gateway   GatewayConfig   `json:"gateway"             yaml:"-"`
-	Events    EventsConfig    `json:"events"    yaml:"-"`
-	Hooks     HooksConfig     `json:"hooks"     yaml:"-"`
-	Tools     ToolsConfig     `json:"tools"               yaml:",inline"`
-	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
-	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
-	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
+	Version   int             `json:"version"      yaml:"-"`
+	Isolation IsolationConfig `json:"isolation"    yaml:"-"`
+	Agents    AgentsConfig    `json:"agents"       yaml:"-"`
+	Session   SessionConfig   `json:"session"      yaml:"-"`
+	Channels  ChannelsConfig  `json:"channel_list" yaml:"channel_list"`
+	ModelList SecureModelList `json:"model_list"   yaml:"model_list"` // New model-centric provider configuration
+	Gateway   GatewayConfig   `json:"gateway"      yaml:"-"`
+	Events    EventsConfig    `json:"events"       yaml:"-"`
+	Hooks     HooksConfig     `json:"hooks"        yaml:"-"`
+	Tools     ToolsConfig     `json:"tools"        yaml:",inline"`
+	Heartbeat HeartbeatConfig `json:"heartbeat"    yaml:"-"`
+	Devices   DevicesConfig   `json:"devices"      yaml:"-"`
+	Voice     VoiceConfig     `json:"voice"        yaml:"-"`
 	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
 	EnvVars EnvVarsConfig `json:"env_vars" yaml:"-"`
 	// BuildInfo contains build-time version information
@@ -416,11 +416,11 @@ type WhatsAppSettings struct {
 }
 
 type TelegramSettings struct {
-	Token         SecureString    `json:"token,omitzero"      yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
-	BaseURL       string          `json:"base_url"            yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
-	Proxy         string          `json:"proxy"               yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
-	Streaming     StreamingConfig `json:"streaming" yaml:"-"`
-	UseMarkdownV2 bool            `json:"use_markdown_v2"     yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
+	Token         SecureString    `json:"token,omitzero"  yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
+	BaseURL       string          `json:"base_url"        yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
+	Proxy         string          `json:"proxy"           yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
+	Streaming     StreamingConfig `json:"streaming"       yaml:"-"`
+	UseMarkdownV2 bool            `json:"use_markdown_v2" yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
 }
 
 type FeishuSettings struct {

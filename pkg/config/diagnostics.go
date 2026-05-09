@@ -277,10 +277,7 @@ func trimDiagnosticLine(line string, column int) (string, int) {
 	const contextBefore = 60
 	const maxWidth = 160
 
-	start := min(max(column-1-contextBefore, 0), len(runes)-maxWidth)
-	if start < 0 {
-		start = 0
-	}
+	start := max(min(max(column-1-contextBefore, 0), len(runes)-maxWidth), 0)
 
 	end := min(start+maxWidth, len(runes))
 
