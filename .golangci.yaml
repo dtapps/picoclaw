@@ -23,6 +23,7 @@ linters:
     - tagliatelle
     - testpackage
     - varnamelen
+    - gomodguard
     - wrapcheck
     - wsl
     - wsl_v5
