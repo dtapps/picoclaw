@@ -26,6 +26,7 @@ type ContextBuilder struct {
 	skillsLoader   *skills.SkillsLoader
 	memory         *MemoryStore
 	splitOnMarker  bool
+	agentDiscovery func(agentID string) []AgentDescriptor
 	promptRegistry *PromptRegistry
 
 	// Cache for system prompt to avoid rebuilding on every call.
@@ -63,6 +64,24 @@ func (cb *ContextBuilder) WithToolDiscovery(useBM25, useRegex bool) *ContextBuil
 
 func (cb *ContextBuilder) WithSplitOnMarker(enabled bool) *ContextBuilder {
 	cb.splitOnMarker = enabled
+	return cb
+}
+
+func (cb *ContextBuilder) WithAgentDiscovery(
+	agentID string,
+	discover func(agentID string) []AgentDescriptor,
+) *ContextBuilder {
+	cb.agentDiscovery = discover
+	if discover != nil {
+		if err := cb.RegisterPromptContributor(agentDiscoveryPromptContributor{
+			agentID:  agentID,
+			discover: discover,
+		}); err != nil {
+			logger.WarnCF("agent", "Failed to register agent discovery prompt contributor", map[string]any{
+				"error": err.Error(),
+			})
+		}
+	}
 	return cb
 }
 
@@ -691,7 +710,9 @@ func formatCurrentSenderLine(senderID, senderDisplayName string) string {
 	}
 }
 
-func (cb *ContextBuilder) buildDynamicContext(channel, chatID, senderID, senderDisplayName string) string {
+func (cb *ContextBuilder) buildDynamicContext(
+	channel, chatID, senderID, senderDisplayName string,
+) string {
 	now := time.Now().Format("2006-01-02 15:04 (Monday)")
 	rt := fmt.Sprintf("%s %s, Go %s", runtime.GOOS, runtime.GOARCH, runtime.Version())
 
@@ -920,7 +941,11 @@ func sanitizeHistoryForProvider(history []providers.Message) []providers.Message
 		case "assistant":
 			if len(msg.ToolCalls) > 0 {
 				if len(sanitized) == 0 {
-					logger.DebugCF("agent", "Dropping assistant tool-call turn at history start", map[string]any{})
+					logger.DebugCF(
+						"agent",
+						"Dropping assistant tool-call turn at history start",
+						map[string]any{},
+					)
 					continue
 				}
 				prev := sanitized[len(sanitized)-1]

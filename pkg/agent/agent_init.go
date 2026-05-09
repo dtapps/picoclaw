@@ -377,5 +377,7 @@ func registerSharedTools(
 			})
 			agent.Tools.Register(delegateTool)
 		}
+
+		warnOnUnknownAgentToolDeclarations(agentID, agent.Workspace, agent.Definition, agent.Tools)
 	}
 }
