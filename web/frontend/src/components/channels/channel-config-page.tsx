@@ -24,6 +24,7 @@ import { getChannelDisplayName } from "@/components/channels/channel-display-nam
 import { DiscordForm } from "@/components/channels/channel-forms/discord-form"
 import { FeishuForm } from "@/components/channels/channel-forms/feishu-form"
 import { GenericForm } from "@/components/channels/channel-forms/generic-form"
+import { MqttForm } from "@/components/channels/channel-forms/mqtt-form"
 import { SlackForm } from "@/components/channels/channel-forms/slack-form"
 import { TelegramForm } from "@/components/channels/channel-forms/telegram-form"
 import { WecomForm } from "@/components/channels/channel-forms/wecom-form"
@@ -217,6 +218,8 @@ function isConfigured(
       )
     case "irc":
       return hasValue("server")
+    case "mqtt":
+      return hasValue("broker") && hasValue("agent_id")
     case "weibo":
       return hasValue("app_id") && hasValue("app_secret")
     case "yuanbao":
@@ -258,6 +261,8 @@ function getRequiredFieldKeys(channelName: string): string[] {
       return ["homeserver", "user_id", "access_token"]
     case "irc":
       return ["server"]
+    case "mqtt":
+      return ["broker", "agent_id"]
     case "weibo":
       return ["app_id", "app_secret"]
     case "yuanbao":
@@ -292,6 +297,7 @@ const CHANNELS_WITHOUT_DOCS = new Set([
   "irc",
   "whatsapp",
   "whatsapp_native",
+  "mqtt",
 ])
 
 export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
@@ -629,6 +635,15 @@ export function ChannelConfigPage({ channelName }: ChannelConfigPageProps) {
             fieldErrors={fieldErrors}
             registerArrayFieldFlusher={registerArrayFieldFlusher}
             arrayFieldResetVersion={arrayFieldResetVersion}
+          />
+        )
+      case "mqtt":
+        return (
+          <MqttForm
+            config={editConfig}
+            onChange={handleChange}
+            configuredSecrets={configuredSecrets}
+            fieldErrors={fieldErrors}
           />
         )
       case "weixin":

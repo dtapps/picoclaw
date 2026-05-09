@@ -25,6 +25,7 @@ PicoClaw は複数のチャットプラットフォームをサポートして�
 | **Feishu (飛書)**    | ⭐⭐⭐ やや難      | エンタープライズコラボレーション、機能豊富 | [ドキュメント](../channels/feishu/README.ja.md)                                                               |
 | **IRC**              | ⭐⭐ 中程度        | サーバー + TLS 設定                        | [ドキュメント](#irc) |
 | **OneBot**           | ⭐⭐ 中程度        | NapCat/Go-CQHTTP 互換、コミュニティエコシステム充実 | [ドキュメント](../channels/onebot/README.ja.md)                                                               |
+| **MQTT**             | ⭐ 簡単            | ブローカー経由で任意の MQTT クライアントと通信 | [ドキュメント](../channels/mqtt/README.ja.md)                                                                 |
 | **MaixCam**          | ⭐ 簡単            | Sipeed AI カメラハードウェア統合チャネル   | [ドキュメント](../channels/maixcam/README.ja.md)                                                              |
 | **Pico**             | ⭐ 簡単            | PicoClaw ネイティブプロトコルチャネル     |                                                                                                               |
 
@@ -685,5 +686,69 @@ Sipeed AI カメラハードウェア向けの統合チャネルです。
 ```bash
 picoclaw gateway
 ```
+
+</details>
+
+<a id="mqtt"></a>
+<details>
+<summary><b>MQTT</b></summary>
+
+任意の MQTT クライアントがブローカーを介して PicoClaw と通信できます。デバイスやサービスがブローカーにリクエストをパブリッシュし、PicoClaw がサブスクライブして処理し、レスポンスをパブリッシュして返します。
+
+**1. 設定**
+
+```json
+{
+  "channel_list": {
+    "mqtt": {
+      "enabled": true,
+      "type": "mqtt",
+      "settings": {
+        "broker": "ssl://your-broker:8883",
+        "agent_id": "assistant",
+        "topic_prefix": "/picoclaw",
+        "keep_alive": 60,
+        "qos": 0
+      }
+    }
+  }
+}
+```
+
+ユーザー名とパスワードは `~/.picoclaw/.security.yml` に記載します：
+
+```yaml
+channel_list:
+  mqtt:
+    settings:
+      username: your_username
+      password: your_password
+```
+
+**トピック形式**
+
+```
+{prefix}/{agent_id}/{client_id}/request    # クライアント → PicoClaw
+{prefix}/{agent_id}/{client_id}/response   # PicoClaw → クライアント
+```
+
+`client_id` はクライアントアプリケーションがデバイスやセッションを識別するために設定します。
+
+**2. 起動**
+
+```bash
+picoclaw gateway
+```
+
+**3. テスト**
+
+```bash
+mosquitto_pub -t "/picoclaw/assistant/device1/request" \
+  -m '{"text": "こんにちは"}'
+
+mosquitto_sub -t "/picoclaw/assistant/device1/response"
+```
+
+完全な設定オプションは [MQTT チャンネルドキュメント](../channels/mqtt/README.ja.md) を参照してください。
 
 </details>

@@ -465,6 +465,7 @@ Talk to your PicoClaw through 19+ messaging platforms:
 | **VK** | Easy (group token) | Long Poll | [Guide](docs/channels/vk/README.md) |
 | **IRC** | Medium (server + nick) | IRC protocol | [Guide](docs/guides/chat-apps.md#irc) |
 | **OneBot** | Medium (WebSocket URL) | OneBot v11 | [Guide](docs/channels/onebot/README.md) |
+| **MQTT** | Easy (broker + agent_id) | MQTT pub/sub | [Guide](docs/channels/mqtt/README.md) |
 | **MaixCam** | Easy (enable) | TCP socket | [Guide](docs/channels/maixcam/README.md) |
 | **Weibo** | Easy (App ID + Secret) | WebSocket | [Guide](docs/channels/weibo/README.md) |
 | **Yuanbao** | Easy (AppID + AppSecret) | WebSocket | [Guide](docs/channels/yuanbao/README.md) |
@@ -619,7 +620,7 @@ For detailed guides beyond this README:
 | Topic | Description |
 |-------|-------------|
 | [Docker & Quick Start](docs/guides/docker.md) | Docker Compose setup, Launcher/Agent modes |
-| [Chat Apps](docs/guides/chat-apps.md) | All 17+ channel setup guides |
+| [Chat Apps](docs/guides/chat-apps.md) | All 18+ channel setup guides |
 | [Configuration](docs/guides/configuration.md) | Environment variables, workspace layout, security sandbox |
 | [MCP Server CLI](docs/reference/mcp-cli.md) | Add, list, test, edit, and remove MCP server entries from the CLI |
 | [Scheduled Tasks and Cron Jobs](docs/reference/cron.md) | Cron schedule types, deliver modes, command gates, job storage |

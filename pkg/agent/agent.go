@@ -195,6 +195,8 @@ func (al *AgentLoop) Run(ctx context.Context) error {
 					continue
 				}
 
+				msg = al.prepareInboundMessageForAgent(ctx, msg)
+
 				// Another turn is already active (or reserved) for this session — enqueue
 				if err := al.enqueueSteeringMessage(sessionKey, agentID, providers.Message{
 					Role:    "user",

@@ -31,6 +31,7 @@ var channelCatalog = []channelCatalogItem{
 	{Name: "maixcam", ConfigKey: "maixcam"},
 	{Name: "matrix", ConfigKey: "matrix"},
 	{Name: "irc", ConfigKey: "irc"},
+	{Name: "mqtt", ConfigKey: "mqtt"},
 	{Name: "weibo", ConfigKey: "weibo"},
 	{Name: "yuanbao", ConfigKey: "yuanbao"},
 }
@@ -110,6 +111,7 @@ var channelSecretFieldMap = map[string][]string{
 	"whatsapp":        {},
 	"whatsapp_native": {},
 	"maixcam":         {},
+	"mqtt":            {"username", "password"},
 	"weibo":           {"app_secret"},
 	"yuanbao":         {"app_secret"},
 }

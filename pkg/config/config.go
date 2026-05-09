@@ -586,6 +586,17 @@ type TeamsWebhookTarget struct {
 	Title      string       `json:"title,omitempty"      yaml:"-"`
 }
 
+type MQTTSettings struct {
+	Broker      string       `json:"broker"                 yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_BROKER"`
+	AgentID     string       `json:"agent_id"               yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_AGENT_ID"`
+	TopicPrefix string       `json:"topic_prefix,omitempty" yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_TOPIC_PREFIX"`
+	Username    SecureString `json:"username,omitzero"      yaml:"username,omitempty" env:"PICOCLAW_CHANNELS_MQTT_USERNAME"`
+	Password    SecureString `json:"password,omitzero"      yaml:"password,omitempty" env:"PICOCLAW_CHANNELS_MQTT_PASSWORD"`
+	ClientID    string       `json:"client_id,omitempty"    yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_CLIENT_ID"`
+	KeepAlive   int          `json:"keep_alive,omitempty"   yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_KEEP_ALIVE"`
+	QoS         int          `json:"qos,omitempty"          yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_QOS"`
+}
+
 type WeiboSettings struct {
 	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_APP_ID"`
 	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_WEIBO_APP_SECRET"`

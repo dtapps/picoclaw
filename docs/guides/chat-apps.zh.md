@@ -4,7 +4,7 @@
 
 ## 💬 聊天应用集成 (Chat Apps)
 
-PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方。
+PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方，包括 Telegram、Discord、WhatsApp、微信、QQ、钉钉、LINE、企业微信、飞书、Slack、IRC、OneBot、MQTT、MaixCam 等。
 
 > **注意**: 依赖 HTTP 回调的渠道共用同一个 Gateway HTTP 服务器（`gateway.host`:`gateway.port`，默认 `127.0.0.1:18790`），无需为每个渠道单独配置端口。飞书、钉钉、企业微信这类 Socket/Stream 模式渠道不依赖共享 webhook 服务器来接收入站消息。
 
@@ -25,6 +25,7 @@ PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方�
 | **飞书 (Feishu)**    | ⭐⭐⭐ 较难 | 企业级协作，功能丰富                      | [查看文档](../channels/feishu/README.zh.md)                                                                   |
 | **IRC**              | ⭐⭐ 中等   | 服务器 + TLS 配置                         | [查看文档](#irc) |
 | **OneBot**           | ⭐⭐ 中等   | 兼容 NapCat/Go-CQHTTP，社区生态丰富       | [查看文档](../channels/onebot/README.zh.md)                                                                   |
+| **MQTT**             | ⭐ 简单     | 任意 MQTT 客户端通过 Broker 收发消息      | [查看文档](../channels/mqtt/README.zh.md)                                                                     |
 | **MaixCam**          | ⭐ 简单     | 专为 AI 摄像头设计的硬件集成通道          | [查看文档](../channels/maixcam/README.zh.md)                                                                  |
 | **Pico**             | ⭐ 简单     | PicoClaw 原生协议通道                     |                                                                                                               |
 
@@ -625,5 +626,71 @@ picoclaw gateway
 ```bash
 picoclaw gateway
 ```
+
+</details>
+
+<a id="mqtt"></a>
+<details>
+<summary><b>MQTT</b></summary>
+
+任意 MQTT 客户端均可通过 Broker 与 PicoClaw 通信。设备或服务向 Broker 发布请求，PicoClaw 订阅后处理并将响应发布回去。
+
+**1. 配置**
+
+```json
+{
+  "channel_list": {
+    "mqtt": {
+      "enabled": true,
+      "type": "mqtt",
+      "settings": {
+        "broker": "ssl://your-broker:8883",
+        "agent_id": "assistant",
+        "topic_prefix": "/picoclaw",
+        "keep_alive": 60,
+        "qos": 0
+      }
+    }
+  }
+}
+```
+
+用户名和密码存储于 `~/.picoclaw/.security.yml`：
+
+```yaml
+channel_list:
+  mqtt:
+    settings:
+      username: your_username
+      password: your_password
+```
+
+**Topic 格式**
+
+```
+{prefix}/{agent_id}/{client_id}/request    # 客户端 → PicoClaw
+{prefix}/{agent_id}/{client_id}/response   # PicoClaw → 客户端
+```
+
+`client_id` 由客户端自行指定，用于区分不同设备或会话。
+
+**2. 运行**
+
+```bash
+picoclaw gateway
+```
+
+**3. 测试**
+
+```bash
+# 发送消息
+mosquitto_pub -t "/picoclaw/assistant/device1/request" \
+  -m '{"text": "你好"}'
+
+# 订阅响应
+mosquitto_sub -t "/picoclaw/assistant/device1/response"
+```
+
+完整配置选项请参考 [MQTT 渠道文档](../channels/mqtt/README.zh.md)。
 
 </details>

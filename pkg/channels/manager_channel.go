@@ -102,6 +102,11 @@ func hiddenValues(key string, value map[string]any, ch *config.Channel) {
 			}
 		}
 		value["webhooks"] = webhooks
+	case "mqtt":
+		if settings, ok := v.(*config.MQTTSettings); ok {
+			value["username"] = settings.Username.String()
+			value["password"] = settings.Password.String()
+		}
 	case "weibo":
 		if settings, ok := v.(*config.WeiboSettings); ok {
 			value["app_secret"] = settings.AppSecret.String()
