@@ -8,6 +8,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -29,24 +30,24 @@ func buildModelWithProtocol(protocol, model string) string {
 
 type legacyDiagnosticConfig struct {
 	Version     int                    `json:"version"`
-	Isolation   IsolationConfig        `json:"isolation,omitempty"`
-	Agents      legacyDiagnosticAgents `json:"agents,omitempty"`
-	Session     SessionConfig          `json:"session,omitempty"`
+	Isolation   IsolationConfig        `json:"isolation"`
+	Agents      legacyDiagnosticAgents `json:"agents"`
+	Session     SessionConfig          `json:"session"`
 	Channels    map[string]any         `json:"channels,omitempty"`
 	ChannelList ChannelsConfig         `json:"channel_list,omitempty"`
 	ModelList   []map[string]any       `json:"model_list,omitempty"`
-	Gateway     GatewayConfig          `json:"gateway,omitempty"`
-	Hooks       HooksConfig            `json:"hooks,omitempty"`
-	Tools       ToolsConfig            `json:"tools,omitempty"`
-	Heartbeat   HeartbeatConfig        `json:"heartbeat,omitempty"`
-	Devices     DevicesConfig          `json:"devices,omitempty"`
-	Voice       VoiceConfig            `json:"voice,omitempty"`
+	Gateway     GatewayConfig          `json:"gateway"`
+	Hooks       HooksConfig            `json:"hooks"`
+	Tools       ToolsConfig            `json:"tools"`
+	Heartbeat   HeartbeatConfig        `json:"heartbeat"`
+	Devices     DevicesConfig          `json:"devices"`
+	Voice       VoiceConfig            `json:"voice"`
 	Bindings    json.RawMessage        `json:"bindings,omitempty"`
 	Providers   json.RawMessage        `json:"providers,omitempty"`
 }
 
 type legacyDiagnosticAgents struct {
-	Defaults legacyDiagnosticAgentDefaults `json:"defaults,omitempty"`
+	Defaults legacyDiagnosticAgentDefaults `json:"defaults"`
 	List     []AgentConfig                 `json:"list,omitempty"`
 	Dispatch *DispatchConfig               `json:"dispatch,omitempty"`
 }
@@ -413,9 +414,7 @@ func loadConfigMap(path string) (map[string]any, error) {
 						registries = map[string]any{}
 					}
 					githubRegistry := map[string]any{}
-					for k, v := range gh {
-						githubRegistry[k] = v
-					}
+					maps.Copy(githubRegistry, gh)
 					if token, ok := githubRegistry["token"]; ok {
 						githubRegistry["auth_token"] = token
 					}

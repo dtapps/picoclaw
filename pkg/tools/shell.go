@@ -941,15 +941,15 @@ func encodeKeyToken(token string, ptyKeyMode PtyKeyMode) (string, error) {
 
 // encodeKeySequence encodes a slice of key tokens into a single string.
 func encodeKeySequence(tokens []string, ptyKeyMode PtyKeyMode) (string, error) {
-	var result string
+	var result strings.Builder
 	for _, token := range tokens {
 		seq, err := encodeKeyToken(token, ptyKeyMode)
 		if err != nil {
 			return "", err
 		}
-		result += seq
+		result.WriteString(seq)
 	}
-	return result, nil
+	return result.String(), nil
 }
 
 func (t *ExecTool) executeSendKeys(args map[string]any) *ToolResult {

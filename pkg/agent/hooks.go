@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
 	"sort"
 	"sync"
@@ -892,9 +893,7 @@ func cloneStringAnyMap(src map[string]any) map[string]any {
 	}
 
 	cloned := make(map[string]any, len(src))
-	for k, v := range src {
-		cloned[k] = v
-	}
+	maps.Copy(cloned, src)
 	return cloned
 }
 

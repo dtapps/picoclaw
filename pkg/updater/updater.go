@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -330,8 +331,8 @@ func findAssetInfo(releaseURL, platform, arch string) (string, string, error) {
 		// attempt to find checksum: prefer asset digest from API if present
 		if d := strings.TrimSpace(data.Assets[idx].Digest); d != "" {
 			dLower := strings.ToLower(d)
-			if strings.HasPrefix(dLower, "sha256:") {
-				hexpart := strings.TrimPrefix(dLower, "sha256:")
+			if after, ok0 := strings.CutPrefix(dLower, "sha256:"); ok0 {
+				hexpart := after
 				return url, hexpart, nil
 			}
 			// If digest already looks like a 64-hex, return it
@@ -432,7 +433,7 @@ func findHashInChecksumContent(bs []byte, assetURL string) (string, bool) {
 	}
 	re := regexp.MustCompile(`(?i)\b([a-f0-9]{64})\b`)
 	// prefer a line containing the asset filename
-	for _, line := range strings.Split(s, "\n") {
+	for line := range strings.SplitSeq(s, "\n") {
 		if strings.Contains(line, assetBase) {
 			if m := re.FindString(line); m != "" {
 				return m, true
@@ -673,11 +674,9 @@ func findBinaryInDir(dir, programName string) (string, error) {
 			return nil
 		}
 		base := filepath.Base(p)
-		for _, w := range wanted {
-			if base == w {
-				found = p
-				return io.EOF // use EOF to stop walking early
-			}
+		if slices.Contains(wanted, base) {
+			found = p
+			return io.EOF // use EOF to stop walking early
 		}
 		return nil
 	}); err != nil && err != io.EOF {

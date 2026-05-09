@@ -637,7 +637,7 @@ func TestStoreReplaceContextRangeWithSummary(t *testing.T) {
 
 	// Create messages and context items
 	msgs := make([]int64, 4)
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		m, _ := s.AddMessage(ctx, conv.ConversationID, "user", "msg", 2)
 		msgs[i] = m.ID
 	}
@@ -701,7 +701,7 @@ func TestStoreReplaceContextRangeResequenceOrdinals(t *testing.T) {
 
 	// Create 5 messages with DENSE ordinals (no gaps) to trigger conflict
 	msgs := make([]int64, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		m, _ := s.AddMessage(ctx, conv.ConversationID, "user", fmt.Sprintf("msg%d", i), 2)
 		msgs[i] = m.ID
 	}
@@ -816,7 +816,7 @@ func TestResequenceContextItemsTxAssignsUniqueOrdinals(t *testing.T) {
 
 	// Create messages
 	msgs := make([]int64, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		m, _ := s.AddMessage(ctx, conv.ConversationID, "user", fmt.Sprintf("msg%d", i), 2)
 		msgs[i] = m.ID
 	}
@@ -1341,14 +1341,14 @@ func TestStoreReplaceContextItemsWithSummary(t *testing.T) {
 
 	// Create messages
 	msgs := make([]int64, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		m, _ := s.AddMessage(ctx, conv.ConversationID, "user", fmt.Sprintf("msg%d", i), 2)
 		msgs[i] = m.ID
 	}
 
 	// Create summaries
 	summaries := make([]string, 3)
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		sum, _ := s.CreateSummary(ctx, CreateSummaryInput{
 			ConversationID: conv.ConversationID,
 			Kind:           SummaryKindLeaf,

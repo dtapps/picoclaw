@@ -183,7 +183,7 @@ func (c *DiscordChannel) receiveVoice(vc *discordgo.VoiceConnection, guildID str
 		defer vc.Speaking(false)
 
 		silenceFrame := []byte{0xF8, 0xFF, 0xFE}
-		for i := 0; i < 5; i++ {
+		for range 5 {
 			select {
 			case <-ctx.Done():
 				return

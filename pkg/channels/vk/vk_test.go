@@ -2,6 +2,7 @@ package vk
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
@@ -213,19 +214,19 @@ func TestVKChannel_ProcessAttachments(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var result string
+			var result strings.Builder
 			for i, att := range tt.attachments {
 				if i > 0 {
-					result += " "
+					result.WriteString(" ")
 				}
 				if att == "audio_message" {
-					result += "[voice]"
+					result.WriteString("[voice]")
 				} else {
-					result += "[" + att + "]"
+					result.WriteString("[" + att + "]")
 				}
 			}
-			if result != tt.want {
-				t.Errorf("processAttachments() = %q, want %q", result, tt.want)
+			if result.String() != tt.want {
+				t.Errorf("processAttachments() = %q, want %q", result.String(), tt.want)
 			}
 		})
 	}

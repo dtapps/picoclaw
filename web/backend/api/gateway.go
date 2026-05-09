@@ -518,9 +518,9 @@ func computeChannelSignatures(channels config.ChannelsConfig) []string {
 			Type               string                     `json:"type"`
 			AllowFrom          config.FlexibleStringSlice `json:"allow_from,omitempty"`
 			ReasoningChannelID string                     `json:"reasoning_channel_id,omitempty"`
-			GroupTrigger       config.GroupTriggerConfig  `json:"group_trigger,omitempty"`
-			Typing             config.TypingConfig        `json:"typing,omitempty"`
-			Placeholder        config.PlaceholderConfig   `json:"placeholder,omitempty"`
+			GroupTrigger       config.GroupTriggerConfig  `json:"group_trigger"`
+			Typing             config.TypingConfig        `json:"typing"`
+			Placeholder        config.PlaceholderConfig   `json:"placeholder"`
 			Settings           json.RawMessage            `json:"settings,omitempty"`
 		}{
 			Enabled:            channel.Enabled,
@@ -634,7 +634,7 @@ func canonicalizeSignatureValue(value reflect.Value) any {
 	case reflect.Slice, reflect.Array:
 		length := value.Len()
 		result := make([]any, 0, length)
-		for i := 0; i < length; i++ {
+		for i := range length {
 			result = append(result, canonicalizeSignatureValue(value.Index(i)))
 		}
 		return result
@@ -967,7 +967,7 @@ func (h *Handler) startGatewayLocked(initialStatus string, existingPid int) (int
 	// Start a goroutine to probe pidFile and health, update runtime state once ready.
 	go func() {
 		healthConfirmed := false
-		for i := 0; i < 30; i++ { // try for up to 15 seconds
+		for range 30 { // try for up to 15 seconds
 			time.Sleep(500 * time.Millisecond)
 			gateway.mu.Lock()
 			stillOurs := gateway.cmd == cmd

@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"path/filepath"
 	"runtime"
 	"sort"
@@ -487,9 +488,7 @@ func (c *SkillRegistryConfig) UnmarshalJSON(data []byte) error {
 		if err := json.Unmarshal(value, &nested); err != nil {
 			return err
 		}
-		for key, nestedValue := range nested {
-			params[key] = nestedValue
-		}
+		maps.Copy(params, nested)
 	}
 	for key, value := range raw {
 		switch key {
@@ -541,9 +540,7 @@ func (c *SkillRegistryConfig) UnmarshalYAML(value *yaml.Node) error {
 		params = map[string]any{}
 	}
 	if nested, ok := raw["param"].(map[string]any); ok {
-		for k, v := range nested {
-			params[k] = v
-		}
+		maps.Copy(params, nested)
 	}
 	for key, v := range raw {
 		switch key {
@@ -680,9 +677,7 @@ func cloneRegistryParams(src map[string]any) map[string]any {
 		return nil
 	}
 	cloned := make(map[string]any, len(src))
-	for key, value := range src {
-		cloned[key] = value
-	}
+	maps.Copy(cloned, src)
 	return cloned
 }
 

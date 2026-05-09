@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -292,9 +293,7 @@ func (p *GeminiProvider) buildRequestBody(
 		body["generationConfig"] = generationConfig
 	}
 
-	for k, v := range p.extraBody {
-		body[k] = v
-	}
+	maps.Copy(body, p.extraBody)
 
 	return body
 }
@@ -715,9 +714,7 @@ func cloneAnyMap(in map[string]any) map[string]any {
 		return nil
 	}
 	out := make(map[string]any, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 
@@ -726,9 +723,7 @@ func cloneStringMap(in map[string]string) map[string]string {
 		return nil
 	}
 	out := make(map[string]string, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

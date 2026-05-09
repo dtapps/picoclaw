@@ -1,6 +1,8 @@
 package agent
 
 import (
+	"maps"
+
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/routing"
 	"github.com/sipeed/picoclaw/pkg/session"
@@ -55,9 +57,7 @@ func cloneStringMap(src map[string]string) map[string]string {
 		return nil
 	}
 	cloned := make(map[string]string, len(src))
-	for k, v := range src {
-		cloned[k] = v
-	}
+	maps.Copy(cloned, src)
 	return cloned
 }
 

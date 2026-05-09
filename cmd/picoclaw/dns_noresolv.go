@@ -24,7 +24,7 @@ func init() {
 	}
 
 	var dnsServers []string
-	for _, s := range strings.Split(dnsEnv, ";") {
+	for s := range strings.SplitSeq(dnsEnv, ";") {
 		s = strings.TrimSpace(s)
 		if s != "" {
 			// 如果没有带端口号，自动补上 :53

@@ -127,14 +127,14 @@ func TestAssemblerBudgetEvictsOldest(t *testing.T) {
 
 	// Create 40 messages, each with 10 tokens = 400 total
 	msgs := make([]*Message, 40)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		m, _ := s.AddMessage(ctx, convID, "user", "msg", 10)
 		msgs[i] = m
 	}
 
 	// Context items for all messages
 	items := make([]ContextItem, 40)
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		items[i] = ContextItem{
 			Ordinal:    (i + 1) * 100,
 			ItemType:   "message",
@@ -169,13 +169,13 @@ func TestAssemblerBudgetFitsAll(t *testing.T) {
 	ctx := context.Background()
 
 	msgs := make([]*Message, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		m, _ := s.AddMessage(ctx, convID, "user", "msg", 10)
 		msgs[i] = m
 	}
 
 	items := make([]ContextItem, 5)
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		items[i] = ContextItem{
 			Ordinal:    (i + 1) * 100,
 			ItemType:   "message",

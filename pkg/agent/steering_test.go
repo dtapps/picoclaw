@@ -123,7 +123,7 @@ func TestSteeringQueue_ConcurrentAccess(t *testing.T) {
 	const n = MaxQueueSize
 
 	// Push from multiple goroutines
-	for i := 0; i < n; i++ {
+	for i := range n {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -139,16 +139,14 @@ func TestSteeringQueue_ConcurrentAccess(t *testing.T) {
 	// Drain from multiple goroutines
 	var drained int
 	var mu sync.Mutex
-	for i := 0; i < n; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range n {
+		wg.Go(func() {
 			if msgs := sq.dequeue(); len(msgs) > 0 {
 				mu.Lock()
 				drained += len(msgs)
 				mu.Unlock()
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -161,7 +159,7 @@ func TestSteeringQueue_Overflow(t *testing.T) {
 	sq := newSteeringQueue(SteeringOneAtATime)
 
 	// Fill the queue up to its maximum capacity
-	for i := 0; i < MaxQueueSize; i++ {
+	for i := range MaxQueueSize {
 		err := sq.push(providers.Message{Role: "user", Content: fmt.Sprintf("msg%d", i)})
 		if err != nil {
 			t.Fatalf("unexpected error pushing message %d: %v", i, err)

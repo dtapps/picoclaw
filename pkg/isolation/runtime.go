@@ -2,6 +2,7 @@ package isolation
 
 import (
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -188,9 +189,7 @@ func ApplyUserEnv(cmd *exec.Cmd, root string) {
 			})
 	}
 
-	for k, v := range enabledVars {
-		envMap[k] = v
-	}
+	maps.Copy(envMap, enabledVars)
 
 	if runtime.GOOS == "windows" {
 		envMap["USERPROFILE"] = userEnv.Home

@@ -293,7 +293,7 @@ func (m *legacyContextManager) retryLLMCall(
 	var resp *providers.LLMResponse
 	var err error
 
-	for attempt := 0; attempt < maxRetries; attempt++ {
+	for attempt := range maxRetries {
 		m.al.activeRequests.Add(1)
 		resp, err = func() (*providers.LLMResponse, error) {
 			defer m.al.activeRequests.Done()
@@ -364,13 +364,7 @@ func (m *legacyContextManager) summarizeBatch(
 			continue
 		}
 
-		keepLength := len(runes) * fallbackMaxContentPercent / 100
-		if keepLength < fallbackMinContentLength {
-			keepLength = fallbackMinContentLength
-		}
-		if keepLength > len(runes) {
-			keepLength = len(runes)
-		}
+		keepLength := min(max(len(runes)*fallbackMaxContentPercent/100, fallbackMinContentLength), len(runes))
 
 		content = string(runes[:keepLength])
 		if keepLength < len(runes) {

@@ -24,10 +24,7 @@ func contextCommand() Definition {
 }
 
 func formatContextStats(s *ContextStats) string {
-	remaining := s.CompressAtTokens - s.UsedTokens
-	if remaining < 0 {
-		remaining = 0
-	}
+	remaining := max(s.CompressAtTokens-s.UsedTokens, 0)
 	usedWindowPercent := s.UsedTokens * 100 / max(s.TotalTokens, 1)
 	return fmt.Sprintf(
 		"Context usage  \nMessages: %d  \nUsed: ~%d / %d tokens (%d%%)  \nCompress at: %d tokens  \nCompression progress: %d%%  \nRemaining: ~%d tokens",

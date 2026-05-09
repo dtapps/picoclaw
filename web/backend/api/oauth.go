@@ -8,6 +8,7 @@ import (
 	"html"
 	"io"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -536,12 +537,7 @@ func normalizeOAuthProvider(raw string) (string, error) {
 
 func isOAuthMethodSupported(provider, method string) bool {
 	methods := oauthProviderMethods[provider]
-	for _, m := range methods {
-		if m == method {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(methods, method)
 }
 
 func oauthConfigForProvider(provider string) (auth.OAuthProviderConfig, error) {

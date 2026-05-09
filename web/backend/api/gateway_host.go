@@ -166,7 +166,7 @@ func forwardedRFC7239Param(r *http.Request, key string) string {
 		return ""
 	}
 	first := strings.TrimSpace(strings.Split(v, ",")[0])
-	for _, part := range strings.Split(first, ";") {
+	for part := range strings.SplitSeq(first, ";") {
 		part = strings.TrimSpace(part)
 		low := strings.ToLower(part)
 		if !strings.HasPrefix(low, key+"=") {

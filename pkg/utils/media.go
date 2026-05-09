@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
@@ -20,10 +21,8 @@ var audioExtensions = []string{".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", 
 
 func AudioFormat(path string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(path))
-	for _, supportedExt := range audioExtensions {
-		if ext == supportedExt {
-			return strings.TrimPrefix(ext, "."), nil
-		}
+	if slices.Contains(audioExtensions, ext) {
+		return strings.TrimPrefix(ext, "."), nil
 	}
 
 	return "", fmt.Errorf("unsupported audio format for %q", path)

@@ -8,6 +8,7 @@ package config
 import (
 	"bytes"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -46,9 +47,7 @@ func loadSecurityConfig(cfg *Config, securityPath string) error {
 
 	// Save existing channels and ModelList before unmarshal
 	savedChannels := make(ChannelsConfig, len(cfg.Channels))
-	for name, bc := range cfg.Channels {
-		savedChannels[name] = bc
-	}
+	maps.Copy(savedChannels, cfg.Channels)
 	// savedModelList := cfg.ModelList
 
 	// Parse YAML into a yaml.Node tree to extract channels node
@@ -85,9 +84,7 @@ func loadSecurityConfig(cfg *Config, securityPath string) error {
 
 	// Restore channels from saved, then manually merge from security.yml
 	cfg.Channels = make(ChannelsConfig)
-	for name, savedBC := range savedChannels {
-		cfg.Channels[name] = savedBC
-	}
+	maps.Copy(cfg.Channels, savedChannels)
 
 	// If we found a channels node in security.yml, merge it into existing channels
 	if channelsNode != nil {
@@ -397,7 +394,7 @@ func collectSensitive(v reflect.Value, values *[]string) {
 	t := v.Type()
 
 	// Channel: use CollectSensitiveValues() method
-	if t == reflect.TypeOf(Channel{}) {
+	if t == reflect.TypeFor[Channel]() {
 		if method := v.MethodByName("CollectSensitiveValues"); method.IsValid() {
 			results := method.Call(nil)
 			if len(results) > 0 {
@@ -410,7 +407,7 @@ func collectSensitive(v reflect.Value, values *[]string) {
 	}
 
 	// SecureString: collect via String() method (defined on *SecureString)
-	if t == reflect.TypeOf(SecureString{}) {
+	if t == reflect.TypeFor[SecureString]() {
 		// Create a new pointer to make it addressable for method calls
 		ptr := reflect.New(t)
 		ptr.Elem().Set(v)
@@ -424,7 +421,7 @@ func collectSensitive(v reflect.Value, values *[]string) {
 	}
 
 	// SecureStrings ([]*SecureString): iterate and collect each element
-	if t == reflect.TypeOf(SecureStrings{}) {
+	if t == reflect.TypeFor[SecureStrings]() {
 		for i := 0; i < v.Len(); i++ {
 			elem := v.Index(i)
 			for elem.Kind() == reflect.Pointer || elem.Kind() == reflect.Interface {
@@ -434,7 +431,7 @@ func collectSensitive(v reflect.Value, values *[]string) {
 				}
 				elem = elem.Elem()
 			}
-			if elem.IsValid() && elem.Type() == reflect.TypeOf(SecureString{}) {
+			if elem.IsValid() && elem.Type() == reflect.TypeFor[SecureString]() {
 				result := elem.Addr().MethodByName("String").Call(nil)
 				if len(result) > 0 {
 					if s := result[0].String(); s != "" {

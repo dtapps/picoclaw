@@ -751,9 +751,7 @@ func setupConfigWatcherPolling(configPath string, debug bool) (chan *config.Conf
 	stop := make(chan struct{})
 	var wg sync.WaitGroup
 
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 
 		lastModTime := getFileModTime(configPath)
 		lastSize := getFileSize(configPath)
@@ -802,7 +800,7 @@ func setupConfigWatcherPolling(configPath string, debug bool) (chan *config.Conf
 				return
 			}
 		}
-	}()
+	})
 
 	stopFunc := func() {
 		close(stop)

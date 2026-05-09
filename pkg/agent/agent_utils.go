@@ -56,9 +56,7 @@ func outboundScopeFromSessionScope(scope *session.SessionScope) *bus.OutboundSco
 	}
 	if len(scope.Values) > 0 {
 		outboundScope.Values = make(map[string]string, len(scope.Values))
-		for key, value := range scope.Values {
-			outboundScope.Values[key] = value
-		}
+		maps.Copy(outboundScope.Values, scope.Values)
 	}
 	return outboundScope
 }
@@ -189,9 +187,7 @@ func cloneEventArguments(args map[string]any) map[string]any {
 	}
 
 	cloned := make(map[string]any, len(args))
-	for k, v := range args {
-		cloned[k] = v
-	}
+	maps.Copy(cloned, args)
 	return cloned
 }
 

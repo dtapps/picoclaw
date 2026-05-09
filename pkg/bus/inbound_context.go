@@ -1,5 +1,7 @@
 package bus
 
+import "maps"
+
 import "strings"
 
 // NormalizeInboundMessage ensures the inbound context is normalized and keeps
@@ -70,9 +72,7 @@ func cloneStringMap(src map[string]string) map[string]string {
 	}
 
 	dst := make(map[string]string, len(src))
-	for k, v := range src {
-		dst[k] = v
-	}
+	maps.Copy(dst, src)
 	return dst
 }
 

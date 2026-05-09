@@ -113,8 +113,8 @@ func (r *Resolver) Resolve(raw string) (string, error) {
 		return "", nil
 	}
 
-	if strings.HasPrefix(raw, FileScheme) {
-		fileName := strings.TrimSpace(strings.TrimPrefix(raw, FileScheme))
+	if after, ok := strings.CutPrefix(raw, FileScheme); ok {
+		fileName := strings.TrimSpace(after)
 		if fileName == "" {
 			return "", fmt.Errorf("credential: file:// reference has no filename")
 		}

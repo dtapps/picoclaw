@@ -15,7 +15,7 @@ func TestRateLimiter_AllowsUpToRPM(t *testing.T) {
 	rl := newRateLimiter(rpm)
 
 	// All rpm tokens should be available immediately (bucket starts full).
-	for i := 0; i < rpm; i++ {
+	for i := range rpm {
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		if err := rl.Wait(ctx); err != nil {
 			t.Fatalf("request %d should pass immediately, got: %v", i+1, err)
@@ -57,7 +57,7 @@ func TestRateLimiter_TokenRefill(t *testing.T) {
 	rl := newRateLimiter(rpm)
 
 	// Drain all tokens.
-	for i := 0; i < rpm; i++ {
+	for range rpm {
 		rl.Wait(context.Background()) //nolint:errcheck
 	}
 
@@ -76,7 +76,7 @@ func TestRateLimiter_TokenRefill(t *testing.T) {
 func TestRateLimiterRegistry_NoLimiter(t *testing.T) {
 	r := NewRateLimiterRegistry()
 	ctx := context.Background()
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		if err := r.Wait(ctx, "unregistered/key"); err != nil {
 			t.Fatalf("unregistered key should not block: %v", err)
 		}
@@ -88,7 +88,7 @@ func TestRateLimiterRegistry_ZeroRPM(t *testing.T) {
 	r := NewRateLimiterRegistry()
 	r.Register("some/key", 0)
 	ctx := context.Background()
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		if err := r.Wait(ctx, "some/key"); err != nil {
 			t.Fatalf("zero-RPM key should not block: %v", err)
 		}
@@ -101,7 +101,7 @@ func TestRateLimiterRegistry_Enforcement(t *testing.T) {
 	r.Register("openai/gpt-4o", 3)
 
 	// First 3 calls should pass (burst = RPM).
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		if err := r.Wait(ctx, "openai/gpt-4o"); err != nil {
 			t.Fatalf("call %d should pass: %v", i+1, err)
@@ -128,7 +128,7 @@ func TestRateLimiterRegistry_RegisterCandidates(t *testing.T) {
 	r.RegisterCandidates(candidates)
 
 	// openai/gpt-4o: 2 tokens burst, 3rd should block.
-	for i := 0; i < 2; i++ {
+	for i := range 2 {
 		ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
 		if err := r.Wait(ctx, "openai/gpt-4o"); err != nil {
 			t.Fatalf("openai call %d should pass: %v", i+1, err)
@@ -142,7 +142,7 @@ func TestRateLimiterRegistry_RegisterCandidates(t *testing.T) {
 	}
 
 	// anthropic/claude-3: no limit, should always pass.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		if err := r.Wait(context.Background(), "anthropic/claude-3"); err != nil {
 			t.Fatalf("anthropic call should not be limited: %v", err)
 		}
@@ -188,16 +188,14 @@ func TestRateLimiter_Concurrency(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Launch 30 goroutines; only ~20 should pass immediately.
-	for i := 0; i < 30; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 30 {
+		wg.Go(func() {
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Millisecond)
 			defer cancel()
 			if rl.Wait(ctx) == nil {
 				passed.Add(1)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 

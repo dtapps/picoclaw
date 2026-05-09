@@ -55,10 +55,7 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 	}
 
 	// Split into evictable prefix and protected fresh tail
-	tailStart := len(resolved) - FreshTailCount
-	if tailStart < 0 {
-		tailStart = 0
-	}
+	tailStart := max(len(resolved)-FreshTailCount, 0)
 	evictable := resolved[:tailStart]
 	freshTail := resolved[tailStart:]
 
@@ -241,12 +238,13 @@ func FormatSummaryXML(s *Summary, parentIDs []string) string {
 
 	var parentsSection string
 	if s.Kind == SummaryKindCondensed && len(parentIDs) > 0 {
-		parents := "<parents>\n"
+		var parents strings.Builder
+		parents.WriteString("<parents>\n")
 		for _, pid := range parentIDs {
-			parents += fmt.Sprintf("    <summary_ref id=\"%s\" />\n", pid)
+			parents.WriteString(fmt.Sprintf("    <summary_ref id=\"%s\" />\n", pid))
 		}
-		parents += "  </parents>\n"
-		parentsSection = parents
+		parents.WriteString("  </parents>\n")
+		parentsSection = parents.String()
 	}
 	return fmt.Sprintf(
 		"<summary id=\"%s\" kind=\"%s\" depth=\"%d\" descendant_count=\"%d\"%s>\n  <content>\n    %s\n  </content>\n%s</summary>",

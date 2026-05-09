@@ -74,17 +74,17 @@ func parseInlineToolCall(content string, start int) (ToolCall, int, bool) {
 	afterMarker := content[start+len(inlineToolUseMarker):]
 
 	// 查找参数分隔符
-	argsIdx := strings.Index(afterMarker, inlineToolArgsSeparator)
-	if argsIdx == -1 {
+	before, after, ok := strings.Cut(afterMarker, inlineToolArgsSeparator)
+	if !ok {
 		return ToolCall{}, start, false
 	}
 
-	name := strings.TrimSpace(afterMarker[:argsIdx])
+	name := strings.TrimSpace(before)
 	if name == "" {
 		return ToolCall{}, start, false
 	}
 
-	afterArgs := afterMarker[argsIdx+len(inlineToolArgsSeparator):]
+	afterArgs := after
 
 	// 查找 JSON 对象起始位置
 	jsonStart := strings.Index(afterArgs, "{")
@@ -138,7 +138,7 @@ func parseInlineToolCall(content string, start int) (ToolCall, int, bool) {
 	closeBracket := strings.Index(remaining, "]")
 	var endPos int
 	if closeBracket != -1 {
-		endPos = start + len(inlineToolUseMarker) + len(afterMarker[:argsIdx]) +
+		endPos = start + len(inlineToolUseMarker) + len(before) +
 			len(inlineToolArgsSeparator) + len(afterArgs[:originalJsonEnd+1]) + closeBracket + 1
 
 		// 跳过 ] 后面可能存在的残留字符
@@ -173,7 +173,7 @@ func parseInlineToolCall(content string, start int) (ToolCall, int, bool) {
 		}
 	} else {
 		// 没有结束方括号；消耗到 JSON 对象末尾
-		endPos = start + len(inlineToolUseMarker) + len(afterMarker[:argsIdx]) +
+		endPos = start + len(inlineToolUseMarker) + len(before) +
 			len(inlineToolArgsSeparator) + len(afterArgs[:originalJsonEnd+1])
 	}
 
@@ -336,9 +336,9 @@ func stripInlineToolTokens(content string) string {
 	// 如 [{'type': 'text', 'text': " 或 [{'type': 'text', 'text': \"
 	// 这些是工具调用被提取后残留的包装部分
 	trimmed := strings.TrimSpace(content)
-	if strings.HasPrefix(trimmed, "[{'type': 'text', 'text': ") {
+	if after, ok := strings.CutPrefix(trimmed, "[{'type': 'text', 'text': "); ok {
 		// 检查是否只有包装的开始部分，没有实际内容
-		inner := strings.TrimPrefix(trimmed, "[{'type': 'text', 'text': ")
+		inner := after
 		inner = strings.TrimPrefix(inner, `"`)
 		inner = strings.TrimPrefix(inner, `\"`)
 		inner = strings.TrimSuffix(inner, `"`)

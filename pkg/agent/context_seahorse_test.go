@@ -414,7 +414,7 @@ func TestSeahorseAdapterAssembleSubtractsMaxTokens(t *testing.T) {
 	mgr := &seahorseContextManager{engine: engine}
 
 	// Ingest lots of large messages (~35 tokens each, 120 total = ~4200 tokens)
-	for i := 0; i < 60; i++ {
+	for i := range 60 {
 		content := fmt.Sprintf(
 			"This is message number %d. It contains enough text to represent a meaningful conversation turn with the user asking about various topics in software engineering and system design principles that require careful consideration.",
 			i,
@@ -477,7 +477,7 @@ func TestSeahorseCompactRetryUsesCompactUntilUnder(t *testing.T) {
 	ctx := context.Background()
 
 	// Ingest messages so there's something to compact
-	for i := 0; i < 40; i++ {
+	for i := range 40 {
 		content := fmt.Sprintf(
 			"message %d with enough text to have meaningful token count that fills up the budget nicely",
 			i,
@@ -629,7 +629,7 @@ func TestSeahorseAssembleReturnsAllSummaries(t *testing.T) {
 	}
 
 	// Create some messages first
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		_ = mgr.Ingest(ctx, &IngestRequest{
 			SessionKey: sessionKey,
 			Message:    protocoltypes.Message{Role: "user", Content: fmt.Sprintf("Message %d", i)},
@@ -815,7 +815,7 @@ func TestSeahorseAssembleSummaryNotInMessages(t *testing.T) {
 	}
 
 	// Ingest some messages first
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		_ = mgr.Ingest(ctx, &IngestRequest{
 			SessionKey: sessionKey,
 			Message:    protocoltypes.Message{Role: "user", Content: fmt.Sprintf("Message %d", i)},
@@ -1013,7 +1013,7 @@ func TestSeahorseSummarizeSkipsCondensedWhenBelowThreshold(t *testing.T) {
 	}
 
 	// Insert leaf summaries directly (bypass leaf compaction requirement)
-	for i := 0; i < seahorse.CondensedMinFanout; i++ {
+	for i := range seahorse.CondensedMinFanout {
 		now := time.Now().UTC()
 		summary, sumErr := store.CreateSummary(ctx, seahorse.CreateSummaryInput{
 			ConversationID: conv.ConversationID,
@@ -1033,7 +1033,7 @@ func TestSeahorseSummarizeSkipsCondensedWhenBelowThreshold(t *testing.T) {
 	}
 
 	// Add fresh messages (required for condensation candidates)
-	for i := 0; i < seahorse.FreshTailCount+1; i++ {
+	for i := range seahorse.FreshTailCount + 1 {
 		m, msgErr := store.AddMessage(ctx, conv.ConversationID, "user", "fresh", 5)
 		if msgErr != nil {
 			t.Fatalf("AddMessage %d: %v", i, msgErr)

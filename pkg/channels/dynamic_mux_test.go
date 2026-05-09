@@ -116,7 +116,7 @@ func TestDynamicServeMuxConcurrent(t *testing.T) {
 	const goroutines = 50
 
 	// Concurrent Handle/Unhandle
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -132,15 +132,13 @@ func TestDynamicServeMuxConcurrent(t *testing.T) {
 	}
 
 	// Concurrent ServeHTTP
-	for i := 0; i < goroutines; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range goroutines {
+		wg.Go(func() {
 			rec := httptest.NewRecorder()
 			dm.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static", nil))
 			// Should not panic; result is either 200 or 404
 			_ = rec.Code
-		}()
+		})
 	}
 
 	wg.Wait()

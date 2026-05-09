@@ -27,10 +27,7 @@ func EstimateMessageTokens(msg providers.Message) int {
 	}
 
 	// Use the larger of the two representations to stay conservative.
-	chars := contentChars
-	if systemPartsChars > chars {
-		chars = systemPartsChars
-	}
+	chars := max(systemPartsChars, contentChars)
 
 	chars += utf8.RuneCountInString(msg.ReasoningContent)
 

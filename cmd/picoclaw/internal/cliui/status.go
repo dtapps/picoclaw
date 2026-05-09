@@ -137,14 +137,8 @@ func providerTablePanel(r StatusReport, colW int) string {
 	if len(r.Providers) == 0 {
 		return ""
 	}
-	keyW := min(22, colW/3)
-	if keyW < 14 {
-		keyW = 14
-	}
-	valW := colW - keyW - 3
-	if valW < 12 {
-		valW = 12
-	}
+	keyW := max(min(22, colW/3), 14)
+	valW := max(colW-keyW-3, 12)
 
 	var b strings.Builder
 	b.WriteString(titleBarStyle().Render("Providers & local") + "\n\n")

@@ -244,7 +244,7 @@ func (s geminiSchemaSanitizer) resolveLocalSchemaRef(ref string) (map[string]any
 	}
 
 	var current any = s.root
-	for _, rawToken := range strings.Split(strings.TrimPrefix(ref, "#/"), "/") {
+	for rawToken := range strings.SplitSeq(strings.TrimPrefix(ref, "#/"), "/") {
 		token := strings.ReplaceAll(strings.ReplaceAll(rawToken, "~1", "/"), "~0", "~")
 		switch value := current.(type) {
 		case map[string]any:

@@ -57,10 +57,7 @@ func printOnboardFancy(logo string, encrypt bool, configPath string) {
 
 	if UseColumnLayout() {
 		leftW := min(inner/2-2, 52)
-		rightW := inner - leftW - 4
-		if rightW < 36 {
-			rightW = 36
-		}
+		rightW := max(inner-leftW-4, 36)
 		leftBlock := borderStyle().MaxWidth(leftW + 8).Width(leftW).
 			Render(titleBarStyle().Render("Next steps") + "\n\n" + bodyStyle().Width(leftW).Render(steps))
 		rightBlock := borderStyle().MaxWidth(rightW + 8).Width(rightW).

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"errors"
+	"maps"
 	"sync"
 	"testing"
 	"time"
@@ -48,9 +49,7 @@ func (p *nativeSearchCaptureProvider) Chat(
 	opts map[string]any,
 ) (*providers.LLMResponse, error) {
 	p.lastOpts = make(map[string]any, len(opts))
-	for k, v := range opts {
-		p.lastOpts[k] = v
-	}
+	maps.Copy(p.lastOpts, opts)
 	return &providers.LLMResponse{
 		Content:      "Using native search",
 		FinishReason: "stop",

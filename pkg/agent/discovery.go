@@ -151,7 +151,7 @@ func descriptorIdentity(agentID string, definition AgentContextDefinition) (stri
 
 func firstNonEmptyLine(content string) string {
 	content = strings.ReplaceAll(content, "\r\n", "\n")
-	for _, line := range strings.Split(content, "\n") {
+	for line := range strings.SplitSeq(content, "\n") {
 		trimmed := strings.TrimSpace(line)
 		if trimmed != "" {
 			return trimmed
@@ -162,8 +162,8 @@ func firstNonEmptyLine(content string) string {
 
 func firstMeaningfulParagraph(content string) string {
 	content = strings.ReplaceAll(content, "\r\n", "\n")
-	paragraphs := strings.Split(content, "\n\n")
-	for _, paragraph := range paragraphs {
+	paragraphs := strings.SplitSeq(content, "\n\n")
+	for paragraph := range paragraphs {
 		lines := strings.Split(paragraph, "\n")
 		parts := make([]string, 0, len(lines))
 		inFence := false

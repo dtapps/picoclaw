@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -79,9 +80,7 @@ func (s *multipartRecordingConstructor) MultipartRequest(
 		Parameters: make(map[string]string, len(parameters)),
 		FileSizes:  make(map[string]int, len(files)),
 	}
-	for k, v := range parameters {
-		call.Parameters[k] = v
-	}
+	maps.Copy(call.Parameters, parameters)
 	for field, file := range files {
 		if file == nil {
 			continue

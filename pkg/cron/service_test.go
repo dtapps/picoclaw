@@ -20,7 +20,7 @@ func TestSaveStore_FilePermissions(t *testing.T) {
 
 	cs := NewCronService(storePath, nil)
 
-	_, err := cs.AddJob("test", CronSchedule{Kind: "every", EveryMS: int64Ptr(60000)}, "hello", "cli", "direct")
+	_, err := cs.AddJob("test", CronSchedule{Kind: "every", EveryMS: new(int64(60000))}, "hello", "cli", "direct")
 	if err != nil {
 		t.Fatalf("AddJob failed: %v", err)
 	}
@@ -36,8 +36,9 @@ func TestSaveStore_FilePermissions(t *testing.T) {
 	}
 }
 
+//go:fix inline
 func int64Ptr(v int64) *int64 {
-	return &v
+	return new(v)
 }
 
 func setupService(handler JobHandler) (*CronService, string) {
@@ -96,9 +97,9 @@ func TestCronService_ComputeNextRun(t *testing.T) {
 	}{
 		{"Valid Cron", CronSchedule{Kind: "cron", Expr: "0 * * * *"}, false},
 		{"Invalid Cron", CronSchedule{Kind: "cron", Expr: "invalid"}, true},
-		{"Every MS", CronSchedule{Kind: "every", EveryMS: int64Ptr(5000)}, false},
-		{"At Future", CronSchedule{Kind: "at", AtMS: int64Ptr(now + 1000)}, false},
-		{"At Past", CronSchedule{Kind: "at", AtMS: int64Ptr(now - 1000)}, true},
+		{"Every MS", CronSchedule{Kind: "every", EveryMS: new(int64(5000))}, false},
+		{"At Future", CronSchedule{Kind: "at", AtMS: new(now + 1000)}, false},
+		{"At Past", CronSchedule{Kind: "at", AtMS: new(now - 1000)}, true},
 	}
 
 	for _, tt := range tests {

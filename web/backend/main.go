@@ -21,6 +21,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -138,12 +139,7 @@ func appendUniqueHost(hosts []string, seen map[string]struct{}, host string) []s
 }
 
 func hasWildcardBindHosts(bindHosts []string) bool {
-	for _, bindHost := range bindHosts {
-		if netbind.IsUnspecifiedHost(bindHost) {
-			return true
-		}
-	}
-	return false
+	return slices.ContainsFunc(bindHosts, netbind.IsUnspecifiedHost)
 }
 
 func wildcardBindHostFamilies(bindHosts []string) (hasIPv4, hasIPv6 bool) {
@@ -271,7 +267,7 @@ func launcherConsoleHostsWithLocalAddrs(
 	hasStar := false
 	hasIPv4Any := false
 	hasIPv6Any := false
-	for _, token := range strings.Split(normalizedHostInput, ",") {
+	for token := range strings.SplitSeq(normalizedHostInput, ",") {
 		switch strings.TrimSpace(token) {
 		case "*":
 			hasStar = true
@@ -288,7 +284,7 @@ func launcherConsoleHostsWithLocalAddrs(
 		return hosts
 	}
 
-	for _, token := range strings.Split(normalizedHostInput, ",") {
+	for token := range strings.SplitSeq(normalizedHostInput, ",") {
 		token = strings.TrimSpace(token)
 		if token == "" || strings.EqualFold(token, "localhost") || netbind.IsLoopbackHost(token) {
 			continue

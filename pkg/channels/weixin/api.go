@@ -67,7 +67,7 @@ func randomWechatUIN() string {
 	var b [4]byte
 	_, _ = rand.Read(b[:])
 	uint32Val := binary.BigEndian.Uint32(b[:])
-	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%d", uint32Val)))
+	return base64.StdEncoding.EncodeToString(fmt.Appendf(nil, "%d", uint32Val))
 }
 
 func (c *ApiClient) post(ctx context.Context, endpoint string, body any, responseObj any) error {

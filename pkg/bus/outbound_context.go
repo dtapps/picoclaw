@@ -1,5 +1,7 @@
 package bus
 
+import "maps"
+
 import "strings"
 
 // NewOutboundContext builds the minimal normalized addressing context required
@@ -76,9 +78,7 @@ func cloneOutboundScope(scope *OutboundScope) *OutboundScope {
 	}
 	if len(scope.Values) > 0 {
 		cloned.Values = make(map[string]string, len(scope.Values))
-		for key, value := range scope.Values {
-			cloned.Values[key] = value
-		}
+		maps.Copy(cloned.Values, scope.Values)
 	}
 	return &cloned
 }

@@ -37,10 +37,10 @@ func buildWeiboTokensPath(cfg *config.WeiboSettings) string {
 
 // weiboTokenFile 定义 token 文件的 JSON 结构
 type weiboTokenFile struct {
-	Token     string    `json:"token"`                // Token 值
-	Name      string    `json:"name"`                 // Token 名称/标识（使用 AppID）
-	ExpiresAt time.Time `json:"expires_at,omitempty"` // 过期时间（可选）
-	Weight    int       `json:"weight,omitempty"`     // 权重，用于随机选择（默认 1）
+	Token     string    `json:"token"`            // Token 值
+	Name      string    `json:"name"`             // Token 名称/标识（使用 AppID）
+	ExpiresAt time.Time `json:"expires_at"`       // 过期时间（可选）
+	Weight    int       `json:"weight,omitempty"` // 权重，用于随机选择（默认 1）
 }
 
 // saveWeiboToken 保存 Weibo token 到文件

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -1148,12 +1149,7 @@ var (
 
 func isKnownWebSearchProvider(name string) bool {
 	name = strings.ToLower(strings.TrimSpace(name))
-	for _, known := range knownWebSearchProviders {
-		if name == known {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(knownWebSearchProviders, name)
 }
 
 func (opts WebSearchToolOptions) providerReady(name string) bool {

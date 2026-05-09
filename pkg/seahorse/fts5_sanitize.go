@@ -41,7 +41,7 @@ func SanitizeFTS5Query(raw string) string {
 	for _, loc := range phraseRegex.FindAllStringIndex(raw, -1) {
 		// Process unquoted text before this phrase
 		before := raw[lastIndex:loc[0]]
-		for _, t := range strings.Fields(before) {
+		for t := range strings.FieldsSeq(before) {
 			t = strings.ReplaceAll(t, `"`, "")
 			if t != "" {
 				parts = append(parts, `"`+t+`"`)
@@ -56,7 +56,7 @@ func SanitizeFTS5Query(raw string) string {
 	}
 
 	// Process unquoted text after last phrase
-	for _, t := range strings.Fields(raw[lastIndex:]) {
+	for t := range strings.FieldsSeq(raw[lastIndex:]) {
 		t = strings.ReplaceAll(t, `"`, "")
 		if t != "" {
 			parts = append(parts, `"`+t+`"`)

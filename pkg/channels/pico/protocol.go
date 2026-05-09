@@ -1,6 +1,7 @@
 package pico
 
 import (
+	"maps"
 	"strings"
 	"time"
 )
@@ -66,9 +67,7 @@ func newErrorWithPayload(code, message string, extra map[string]any) PicoMessage
 		"code":    code,
 		"message": message,
 	}
-	for key, value := range extra {
-		payload[key] = value
-	}
+	maps.Copy(payload, extra)
 	return newMessage(TypeError, payload)
 }
 

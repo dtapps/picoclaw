@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 )
 
@@ -128,16 +129,16 @@ func (se *StepExecutor) executeParallel(
 	}
 
 	// 合并输出
-	var combined string
+	var combined strings.Builder
 	for _, step := range steps {
 		if step.OutputKey != "" {
 			if v, ok := outputs[step.OutputKey]; ok {
-				combined += fmt.Sprintf("[%s] %s\n", step.OutputKey, valueToString(v))
+				combined.WriteString(fmt.Sprintf("[%s] %s\n", step.OutputKey, valueToString(v)))
 			}
 		}
 	}
 
-	return StepResult{Output: combined}
+	return StepResult{Output: combined.String()}
 }
 
 // ExecuteWithRetry 执行步骤，支持可选的重试逻辑。

@@ -24,7 +24,7 @@ func SplitEvidenceIDs(evidence string) []string {
 	parts := strings.Split(evidence, ";")
 	var ids []string
 	for _, part := range parts {
-		for _, token := range strings.Fields(strings.TrimSpace(part)) {
+		for token := range strings.FieldsSeq(strings.TrimSpace(part)) {
 			token = strings.TrimSpace(token)
 			if diaIDRe.MatchString(token) {
 				ids = append(ids, NormalizeDiaID(token))
@@ -210,7 +210,7 @@ func BudgetTruncate(messages []string, budgetTokens int) ([]string, int) {
 	var result []string
 	total := 0
 	// Walk from the front (best first) and keep until budget exhausted.
-	for i := 0; i < len(messages); i++ {
+	for i := range messages {
 		tokens := len(messages[i]) / 4
 		if total+tokens > budgetTokens && len(result) > 0 {
 			break

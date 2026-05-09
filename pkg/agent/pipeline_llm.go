@@ -446,7 +446,7 @@ func (p *Pipeline) CallLLM(
 					"max_retries": maxRetries,
 				})
 
-			for retry := 0; retry < maxRetries; retry++ {
+			for retry := range maxRetries {
 				// 发送重试事件，用于前端展示和日志追踪
 				al.emitEvent(
 					runtimeevents.KindAgentLLMRetry,

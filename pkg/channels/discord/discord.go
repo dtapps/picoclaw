@@ -848,8 +848,8 @@ func (c *DiscordChannel) listenVoiceControl(ctx context.Context) {
 				return
 			}
 			if ctrl.Type == "command" && ctrl.Action == "leave" {
-				if strings.HasPrefix(ctrl.SessionID, "discord_vc_") {
-					guildID := strings.TrimPrefix(ctrl.SessionID, "discord_vc_")
+				if after, ok0 := strings.CutPrefix(ctrl.SessionID, "discord_vc_"); ok0 {
+					guildID := after
 					vc, exists := c.session.VoiceConnections[guildID]
 					if exists && vc != nil {
 						vc.Disconnect(ctx)

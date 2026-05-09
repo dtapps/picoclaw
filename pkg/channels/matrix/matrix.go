@@ -1310,7 +1310,7 @@ func decodeMatrixMentionHref(v string) string {
 		return ""
 	}
 
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		next, err := url.QueryUnescape(decoded)
 		if err != nil || next == decoded {
 			break

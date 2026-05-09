@@ -113,8 +113,8 @@ func resolveGitHubEndpoints(baseURL string) (gitHubEndpoints, error) {
 		}, nil
 	}
 
-	if strings.HasSuffix(trimmedPath, "/api/v3") {
-		webBaseURL := origin + strings.TrimSuffix(trimmedPath, "/api/v3")
+	if before, ok := strings.CutSuffix(trimmedPath, "/api/v3"); ok {
+		webBaseURL := origin + before
 		webBaseURL = strings.TrimSuffix(webBaseURL, "/")
 		if webBaseURL == origin {
 			webBaseURL = origin

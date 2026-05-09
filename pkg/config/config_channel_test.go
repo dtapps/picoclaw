@@ -18,7 +18,7 @@ type testTelegramConfig struct {
 	BaseURL       string          `json:"base_url"            yaml:"-"`
 	Proxy         string          `json:"proxy"               yaml:"-"`
 	UseMarkdownV2 bool            `json:"use_markdown_v2"     yaml:"-"`
-	Streaming     StreamingConfig `json:"streaming,omitempty" yaml:"-"`
+	Streaming     StreamingConfig `json:"streaming" yaml:"-"`
 	Token         SecureString    `json:"token,omitzero"      yaml:"token,omitempty"`
 }
 

@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"maps"
 	"os"
 	"strings"
 	"sync"
@@ -749,9 +750,7 @@ func (m *trackingContextManager) Clear(_ context.Context, _ string) error { retu
 func resetCMRegistry() func() {
 	cmRegistryMu.Lock()
 	original := make(map[string]ContextManagerFactory, len(cmRegistry))
-	for k, v := range cmRegistry {
-		original[k] = v
-	}
+	maps.Copy(original, cmRegistry)
 	cmRegistry = make(map[string]ContextManagerFactory)
 	cmRegistryMu.Unlock()
 

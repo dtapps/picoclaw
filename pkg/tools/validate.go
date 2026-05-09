@@ -3,6 +3,7 @@ package tools
 import (
 	"fmt"
 	"math"
+	"slices"
 )
 
 // validateToolArgs validates args against a JSON Schema-like map.
@@ -187,18 +188,14 @@ func checkEnum(key string, val any, propSchema map[string]any) error {
 
 	switch ev := enumRaw.(type) {
 	case []any:
-		for _, allowed := range ev {
-			if val == allowed {
-				return nil
-			}
+		if slices.Contains(ev, val) {
+			return nil
 		}
 	case []string:
 		s, ok := val.(string)
 		if ok {
-			for _, allowed := range ev {
-				if s == allowed {
-					return nil
-				}
+			if slices.Contains(ev, s) {
+				return nil
 			}
 		}
 	default:

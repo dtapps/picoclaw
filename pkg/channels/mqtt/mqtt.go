@@ -148,11 +148,11 @@ func (c *MQTTChannel) clientIDFromTopic(topic string) (string, bool) {
 		return "", false
 	}
 	// after = "{client_id}/request"
-	slash := strings.IndexByte(after, '/')
-	if slash < 0 {
+	before, _, ok0 := strings.Cut(after, "/")
+	if !ok0 {
 		return "", false
 	}
-	return after[:slash], true
+	return before, true
 }
 
 // subscribe subscribes to the inbound topic for this agent.

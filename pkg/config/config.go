@@ -34,22 +34,22 @@ func init() {
 type Config struct {
 	// Config schema version for migration.
 	Version   int             `json:"version"             yaml:"-"`
-	Isolation IsolationConfig `json:"isolation,omitempty" yaml:"-"`
+	Isolation IsolationConfig `json:"isolation" yaml:"-"`
 	Agents    AgentsConfig    `json:"agents"              yaml:"-"`
-	Session   SessionConfig   `json:"session,omitempty"   yaml:"-"`
+	Session   SessionConfig   `json:"session"   yaml:"-"`
 	Channels  ChannelsConfig  `json:"channel_list"        yaml:"channel_list"`
 	ModelList SecureModelList `json:"model_list"          yaml:"model_list"` // New model-centric provider configuration
 	Gateway   GatewayConfig   `json:"gateway"             yaml:"-"`
-	Events    EventsConfig    `json:"events,omitempty"    yaml:"-"`
-	Hooks     HooksConfig     `json:"hooks,omitempty"     yaml:"-"`
+	Events    EventsConfig    `json:"events"    yaml:"-"`
+	Hooks     HooksConfig     `json:"hooks"     yaml:"-"`
 	Tools     ToolsConfig     `json:"tools"               yaml:",inline"`
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
 	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
-	EnvVars EnvVarsConfig `json:"env_vars,omitempty" yaml:"-"`
+	EnvVars EnvVarsConfig `json:"env_vars" yaml:"-"`
 	// BuildInfo contains build-time version information
-	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
+	BuildInfo BuildInfo `json:"build_info" yaml:"-"`
 
 	// cache for sensitive values and compiled regex (computed once)
 	sensitiveCache *SensitiveDataCache
@@ -88,7 +88,7 @@ func (c *Config) FilterSensitiveData(content string) string {
 
 type HooksConfig struct {
 	Enabled   bool                         `json:"enabled"`
-	Defaults  HookDefaultsConfig           `json:"defaults,omitempty"`
+	Defaults  HookDefaultsConfig           `json:"defaults"`
 	Builtins  map[string]BuiltinHookConfig `json:"builtins,omitempty"`
 	Processes map[string]ProcessHookConfig `json:"processes,omitempty"`
 }
@@ -298,9 +298,9 @@ type AgentDefaults struct {
 	SteeringMode              string                   `json:"steering_mode,omitempty"          env:"PICOCLAW_AGENTS_DEFAULTS_STEERING_MODE"`      // "one-at-a-time" (default) or "all"
 	MaxParallelTurns          int                      `json:"max_parallel_turns,omitempty"     env:"PICOCLAW_AGENTS_DEFAULTS_MAX_PARALLEL_TURNS"` // Max concurrent turns (0 or 1 = sequential)
 	SubTurn                   SubTurnConfig            `json:"subturn"                                                                                      envPrefix:"PICOCLAW_AGENTS_DEFAULTS_SUBTURN_"`
-	ToolFeedback              ToolFeedbackConfig       `json:"tool_feedback,omitempty"`
-	EmptyResponseRetry        EmptyResponseRetryConfig `json:"empty_response_retry,omitempty"`                                                  // 空响应自动重试配置
-	InlineToolCalls           InlineToolCallsConfig    `json:"inline_tool_calls,omitempty"`                                                     // 内联工具调用提取配置
+	ToolFeedback              ToolFeedbackConfig       `json:"tool_feedback"`
+	EmptyResponseRetry        EmptyResponseRetryConfig `json:"empty_response_retry"`                                                            // 空响应自动重试配置
+	InlineToolCalls           InlineToolCallsConfig    `json:"inline_tool_calls"`                                                               // 内联工具调用提取配置
 	SplitOnMarker             bool                     `json:"split_on_marker"                  env:"PICOCLAW_AGENTS_DEFAULTS_SPLIT_ON_MARKER"` // split messages on <|[SPLIT]|> marker
 	ContextManager            string                   `json:"context_manager,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER"`
 	ContextManagerConfig      json.RawMessage          `json:"context_manager_config,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER_CONFIG"`
@@ -419,7 +419,7 @@ type TelegramSettings struct {
 	Token         SecureString    `json:"token,omitzero"      yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
 	BaseURL       string          `json:"base_url"            yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
 	Proxy         string          `json:"proxy"               yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
-	Streaming     StreamingConfig `json:"streaming,omitempty" yaml:"-"`
+	Streaming     StreamingConfig `json:"streaming" yaml:"-"`
 	UseMarkdownV2 bool            `json:"use_markdown_v2"     yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
 }
 
@@ -1139,8 +1139,8 @@ func LoadEnvFile(path string) (map[string]string, error) {
 	}
 
 	vars := make(map[string]string)
-	lines := strings.Split(string(content), "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(string(content), "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		// 跳过空行和注释
 		if line == "" || strings.HasPrefix(line, "#") {

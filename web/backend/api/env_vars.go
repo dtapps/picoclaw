@@ -255,8 +255,8 @@ func isLikelySensitive(key string) bool {
 // parseEnvFileContent 解析 .env 文件内容
 func parseEnvFileContent(content string) (map[string]string, error) {
 	vars := make(map[string]string)
-	lines := strings.Split(content, "\n")
-	for _, line := range lines {
+	lines := strings.SplitSeq(content, "\n")
+	for line := range lines {
 		line = strings.TrimSpace(line)
 		// 跳过空行和注释
 		if line == "" || strings.HasPrefix(line, "#") {

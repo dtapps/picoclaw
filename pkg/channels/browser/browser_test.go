@@ -1162,7 +1162,7 @@ func TestConcurrentConnectionAccess(t *testing.T) {
 	const goroutines = 50
 
 	// 并发读写连接索引
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

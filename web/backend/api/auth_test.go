@@ -284,7 +284,7 @@ func TestLauncherAuthLoginRateLimit(t *testing.T) {
 
 	// 11 failing logins by wrong password; each consumes allow() slot after valid JSON.
 	wrongBody := `{"password":"wrong"}`
-	for i := 0; i < loginAttemptsPerIP; i++ {
+	for i := range loginAttemptsPerIP {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", strings.NewReader(wrongBody))
 		req.Header.Set("Content-Type", "application/json")
@@ -308,7 +308,7 @@ func TestLoginRateLimiterWindow(t *testing.T) {
 	l := newLoginRateLimiter()
 	t0 := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	l.now = func() time.Time { return t0 }
-	for i := 0; i < loginAttemptsPerIP; i++ {
+	for i := range loginAttemptsPerIP {
 		if !l.allow("ip") {
 			t.Fatalf("want allow at %d", i)
 		}

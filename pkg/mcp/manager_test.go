@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -193,12 +194,8 @@ SHARED_VAR=from_file`
 
 	// Merge: envFile first, then config overrides
 	merged := make(map[string]string)
-	for k, v := range envVars {
-		merged[k] = v
-	}
-	for k, v := range configEnv {
-		merged[k] = v
-	}
+	maps.Copy(merged, envVars)
+	maps.Copy(merged, configEnv)
 
 	// Verify priority: config.Env should override envFile
 	if merged["SHARED_VAR"] != "from_config" {

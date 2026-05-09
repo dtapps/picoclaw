@@ -525,7 +525,7 @@ func TestChatType_ConcurrentAccess(t *testing.T) {
 	const goroutines = 100
 
 	// 并发存储和读取
-	for i := 0; i < goroutines; i++ {
+	for i := range goroutines {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()

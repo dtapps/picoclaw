@@ -31,7 +31,7 @@ type GetUploadUrlReq struct {
 	ThumbFilesize   int64    `json:"thumb_filesize,omitempty"`
 	NoNeedThumb     bool     `json:"no_need_thumb,omitempty"`
 	Aeskey          string   `json:"aeskey,omitempty"` // hex-encoded 16-byte AES key
-	BaseInfo        BaseInfo `json:"base_info,omitempty"`
+	BaseInfo        BaseInfo `json:"base_info"`
 }
 
 type GetUploadUrlResp struct {
@@ -151,7 +151,7 @@ type WeixinMessage struct {
 type GetUpdatesReq struct {
 	SyncBuf       string   `json:"sync_buf,omitempty"`
 	GetUpdatesBuf string   `json:"get_updates_buf,omitempty"`
-	BaseInfo      BaseInfo `json:"base_info,omitempty"`
+	BaseInfo      BaseInfo `json:"base_info"`
 }
 
 type GetUpdatesResp struct {
@@ -163,8 +163,8 @@ type GetUpdatesResp struct {
 }
 
 type SendMessageReq struct {
-	Msg      WeixinMessage `json:"msg,omitempty"`
-	BaseInfo BaseInfo      `json:"base_info,omitempty"`
+	Msg      WeixinMessage `json:"msg"`
+	BaseInfo BaseInfo      `json:"base_info"`
 }
 
 type SendMessageResp struct {
@@ -174,7 +174,7 @@ type SendMessageResp struct {
 type GetConfigReq struct {
 	IlinkUserID  string   `json:"ilink_user_id,omitempty"`
 	ContextToken string   `json:"context_token,omitempty"`
-	BaseInfo     BaseInfo `json:"base_info,omitempty"`
+	BaseInfo     BaseInfo `json:"base_info"`
 }
 
 type GetConfigResp struct {
@@ -191,7 +191,7 @@ type SendTypingReq struct {
 	IlinkUserID  string   `json:"ilink_user_id,omitempty"`
 	TypingTicket string   `json:"typing_ticket,omitempty"`
 	Status       int      `json:"status,omitempty"` // 1=typing, 2=cancel
-	BaseInfo     BaseInfo `json:"base_info,omitempty"`
+	BaseInfo     BaseInfo `json:"base_info"`
 }
 
 type SendTypingResp struct {

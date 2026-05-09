@@ -1858,11 +1858,11 @@ func (m *artifactThenSendProvider) Chat(
 				continue
 			}
 			rest := messages[i].Content[start+len(prefix):]
-			end := strings.Index(rest, "]")
-			if end < 0 {
+			before, _, ok := strings.Cut(rest, "]")
+			if !ok {
 				continue
 			}
-			artifactPath = rest[:end]
+			artifactPath = before
 			break
 		}
 		if artifactPath != "" {
@@ -5334,7 +5334,7 @@ func TestProcessMessage_ContextOverflowRecovery(t *testing.T) {
 	sessionKey := "agent:main:test-session"
 	agent := al.GetRegistry().GetDefaultAgent()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		agent.Sessions.AddFullMessage(sessionKey, providers.Message{Role: "user", Content: "heavy message"})
 		agent.Sessions.AddFullMessage(sessionKey, providers.Message{Role: "assistant", Content: "response"})
 	}
@@ -5459,8 +5459,7 @@ func TestParallelMessageProcessing_DifferentSessionsProcessedConcurrently(t *tes
 	al := NewAgentLoop(cfg, msgBus, provider)
 	defer al.Close()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	// Start the agent loop
 	go func() {
@@ -5576,8 +5575,7 @@ func TestParallelMessageProcessing_SameSessionProcessedSequentially(t *testing.T
 		}
 	}()
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 
 	go func() {
 		if err := al.Run(ctx); err != nil {
@@ -5590,7 +5588,7 @@ func TestParallelMessageProcessing_SameSessionProcessedSequentially(t *testing.T
 	// Send 3 messages from the SAME session - only one turn should be created;
 	// subsequent messages should be enqueued to the steering queue and processed
 	// within the same turn (not as separate concurrent turns).
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		msg := bus.InboundMessage{
 			Context: bus.InboundContext{
 				Channel:  "telegram",

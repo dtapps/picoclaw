@@ -249,7 +249,7 @@ func TestCreateAndAddConnection_RespectsMaxConnectionsConcurrently(t *testing.T)
 	errCount := 0
 
 	wg.Add(goroutines)
-	for i := 0; i < goroutines; i++ {
+	for range goroutines {
 		go func() {
 			defer wg.Done()
 

@@ -5,6 +5,8 @@
 
 package config
 
+import "slices"
+
 import "strings"
 
 // isProvidersMapEmpty checks if a providers map has any non-empty provider configurations.
@@ -602,15 +604,12 @@ func v0ProvidersMapToModelList(providers map[string]any, userProvider, userModel
 		// Use the user's model if the provider matches, otherwise use the default
 		modelToUse := migration.defModel
 		if userProvider != "" && userModel != "" {
-			for _, key := range migration.jsonKeys {
-				if userProvider == key {
-					// Build the model string with protocol prefix if needed
-					if !strings.Contains(userModel, "/") {
-						modelToUse = migration.protocol + "/" + userModel
-					} else {
-						modelToUse = userModel
-					}
-					break
+			if slices.Contains(migration.jsonKeys, userProvider) {
+				// Build the model string with protocol prefix if needed
+				if !strings.Contains(userModel, "/") {
+					modelToUse = migration.protocol + "/" + userModel
+				} else {
+					modelToUse = userModel
 				}
 			}
 		}

@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"mime"
 	"net/http"
 	"os"
@@ -869,9 +870,7 @@ func newBrowserErrorWithPayload(code, message string, extra map[string]any) Brow
 		"code":    code,
 		"message": message,
 	}
-	for key, value := range extra {
-		payload[key] = value
-	}
+	maps.Copy(payload, extra)
 	return newBrowserMessage(TypeError, payload)
 }
 

@@ -484,7 +484,7 @@ func TestConvertToPicoClawWithMatrixDisabled(t *testing.T) {
 
 func TestOpenClawAgentModel(t *testing.T) {
 	model := &OpenClawAgentModel{
-		Primary:   strPtr("anthropic/claude-3-opus"),
+		Primary:   new("anthropic/claude-3-opus"),
 		Fallbacks: []string{"claude-3-sonnet", "claude-3-haiku"},
 	}
 
@@ -512,13 +512,13 @@ func TestChannelEnabled(t *testing.T) {
 	cfg := &OpenClawConfig{
 		Channels: &OpenClawChannels{
 			Telegram: &OpenClawTelegramConfig{
-				Enabled: boolPtr(true),
+				Enabled: new(true),
 			},
 			Discord: &OpenClawDiscordConfig{
-				Enabled: boolPtr(false),
+				Enabled: new(false),
 			},
 			Slack: &OpenClawSlackConfig{
-				Enabled: boolPtr(true),
+				Enabled: new(true),
 			},
 		},
 	}
@@ -545,7 +545,7 @@ func TestGetDefaultModel(t *testing.T) {
 		Agents: &OpenClawAgents{
 			Defaults: &OpenClawAgentDefaults{
 				Model: &OpenClawAgentModel{
-					Primary: strPtr("openai/gpt-4"),
+					Primary: new("openai/gpt-4"),
 				},
 			},
 		},
@@ -820,10 +820,12 @@ func TestGetProviderConfigFromDirNotExist(t *testing.T) {
 	}
 }
 
+//go:fix inline
 func strPtr(s string) *string {
-	return &s
+	return new(s)
 }
 
+//go:fix inline
 func boolPtr(b bool) *bool {
-	return &b
+	return new(b)
 }

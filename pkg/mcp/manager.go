@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"net"
 	"net/http"
 	"os"
@@ -443,9 +444,7 @@ func connectServer(
 			if err != nil {
 				return nil, fmt.Errorf("failed to load env file %s: %w", cfg.EnvFile, err)
 			}
-			for k, v := range envVars {
-				envMap[k] = v
-			}
+			maps.Copy(envMap, envVars)
 			logger.DebugCF("mcp", "Loaded environment variables from file",
 				map[string]any{
 					"server":    name,
@@ -456,9 +455,7 @@ func connectServer(
 
 		// 从全局配置注入 env_vars
 		globalEnvVars := isolation.CurrentEnvVars()
-		for k, v := range globalEnvVars.GetEnabledVars() {
-			envMap[k] = v
-		}
+		maps.Copy(envMap, globalEnvVars.GetEnabledVars())
 		logger.InfoCF("mcp", "添加全局配置 env_vars",
 			map[string]any{
 				"server":    name,
@@ -466,9 +463,7 @@ func connectServer(
 			})
 
 		// Environment variables from server config override all others (highest priority)
-		for k, v := range cfg.Env {
-			envMap[k] = v
-		}
+		maps.Copy(envMap, cfg.Env)
 
 		// Convert map to slice
 		env := make([]string, 0, len(envMap))
@@ -527,9 +522,7 @@ func (m *Manager) GetServers() map[string]*ServerConnection {
 	defer m.mu.RUnlock()
 
 	result := make(map[string]*ServerConnection, len(m.servers))
-	for k, v := range m.servers {
-		result[k] = v
-	}
+	maps.Copy(result, m.servers)
 	return result
 }
 

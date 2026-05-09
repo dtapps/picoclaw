@@ -1788,8 +1788,7 @@ func TestRunWorker_ToolFeedbackSkipsMarkerSplitting(t *testing.T) {
 		limiter: rate.NewLimiter(rate.Inf, 1),
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	go m.runWorker(ctx, "test", w)
 
 	content := "🔧 `read_file`\nRead current config first.<|[SPLIT]|>Then update the example."

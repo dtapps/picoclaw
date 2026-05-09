@@ -82,7 +82,7 @@ func TestJSONLBackend_Summary(t *testing.T) {
 func TestJSONLBackend_TruncateAndSave(t *testing.T) {
 	b := newBackend(t)
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		b.AddMessage("s1", "user", fmt.Sprintf("msg %d", i))
 	}
 	b.TruncateHistory("s1", 3)
@@ -158,7 +158,7 @@ func TestJSONLBackend_SummarizeFlow(t *testing.T) {
 	// SetSummary → TruncateHistory → Save
 	b := newBackend(t)
 
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		b.AddMessage("s1", "user", fmt.Sprintf("msg %d", i))
 	}
 

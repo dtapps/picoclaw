@@ -83,11 +83,11 @@ func TestLoadSecurityValue(t *testing.T) {
 	}
 
 	type toolsStruct struct {
-		Pico valueStruct `json:"pico,omitempty" yaml:"pico,omitempty"`
+		Pico valueStruct `json:"pico" yaml:"pico,omitempty"`
 	}
 
 	type testStruct2 struct {
-		Tools toolsStruct `json:"tools,omitempty" yaml:",inline"`
+		Tools toolsStruct `json:"tools" yaml:",inline"`
 	}
 
 	v4 := &testStruct2{

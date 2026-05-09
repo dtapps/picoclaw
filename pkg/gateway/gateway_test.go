@@ -174,8 +174,7 @@ func TestShutdownGatewayClosesMessageBus(t *testing.T) {
 	)
 	msgBus.SetEventPublisher(al.RuntimeEventBus())
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := t.Context()
 	sub, eventsCh, err := al.RuntimeEventBus().Channel().OfKind(runtimeevents.KindBusCloseCompleted).SubscribeChan(
 		ctx,
 		runtimeevents.SubscribeOptions{Name: "bus-close-test", Buffer: 4},

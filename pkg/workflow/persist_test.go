@@ -313,7 +313,7 @@ func TestPersistStore_PurgeOldInstances(t *testing.T) {
 	store := setupTestStore(t)
 
 	// 创建 5 个实例
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		inst := &WorkflowInstance{
 			ID:           fmt.Sprintf("purge-inst-%d", i),
 			WorkflowName: "purge-wf",

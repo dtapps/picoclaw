@@ -87,8 +87,8 @@ func defaultToolFeedbackMaxArgsLength() int {
 // extractLegacyPicoSessionID extracts the session UUID from an old Pico key.
 // Returns the UUID and true if the key matches the Pico session pattern.
 func extractLegacyPicoSessionID(key string) (string, bool) {
-	if strings.HasPrefix(key, legacyPicoSessionPrefix) {
-		return strings.TrimPrefix(key, legacyPicoSessionPrefix), true
+	if after, ok := strings.CutPrefix(key, legacyPicoSessionPrefix); ok {
+		return after, true
 	}
 	return "", false
 }
@@ -231,8 +231,8 @@ func extractPicoSessionIDFromScope(scope session.SessionScope) (string, bool) {
 		if candidate == "" {
 			continue
 		}
-		if idx := strings.Index(candidate, "pico:"); idx >= 0 {
-			sessionID := strings.TrimSpace(candidate[idx+len("pico:"):])
+		if _, after, ok := strings.Cut(candidate, "pico:"); ok {
+			sessionID := strings.TrimSpace(after)
 			if sessionID != "" {
 				return sessionID, true
 			}
@@ -381,8 +381,8 @@ func jsonlSessionRefFromFilename(name string) (picoJSONLSessionRef, bool) {
 	}
 
 	legacyPrefix := sanitizeSessionKey(legacyPicoSessionPrefix)
-	if strings.HasPrefix(base, legacyPrefix) {
-		sessionID := strings.TrimPrefix(base, legacyPrefix)
+	if after, ok := strings.CutPrefix(base, legacyPrefix); ok {
+		sessionID := after
 		if sessionID == "" {
 			return picoJSONLSessionRef{}, false
 		}

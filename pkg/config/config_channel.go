@@ -3,6 +3,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 
@@ -143,9 +144,7 @@ func mergeMap(dst, src map[string]any) map[string]any {
 	result := make(map[string]any)
 
 	// Copy all content from base map
-	for k, v := range dst {
-		result[k] = v
-	}
+	maps.Copy(result, dst)
 
 	// Merge override map
 	for k, srcVal := range src {
@@ -224,9 +223,9 @@ type Channel struct {
 	Type               string              `json:"type"                    yaml:"-"`
 	AllowFrom          FlexibleStringSlice `json:"allow_from,omitempty"    yaml:"-"`
 	ReasoningChannelID string              `json:"reasoning_channel_id"    yaml:"-"`
-	GroupTrigger       GroupTriggerConfig  `json:"group_trigger,omitempty" yaml:"-"`
-	Typing             TypingConfig        `json:"typing,omitempty"        yaml:"-"`
-	Placeholder        PlaceholderConfig   `json:"placeholder,omitempty"   yaml:"-"`
+	GroupTrigger       GroupTriggerConfig  `json:"group_trigger" yaml:"-"`
+	Typing             TypingConfig        `json:"typing"        yaml:"-"`
+	Placeholder        PlaceholderConfig   `json:"placeholder"   yaml:"-"`
 	Settings           RawNode             `json:"settings,omitzero"       yaml:"settings,omitempty"`
 	extend             any
 }
@@ -529,14 +528,13 @@ func extractSecureFieldNames(target any) map[string]struct{} {
 	}
 	t := v.Type()
 	names := make(map[string]struct{})
-	for i := range t.NumField() {
-		f := t.Field(i)
+	for f := range t.Fields() {
 		if !f.IsExported() {
 			continue
 		}
 		ft := f.Type
-		if ft == reflect.TypeOf(SecureString{}) || ft == reflect.TypeOf(&SecureString{}) ||
-			ft == reflect.TypeOf(SecureStrings{}) || ft == reflect.TypeOf(&SecureStrings{}) {
+		if ft == reflect.TypeFor[SecureString]() || ft == reflect.TypeFor[*SecureString]() ||
+			ft == reflect.TypeFor[SecureStrings]() || ft == reflect.TypeFor[*SecureStrings]() {
 			jsonTag := f.Tag.Get("json")
 			name := strings.Split(jsonTag, ",")[0]
 			if name == "" || name == "-" {
@@ -565,9 +563,7 @@ func mergeRawJSON(base, overlay RawNode) (RawNode, error) {
 	if baseMap == nil {
 		baseMap = make(map[string]any)
 	}
-	for k, v := range overlayMap {
-		baseMap[k] = v
-	}
+	maps.Copy(baseMap, overlayMap)
 	data, err := json.Marshal(baseMap)
 	if err != nil {
 		return base, err

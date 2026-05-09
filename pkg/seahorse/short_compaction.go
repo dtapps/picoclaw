@@ -100,7 +100,7 @@ func (e *CompactionEngine) CompactUntilUnder(ctx context.Context, convID int64, 
 	prevTokens := 0
 	logger.InfoCF("seahorse", "compact_until_under: start", map[string]any{"conv_id": convID, "budget": budget})
 
-	for iter := 0; iter < MaxCompactIterations; iter++ {
+	for range MaxCompactIterations {
 		tokens, err := e.store.GetContextTokenCount(ctx, convID)
 		if err != nil {
 			return result, fmt.Errorf("get tokens: %w", err)
@@ -467,10 +467,7 @@ func (e *CompactionEngine) selectShallowestCondensationCandidate(
 	}
 
 	// Group by depth, find consecutive runs
-	tailStartIdx := len(items) - FreshTailCount
-	if tailStartIdx < 0 {
-		tailStartIdx = 0
-	}
+	tailStartIdx := max(len(items)-FreshTailCount, 0)
 
 	minFanout := CondensedMinFanout
 	if forced {
@@ -479,7 +476,7 @@ func (e *CompactionEngine) selectShallowestCondensationCandidate(
 
 	// Track depth groups
 	depthGroups := make(map[int][]ContextItem)
-	for i := 0; i < tailStartIdx; i++ {
+	for i := range tailStartIdx {
 		item := items[i]
 		if item.ItemType != "summary" {
 			continue
@@ -529,15 +526,12 @@ func (e *CompactionEngine) selectOldestChunkAtDepth(
 		return nil, err
 	}
 
-	tailStartIdx := len(items) - FreshTailCount
-	if tailStartIdx < 0 {
-		tailStartIdx = 0
-	}
+	tailStartIdx := max(len(items)-FreshTailCount, 0)
 
 	var chunk []Summary
 	accumTokens := 0
 
-	for i := 0; i < tailStartIdx; i++ {
+	for i := range tailStartIdx {
 		item := items[i]
 		if item.ItemType != "summary" {
 			// Non-summary breaks the chunk
@@ -746,20 +740,20 @@ func (e *CompactionEngine) runCondensedLoop(ctx context.Context, convID int64) {
 // --- Helper functions ---
 
 func formatMessagesForSummary(messages []Message) string {
-	var result string
+	var result strings.Builder
 	for _, m := range messages {
 		ts := m.CreatedAt.Format("2006-01-02 15:04 MST")
 		content := m.Content
 		if content == "" && len(m.Parts) > 0 {
 			content = partsToReadableContent(m.Parts)
 		}
-		result += fmt.Sprintf("[%s]\n%s\n\n", ts, content)
+		result.WriteString(fmt.Sprintf("[%s]\n%s\n\n", ts, content))
 	}
-	return result
+	return result.String()
 }
 
 func formatSummariesForCondensation(summaries []Summary) string {
-	var result string
+	var result strings.Builder
 	for _, s := range summaries {
 		earliest := ""
 		if s.EarliestAt != nil {
@@ -769,9 +763,9 @@ func formatSummariesForCondensation(summaries []Summary) string {
 		if s.LatestAt != nil {
 			latest = s.LatestAt.Format("2006-01-02")
 		}
-		result += fmt.Sprintf("[%s - %s]\n%s\n\n", earliest, latest, s.Content)
+		result.WriteString(fmt.Sprintf("[%s - %s]\n%s\n\n", earliest, latest, s.Content))
 	}
-	return result
+	return result.String()
 }
 
 func buildLeafSummaryPrompt(sourceText, previousSummary string, targetTokens int) string {

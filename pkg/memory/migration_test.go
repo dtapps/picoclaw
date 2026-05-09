@@ -132,7 +132,7 @@ func TestMigrateFromJSON_MultipleFiles(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		key := string(rune('a' + i))
 		writeJSONSession(t, sessionsDir, key+".json", jsonSession{
 			Key:      key,
@@ -150,7 +150,7 @@ func TestMigrateFromJSON_MultipleFiles(t *testing.T) {
 		t.Errorf("expected 3, got %d", count)
 	}
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		key := string(rune('a' + i))
 		history, histErr := store.GetHistory(ctx, key)
 		if histErr != nil {

@@ -126,7 +126,7 @@ func pkcs7Unpad(data []byte) ([]byte, error) {
 	if padding == 0 || padding > 32 || padding > len(data) {
 		return nil, fmt.Errorf("invalid padding size %d", padding)
 	}
-	for i := 0; i < padding; i++ {
+	for i := range padding {
 		if data[len(data)-1-i] != byte(padding) {
 			return nil, fmt.Errorf("invalid padding byte")
 		}
@@ -716,10 +716,7 @@ func (c *WeComChannel) uploadOutboundMedia(
 	}
 
 	for idx, offset := 0, 0; offset < len(data); idx, offset = idx+1, offset+wecomUploadChunkMaxBytes {
-		end := offset + wecomUploadChunkMaxBytes
-		if end > len(data) {
-			end = len(data)
-		}
+		end := min(offset+wecomUploadChunkMaxBytes, len(data))
 		sendErr := c.sendCommand(wecomCommand{
 			Cmd:     wecomCmdUploadMediaChunk,
 			Headers: wecomHeaders{ReqID: randomID(10)},

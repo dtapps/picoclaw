@@ -33,10 +33,7 @@ func RenderCommandHelp(c *cobra.Command) string {
 	}
 
 	inner := InnerWidth()
-	contentW := inner - 6
-	if contentW < 36 {
-		contentW = 36
-	}
+	contentW := max(inner-6, 36)
 
 	// Usage
 	usageBody := bodyStyle().MaxWidth(contentW).Render(styleUsageTokens(c.UseLine()))
@@ -96,10 +93,7 @@ func RenderCommandQuickRef(c *cobra.Command, outerW int) string {
 		return ""
 	}
 	syncFlags(c)
-	contentW := outerW - 6
-	if contentW < 36 {
-		contentW = 36
-	}
+	contentW := max(outerW-6, 36)
 	var b strings.Builder
 	usageBody := bodyStyle().MaxWidth(contentW).Render(styleUsageTokens(c.UseLine()))
 	b.WriteString(sectionPanel("Usage", usageBody, outerW))
@@ -282,10 +276,7 @@ func renderTwoColPairs(rows [][2]string, contentW int) string {
 		leftW = maxLeft
 	}
 	gap := "  "
-	rightW := contentW - leftW - lipgloss.Width(gap)
-	if rightW < 24 {
-		rightW = 24
-	}
+	rightW := max(contentW-leftW-lipgloss.Width(gap), 24)
 
 	var b strings.Builder
 	for _, r := range rows {

@@ -1,5 +1,7 @@
 package session
 
+import "maps"
+
 // ScopeVersionV1 is the first structured session-scope schema version.
 const ScopeVersionV1 = 1
 
@@ -24,9 +26,7 @@ func CloneScope(scope *SessionScope) *SessionScope {
 	}
 	if len(scope.Values) > 0 {
 		cloned.Values = make(map[string]string, len(scope.Values))
-		for key, value := range scope.Values {
-			cloned.Values[key] = value
-		}
+		maps.Copy(cloned.Values, scope.Values)
 	}
 	return &cloned
 }

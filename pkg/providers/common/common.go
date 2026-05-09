@@ -483,10 +483,7 @@ func leadingTrimmedPrefix(body []byte, maxLen int) []byte {
 		case ' ', '\t', '\n', '\r', '\f', '\v':
 			i++
 		default:
-			end := i + maxLen
-			if end > len(body) {
-				end = len(body)
-			}
+			end := min(i+maxLen, len(body))
 			return body[i:end]
 		}
 	}

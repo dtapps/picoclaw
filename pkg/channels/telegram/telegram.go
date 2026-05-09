@@ -1137,16 +1137,16 @@ func (c *TelegramChannel) ToolFeedbackMessageChatID(chatID string, outboundCtx *
 // parseTelegramChatID splits "chatID/threadID" into its components.
 // Returns threadID=0 when no "/" is present (non-forum messages).
 func parseTelegramChatID(chatID string) (int64, int, error) {
-	idx := strings.Index(chatID, "/")
-	if idx == -1 {
+	before, after, ok := strings.Cut(chatID, "/")
+	if !ok {
 		cid, err := strconv.ParseInt(chatID, 10, 64)
 		return cid, 0, err
 	}
-	cid, err := strconv.ParseInt(chatID[:idx], 10, 64)
+	cid, err := strconv.ParseInt(before, 10, 64)
 	if err != nil {
 		return 0, 0, err
 	}
-	tid, err := strconv.Atoi(chatID[idx+1:])
+	tid, err := strconv.Atoi(after)
 	if err != nil {
 		return 0, 0, fmt.Errorf("invalid thread ID in chat ID %q: %w", chatID, err)
 	}

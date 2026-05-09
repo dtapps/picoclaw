@@ -319,7 +319,7 @@ func TestRetrievalGrepTotalCounts(t *testing.T) {
 	ctx := context.Background()
 
 	// Create 3 summaries
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		s.CreateSummary(ctx, CreateSummaryInput{
 			ConversationID: convID,
 			Kind:           SummaryKindLeaf,
@@ -330,7 +330,7 @@ func TestRetrievalGrepTotalCounts(t *testing.T) {
 	}
 
 	// Add 5 messages
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		s.AddMessage(ctx, convID, "user", fmt.Sprintf("message about testing %d", i), 5)
 	}
 

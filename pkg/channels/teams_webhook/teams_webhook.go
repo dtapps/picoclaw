@@ -382,10 +382,7 @@ func calculateColumnWidths(maxLengths []int) []adaptivecard.Column {
 	// Use content length as relative weight, with a minimum of 1
 	columns := make([]adaptivecard.Column, len(maxLengths))
 	for i, length := range maxLengths {
-		weight := length
-		if weight < 1 {
-			weight = 1
-		}
+		weight := max(length, 1)
 		columns[i] = adaptivecard.Column{
 			Type:  "TableColumnDefinition",
 			Width: weight,

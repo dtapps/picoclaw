@@ -198,7 +198,7 @@ func TestGetHistory_Ordering(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		err := store.AddMessage(
 			ctx, "order",
 			"user",
@@ -216,7 +216,7 @@ func TestGetHistory_Ordering(t *testing.T) {
 	if len(history) != 5 {
 		t.Fatalf("expected 5, got %d", len(history))
 	}
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		expected := string(rune('a' + i))
 		if history[i].Content != expected {
 			t.Errorf("msg[%d].Content = %q, want %q", i, history[i].Content, expected)
@@ -446,7 +446,7 @@ func TestTruncateHistory_KeepLast(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		err := store.AddMessage(
 			ctx, "trunc",
 			"user",
@@ -482,7 +482,7 @@ func TestTruncateHistory_KeepZero(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err := store.AddMessage(ctx, "empty", "user", "msg")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -507,7 +507,7 @@ func TestTruncateHistory_KeepMoreThanExists(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		err := store.AddMessage(ctx, "few", "user", "msg")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -534,7 +534,7 @@ func TestSetHistory_ReplacesAll(t *testing.T) {
 	ctx := context.Background()
 
 	// Add some initial messages.
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err := store.AddMessage(ctx, "replace", "user", "old")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -568,7 +568,7 @@ func TestSetHistory_ResetsSkip(t *testing.T) {
 	ctx := context.Background()
 
 	// Add messages and truncate.
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		err := store.AddMessage(ctx, "skip-reset", "user", "old")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -629,7 +629,7 @@ func TestCompact_RemovesSkippedMessages(t *testing.T) {
 	ctx := context.Background()
 
 	// Write 10 messages, then truncate to keep last 3.
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		err := store.AddMessage(ctx, "compact", "user", string(rune('a'+i)))
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -681,7 +681,7 @@ func TestCompact_NoOpWhenNoSkip(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		err := store.AddMessage(ctx, "noop", "user", "msg")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -707,7 +707,7 @@ func TestCompact_ThenAppend(t *testing.T) {
 	store := newTestStore(t)
 	ctx := context.Background()
 
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		err := store.AddMessage(ctx, "cap", "user", string(rune('a'+i)))
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -753,7 +753,7 @@ func TestTruncateHistory_StaleMetaCount(t *testing.T) {
 	ctx := context.Background()
 
 	// Write 10 messages normally (meta.Count = 10).
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		err := store.AddMessage(ctx, "stale", "user", string(rune('a'+i)))
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -933,14 +933,12 @@ func TestConcurrent_AddAndRead(t *testing.T) {
 	const msgsPerGoroutine = 20
 
 	// Concurrent writes.
-	for g := 0; g < goroutines; g++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			for i := 0; i < msgsPerGoroutine; i++ {
+	for range goroutines {
+		wg.Go(func() {
+			for range msgsPerGoroutine {
 				_ = store.AddMessage(ctx, "concurrent", "user", "msg")
 			}
-		}()
+		})
 	}
 	wg.Wait()
 
@@ -961,7 +959,7 @@ func TestConcurrent_SummarizeRace(t *testing.T) {
 	ctx := context.Background()
 
 	// Seed with some messages.
-	for i := 0; i < 20; i++ {
+	for range 20 {
 		err := store.AddMessage(ctx, "race", "user", "seed")
 		if err != nil {
 			t.Fatalf("AddMessage: %v", err)
@@ -971,23 +969,19 @@ func TestConcurrent_SummarizeRace(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Writer goroutine (main agent loop).
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 50; i++ {
+	wg.Go(func() {
+		for range 50 {
 			_ = store.AddMessage(ctx, "race", "user", "new")
 		}
-	}()
+	})
 
 	// Summarizer goroutine (background task).
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
-		for i := 0; i < 10; i++ {
+	wg.Go(func() {
+		for range 10 {
 			_ = store.SetSummary(ctx, "race", "summary")
 			_ = store.TruncateHistory(ctx, "race", 5)
 		}
-	}()
+	})
 
 	wg.Wait()
 
@@ -1056,7 +1050,7 @@ func BenchmarkGetHistory_100(b *testing.B) {
 	defer store.Close()
 	ctx := context.Background()
 
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		_ = store.AddMessage(ctx, "bench", "user", "message content")
 	}
 
@@ -1075,7 +1069,7 @@ func BenchmarkGetHistory_1000(b *testing.B) {
 	defer store.Close()
 	ctx := context.Background()
 
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		_ = store.AddMessage(ctx, "bench", "user", "message content")
 	}
 

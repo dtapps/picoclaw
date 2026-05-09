@@ -187,9 +187,9 @@ func copyEmbeddedToTarget(targetDir string) error {
 				// 跳过英文 .md 文件
 				return nil
 			}
-			if strings.HasSuffix(new_path, ".zh.md") {
+			if before, ok := strings.CutSuffix(new_path, ".zh.md"); ok {
 				// 将 .zh.md 重命名为 .md
-				new_path = strings.TrimSuffix(new_path, ".zh.md") + ".md"
+				new_path = before + ".md"
 			}
 		} else {
 			// 非中文环境：跳过 .zh.md 文件，只处理 .md 文件
@@ -241,8 +241,8 @@ func cleanupExistingFiles(targetDir string, isZh bool) error {
 
 		if isZh {
 			// 中文环境：如果存在 .zh.md 文件，将其重命名为 .md
-			if strings.HasSuffix(filename, ".zh.md") {
-				newPath := filepath.Join(filepath.Dir(path), strings.TrimSuffix(filename, ".zh.md")+".md")
+			if before, ok := strings.CutSuffix(filename, ".zh.md"); ok {
+				newPath := filepath.Join(filepath.Dir(path), before+".md")
 				// 如果目标文件已存在，先删除
 				if _, err := os.Stat(newPath); err == nil {
 					if err := os.Remove(newPath); err != nil {

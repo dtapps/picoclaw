@@ -48,7 +48,8 @@ func (al *AgentLoop) transcribeAudioInMessage(ctx context.Context, msg bus.Inbou
 
 	// Replace audio annotations sequentially with transcriptions.
 	idx := 0
-	newContent := audioAnnotationRe.ReplaceAllStringFunc(msg.Content, func(match string) string {
+	var newContent strings.Builder
+	newContent.WriteString(audioAnnotationRe.ReplaceAllStringFunc(msg.Content, func(match string) string {
 		if idx >= len(transcriptions) {
 			return match
 		}
@@ -58,16 +59,16 @@ func (al *AgentLoop) transcribeAudioInMessage(ctx context.Context, msg bus.Inbou
 			return match
 		}
 		return "[voice: " + text + "]"
-	})
+	}))
 
 	// Append any remaining transcriptions not matched by an annotation.
 	for ; idx < len(transcriptions); idx++ {
 		if transcriptions[idx] != "" {
-			newContent += "\n[voice: " + transcriptions[idx] + "]"
+			newContent.WriteString("\n[voice: " + transcriptions[idx] + "]")
 		}
 	}
 
-	msg.Content = newContent
+	msg.Content = newContent.String()
 	msg.Media = keptMedia
 	return msg, true
 }

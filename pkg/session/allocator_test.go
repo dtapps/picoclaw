@@ -1,6 +1,7 @@
 package session
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
@@ -151,10 +152,5 @@ func TestBuildOpaqueSessionKey_IsStable(t *testing.T) {
 }
 
 func containsAlias(aliases []string, want string) bool {
-	for _, alias := range aliases {
-		if alias == want {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(aliases, want)
 }

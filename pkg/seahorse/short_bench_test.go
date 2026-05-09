@@ -52,7 +52,7 @@ func BenchmarkIngest_BatchMessages(b *testing.B) {
 		conv, _ := s.GetOrCreateConversation(ctx, fmt.Sprintf("bench:ingest-batch:%d", i))
 		convID := conv.ConversationID
 
-		for j := 0; j < 10; j++ {
+		for j := range 10 {
 			added, err := s.AddMessage(ctx, convID, "user",
 				fmt.Sprintf("Message %d in batch", j), 10)
 			if err != nil {
@@ -73,7 +73,7 @@ func BenchmarkAssemble_MessagesOnly(b *testing.B) {
 	convID := conv.ConversationID
 
 	// Add 100 messages
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		m, _ := s.AddMessage(ctx, convID, "user",
 			fmt.Sprintf("Message content %d with some text", i), 10)
 		s.AppendContextMessage(ctx, convID, m.ID)
@@ -101,7 +101,7 @@ func BenchmarkAssemble_WithSummaries(b *testing.B) {
 	now := time.Now().UTC()
 
 	// Add 10 leaf summaries
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		sum, _ := s.CreateSummary(ctx, CreateSummaryInput{
 			ConversationID: convID,
 			Kind:           SummaryKindLeaf,
@@ -115,7 +115,7 @@ func BenchmarkAssemble_WithSummaries(b *testing.B) {
 	}
 
 	// Add 20 fresh messages
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		m, _ := s.AddMessage(ctx, convID, "user", fmt.Sprintf("Fresh message %d", i), 10)
 		s.AppendContextMessage(ctx, convID, m.ID)
 	}
@@ -142,7 +142,7 @@ func BenchmarkAssemble_BudgetEviction(b *testing.B) {
 	now := time.Now().UTC()
 
 	// Add 50 leaf summaries (more than budget can hold)
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		sum, _ := s.CreateSummary(ctx, CreateSummaryInput{
 			ConversationID: convID,
 			Kind:           SummaryKindLeaf,
@@ -156,7 +156,7 @@ func BenchmarkAssemble_BudgetEviction(b *testing.B) {
 	}
 
 	// Add fresh tail
-	for i := 0; i < FreshTailCount; i++ {
+	for range FreshTailCount {
 		m, _ := s.AddMessage(ctx, convID, "user", "fresh", 10)
 		s.AppendContextMessage(ctx, convID, m.ID)
 	}
@@ -179,7 +179,7 @@ func BenchmarkAssemble_BudgetEviction(b *testing.B) {
 func benchSeedSummaries(b *testing.B, s *Store, convID int64, n int, contentTpl string) {
 	b.Helper()
 	now := time.Now().UTC()
-	for i := 0; i < n; i++ {
+	for i := range n {
 		sum, err := s.CreateSummary(context.Background(), CreateSummaryInput{
 			ConversationID: convID,
 			Kind:           SummaryKindLeaf,
@@ -248,7 +248,7 @@ func BenchmarkSearchMessages_FTS5(b *testing.B) {
 	convID := conv.ConversationID
 
 	// Add 500 messages
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		m, _ := s.AddMessage(ctx, convID, "user",
 			fmt.Sprintf("User message about API and database integration %d", i), 20)
 		s.AppendContextMessage(ctx, convID, m.ID)
@@ -289,7 +289,7 @@ func BenchmarkBootstrap_100Messages(b *testing.B) {
 
 	// Prepare 100 messages
 	msgs := make([]Message, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		msgs[i] = Message{
 			Role:       "user",
 			Content:    fmt.Sprintf("Bootstrap message %d", i),
@@ -315,7 +315,7 @@ func BenchmarkBootstrap_500Messages(b *testing.B) {
 	ctx := context.Background()
 
 	msgs := make([]Message, 500)
-	for i := 0; i < 500; i++ {
+	for i := range 500 {
 		msgs[i] = Message{
 			Role:       "user",
 			Content:    fmt.Sprintf("Bootstrap message %d", i),

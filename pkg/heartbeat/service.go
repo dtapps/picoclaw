@@ -337,13 +337,13 @@ func heartbeatHasUserTasks(content string) bool {
 		return false
 	}
 
-	markerIdx := strings.Index(content, userTasksMarker)
-	if markerIdx < 0 {
+	_, after, ok := strings.Cut(content, userTasksMarker)
+	if !ok {
 		return true
 	}
 
-	tasksSection := content[markerIdx+len(userTasksMarker):]
-	for _, line := range strings.Split(tasksSection, "\n") {
+	tasksSection := after
+	for line := range strings.SplitSeq(tasksSection, "\n") {
 		trimmedLine := strings.TrimSpace(line)
 		if trimmedLine == "" {
 			continue

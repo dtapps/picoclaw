@@ -338,12 +338,10 @@ func TestProbeLocalModelAvailability_DeduplicatesInflightProbe(t *testing.T) {
 	workerStarted := make(chan struct{}, workers)
 
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			workerStarted <- struct{}{}
 			results <- probeLocalModelAvailability(model)
-		}()
+		})
 	}
 
 	for range workers {

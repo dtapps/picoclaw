@@ -448,8 +448,7 @@ func normalizeChannelArrayFields(raw map[string]any) error {
 			continue
 		}
 
-		for i := range settingsType.NumField() {
-			field := settingsType.Field(i)
+		for field := range settingsType.Fields() {
 			if !field.IsExported() || !isStringSliceType(field.Type) {
 				continue
 			}
@@ -694,9 +693,9 @@ func applySecureStringsToStruct(rv reflect.Value, rawMap map[string]any) {
 			}
 			// Direct SecureString field
 			if s, ok := rawVal.(string); ok {
-				if f.Type == reflect.TypeOf(config.SecureString{}) {
+				if f.Type == reflect.TypeFor[config.SecureString]() {
 					sf.Set(reflect.ValueOf(*config.NewSecureString(s)))
-				} else if f.Type == reflect.TypeOf(&config.SecureString{}) {
+				} else if f.Type == reflect.TypeFor[*config.SecureString]() {
 					sf.Set(reflect.ValueOf(config.NewSecureString(s)))
 				}
 				continue

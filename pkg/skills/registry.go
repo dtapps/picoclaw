@@ -137,7 +137,7 @@ func ValidateInstallTarget(target string) error {
 	if strings.Contains(target, "//") {
 		return fmt.Errorf("identifier %q contains empty path segments", target)
 	}
-	for _, segment := range strings.Split(strings.Trim(target, "/"), "/") {
+	for segment := range strings.SplitSeq(strings.Trim(target, "/"), "/") {
 		if segment == "." || segment == ".." || segment == "" {
 			return fmt.Errorf("identifier %q contains invalid path segments", target)
 		}

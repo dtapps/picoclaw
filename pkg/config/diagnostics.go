@@ -129,8 +129,8 @@ func wrapJSONError(data []byte, err error, label string) error {
 }
 
 func splitDiagnosticError(message string) (string, string) {
-	if idx := strings.IndexByte(message, '\n'); idx >= 0 {
-		return message[:idx], message[idx+1:]
+	if before, after, ok := strings.Cut(message, "\n"); ok {
+		return before, after
 	}
 	return message, ""
 }
@@ -186,10 +186,7 @@ func diagnosticPreviewForOffset(data []byte, offset int64) string {
 	}
 
 	prefix := fmt.Sprintf("%4d | ", lineNumber)
-	caretColumn := column - trimOffset
-	if caretColumn < 1 {
-		caretColumn = 1
-	}
+	caretColumn := max(column-trimOffset, 1)
 
 	if diagnosticsUseColor() {
 		linePrefix := "\x1b[2m" + prefix + "\x1b[0m"
@@ -249,10 +246,7 @@ func lineBoundsForOffset(data []byte, offset int64) (int, int) {
 		offset = int64(len(data))
 	}
 
-	index := int(offset - 1)
-	if index < 0 {
-		index = 0
-	}
+	index := max(int(offset-1), 0)
 	if index >= len(data) {
 		index = len(data) - 1
 	}
@@ -283,21 +277,12 @@ func trimDiagnosticLine(line string, column int) (string, int) {
 	const contextBefore = 60
 	const maxWidth = 160
 
-	start := column - 1 - contextBefore
-	if start < 0 {
-		start = 0
-	}
-	if start > len(runes)-maxWidth {
-		start = len(runes) - maxWidth
-	}
+	start := min(max(column-1-contextBefore, 0), len(runes)-maxWidth)
 	if start < 0 {
 		start = 0
 	}
 
-	end := start + maxWidth
-	if end > len(runes) {
-		end = len(runes)
-	}
+	end := min(start+maxWidth, len(runes))
 
 	trimmed := string(runes[start:end])
 	trimOffset := start
@@ -402,8 +387,7 @@ func populateJSONFieldTypeMap(result map[string]reflect.Type, t reflect.Type) {
 		return
 	}
 
-	for i := 0; i < t.NumField(); i++ {
-		field := t.Field(i)
+	for field := range t.Fields() {
 		if !field.IsExported() {
 			continue
 		}

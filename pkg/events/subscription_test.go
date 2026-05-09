@@ -173,7 +173,7 @@ func TestLockedHandlerProcessesSequentially(t *testing.T) {
 		t.Fatalf("Subscribe failed: %v", err)
 	}
 
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		bus.Publish(context.Background(), Event{Kind: KindAgentLLMDelta})
 	}
 	waitForStat(t, func() uint64 {

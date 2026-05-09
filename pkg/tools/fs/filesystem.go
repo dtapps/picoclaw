@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -158,10 +159,8 @@ func extractAllowedPathRoot(pattern *regexp.Regexp) (string, bool) {
 }
 
 func appendUniquePath(paths []string, path string) []string {
-	for _, existing := range paths {
-		if existing == path {
-			return paths
-		}
+	if slices.Contains(paths, path) {
+		return paths
 	}
 	return append(paths, path)
 }

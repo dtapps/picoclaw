@@ -224,11 +224,9 @@ func (s *eventSubscription) run(ctx context.Context) {
 func (s *eventSubscription) dispatch(ctx context.Context, evt Event) {
 	switch s.opts.Concurrency {
 	case Concurrent:
-		s.wg.Add(1)
-		go func() {
-			defer s.wg.Done()
+		s.wg.Go(func() {
 			s.handle(ctx, evt)
-		}()
+		})
 	case Keyed:
 		// TODO: replace this with keyed executors when runtime events need
 		// per-scope ordering with cross-scope concurrency.

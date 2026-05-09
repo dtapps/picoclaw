@@ -1060,7 +1060,7 @@ func TestEngineSessionMutexBoundedMemory(t *testing.T) {
 
 	// Get mutexes for many different sessions
 	seen := make(map[*sync.Mutex]bool)
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		sessionKey := fmt.Sprintf("agent:session-%d", i)
 		mu := eng.getSessionMutex(sessionKey)
 		seen[mu] = true
@@ -1162,7 +1162,7 @@ func TestEngineConcurrentIngestAndAssemble(t *testing.T) {
 	errCh := make(chan error, 10)
 
 	// Concurrent Ingest
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -1176,7 +1176,7 @@ func TestEngineConcurrentIngestAndAssemble(t *testing.T) {
 	}
 
 	// Concurrent Assemble
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		wg.Add(1)
 		go func(idx int) {
 			defer wg.Done()
@@ -1210,7 +1210,7 @@ func TestEngineConcurrentCompactAndAssemble(t *testing.T) {
 	sessionKey := "agent:compact-race"
 
 	// Ingest enough messages for compaction
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		eng.Ingest(ctx, sessionKey, []Message{
 			{Role: "user", Content: fmt.Sprintf("msg-%d", i), TokenCount: 50},
 			{Role: "assistant", Content: fmt.Sprintf("reply-%d", i), TokenCount: 50},
@@ -1221,27 +1221,23 @@ func TestEngineConcurrentCompactAndAssemble(t *testing.T) {
 	errCh := make(chan error, 10)
 
 	// Concurrent Compact (will use truncation fallback since no LLM)
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 3 {
+		wg.Go(func() {
 			_, err := eng.Compact(ctx, sessionKey, CompactInput{})
 			if err != nil {
 				errCh <- err
 			}
-		}()
+		})
 	}
 
 	// Concurrent Assemble
-	for i := 0; i < 3; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 3 {
+		wg.Go(func() {
 			_, err := eng.Assemble(ctx, sessionKey, AssembleInput{Budget: 500})
 			if err != nil {
 				errCh <- err
 			}
-		}()
+		})
 	}
 
 	wg.Wait()
@@ -1653,7 +1649,7 @@ func TestAssemblerLazyInitRace(t *testing.T) {
 	//   }
 
 	// Run multiple iterations to increase chance of catching race
-	for i := 0; i < 30; i++ {
+	for i := range 30 {
 		// Create fresh engine with nil assembler
 		e := newTestEngine(t)
 
@@ -1672,13 +1668,11 @@ func TestAssemblerLazyInitRace(t *testing.T) {
 		start := make(chan struct{})
 		var wg sync.WaitGroup
 
-		for j := 0; j < 20; j++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
+		for range 20 {
+			wg.Go(func() {
 				<-start // Wait for all goroutines to be ready
 				e.Assemble(ctx, sessionKey, AssembleInput{Budget: 1000})
-			}()
+			})
 		}
 
 		// Start all goroutines simultaneously
@@ -1707,7 +1701,7 @@ func TestSelectShallowestCondensationWithNonConsecutiveDepths(t *testing.T) {
 	// Depth 0: 3 summaries (not enough), Depth 1: 3 summaries (not enough)
 	// Depth 2: 0 summaries (missing), Depth 3: 40 summaries (enough)
 	depths := []int{0, 0, 0, 1, 1, 1}
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		depths = append(depths, 3)
 	}
 	now := time.Now().UTC()

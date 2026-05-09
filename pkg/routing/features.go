@@ -82,10 +82,7 @@ func countCodeBlocks(msg string) int {
 // entries of history. It examines the ToolCalls field rather than parsing
 // the content string, so it is robust to any message format.
 func countRecentToolCalls(history []providers.Message) int {
-	start := len(history) - lookbackWindow
-	if start < 0 {
-		start = 0
-	}
+	start := max(len(history)-lookbackWindow, 0)
 
 	count := 0
 	for _, msg := range history[start:] {

@@ -19,10 +19,7 @@ func FormatCLIError(msg string, ctx *cobra.Command) string {
 		return s
 	}
 	w := InnerStderrWidth()
-	contentW := w - 6
-	if contentW < 36 {
-		contentW = 36
-	}
+	contentW := max(w-6, 36)
 
 	title := titleBarStyle().Render("Error") + "\n\n"
 

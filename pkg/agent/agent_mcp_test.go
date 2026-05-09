@@ -17,7 +17,8 @@ import (
 	agenttools "github.com/sipeed/picoclaw/pkg/tools"
 )
 
-func boolPtr(b bool) *bool { return &b }
+//go:fix inline
+func boolPtr(b bool) *bool { return new(b) }
 
 func TestMCPRuntimeResetClearsState(t *testing.T) {
 	var rt mcpRuntime
@@ -87,26 +88,26 @@ func TestServerIsDeferred(t *testing.T) {
 		{
 			name:             "global false: per-server deferred=true is ignored",
 			discoveryEnabled: false,
-			serverDeferred:   boolPtr(true),
+			serverDeferred:   new(true),
 			want:             false,
 		},
 		{
 			name:             "global false: per-server deferred=false stays false",
 			discoveryEnabled: false,
-			serverDeferred:   boolPtr(false),
+			serverDeferred:   new(false),
 			want:             false,
 		},
 		// --- global true: per-server override applies ---
 		{
 			name:             "global true: per-server deferred=false opts out",
 			discoveryEnabled: true,
-			serverDeferred:   boolPtr(false),
+			serverDeferred:   new(false),
 			want:             false,
 		},
 		{
 			name:             "global true: per-server deferred=true stays true",
 			discoveryEnabled: true,
-			serverDeferred:   boolPtr(true),
+			serverDeferred:   new(true),
 			want:             true,
 		},
 		// --- no per-server override: fall back to global ---

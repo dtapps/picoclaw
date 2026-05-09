@@ -27,7 +27,7 @@ func TestCompactUntilUnderIterationCap(t *testing.T) {
 	convID := conv.ConversationID
 
 	// Add many messages to ensure there's plenty to compact
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		m, _ := s.AddMessage(context.Background(), convID, "user",
 			"this is a long message with lots of tokens to push context over budget", 100)
 		s.AppendContextMessage(context.Background(), convID, m.ID)

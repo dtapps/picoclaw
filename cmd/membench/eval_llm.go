@@ -170,9 +170,7 @@ func EvalLegacyLLM(
 			sem := make(chan struct{}, concurrency)
 			var wg sync.WaitGroup
 			for qi := range sample.QA {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+				wg.Go(func() {
 					sem <- struct{}{}
 					defer func() { <-sem }()
 					out := evalQAWorker(ctx, qaWork{
@@ -181,7 +179,7 @@ func EvalLegacyLLM(
 						qa: &sample.QA[qi], contextText: contextText, sample: sample,
 					}, answerClient, judgeClient, "legacy-llm")
 					qaResults[qi] = out.result // safe: each goroutine writes distinct index
-				}()
+				})
 			}
 			wg.Wait()
 		}
@@ -307,13 +305,11 @@ func EvalSeahorseLLM(
 			sem := make(chan struct{}, concurrency)
 			var wg sync.WaitGroup
 			for qi := range sample.QA {
-				wg.Add(1)
-				go func() {
-					defer wg.Done()
+				wg.Go(func() {
 					sem <- struct{}{}
 					defer func() { <-sem }()
 					evalOne(qi)
-				}()
+				})
 			}
 			wg.Wait()
 		}

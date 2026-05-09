@@ -430,7 +430,7 @@ func TestSubTurnConcurrencySemaphore(t *testing.T) {
 
 	// Spawn 2 children — should succeed immediately
 	done := make(chan bool, 3)
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		go func() {
 			_, _ = spawnSubTurn(context.Background(), al, parent, cfg)
 			done <- true
@@ -676,7 +676,7 @@ func TestDeliverSubTurnResultNoDeadlock(t *testing.T) {
 	var wg sync.WaitGroup
 	numChildren := 10
 
-	for i := 0; i < numChildren; i++ {
+	for i := range numChildren {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()
@@ -688,7 +688,7 @@ func TestDeliverSubTurnResultNoDeadlock(t *testing.T) {
 	// Concurrently read from the channel to prevent blocking
 	// and to actually retrieve the matched number of results
 	go func() {
-		for i := 0; i < numChildren; i++ {
+		for range numChildren {
 			select {
 			case <-parent.pendingResults:
 			case <-time.After(5 * time.Second):
@@ -1066,7 +1066,7 @@ func TestTurnStateInfo_ThreadSafety(t *testing.T) {
 	// Concurrently read Info() and modify childTurnIDs
 	done := make(chan bool)
 	go func() {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			ts.mu.Lock()
 			ts.childTurnIDs = append(ts.childTurnIDs, "child")
 			ts.mu.Unlock()
@@ -1075,7 +1075,7 @@ func TestTurnStateInfo_ThreadSafety(t *testing.T) {
 	}()
 
 	go func() {
-		for i := 0; i < 100; i++ {
+		for range 100 {
 			info := ts.snapshot()
 			if info.TurnID == "" {
 				t.Error("snapshot() returned empty TurnID")
@@ -1211,7 +1211,7 @@ func TestFinish_ConcurrentCalls(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(numGoroutines)
 
-	for i := 0; i < numGoroutines; i++ {
+	for range numGoroutines {
 		go func() {
 			defer wg.Done()
 			// This should not panic, even when called concurrently
@@ -1291,7 +1291,7 @@ func TestDeliverSubTurnResult_RaceWithFinish(t *testing.T) {
 	}()
 
 	// Goroutines that deliver results
-	for i := 0; i < numResults; i++ {
+	for i := range numResults {
 		go func(id int) {
 			defer wg.Done()
 			result := &tools.ToolResult{
@@ -1363,7 +1363,7 @@ func TestConcurrencySemaphore_Timeout(t *testing.T) {
 	defer parentTS.Finish(false)
 
 	// Fill all concurrency slots
-	for i := 0; i < testMaxConcurrentSubTurns; i++ {
+	for range testMaxConcurrentSubTurns {
 		parentTS.concurrencySem <- struct{}{}
 	}
 
@@ -1400,7 +1400,7 @@ func TestConcurrencySemaphore_Timeout(t *testing.T) {
 	t.Logf("Timeout occurred after %v with error: %v", elapsed, err)
 
 	// Clean up - drain the semaphore
-	for i := 0; i < testMaxConcurrentSubTurns; i++ {
+	for range testMaxConcurrentSubTurns {
 		<-parentTS.concurrencySem
 	}
 }
@@ -1411,7 +1411,7 @@ func TestEphemeralSession_AutoTruncate(t *testing.T) {
 	store := newEphemeralSession(nil).(*ephemeralSessionStore)
 
 	// Add more messages than the limit
-	for i := 0; i < maxEphemeralHistorySize+20; i++ {
+	for i := range maxEphemeralHistorySize + 20 {
 		store.AddMessage("test", "user", fmt.Sprintf("message-%d", i))
 	}
 
@@ -1852,15 +1852,13 @@ func TestAsyncSubTurn_ParentFinishesEarly(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Spawn async SubTurn in a goroutine (it will be slow)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		subTurnCfg := SubTurnConfig{
 			Model: "slow-model",
 			Async: true, // Asynchronous SubTurn
 		}
 		subTurnResult, subTurnErr = spawnSubTurn(parentTS.ctx, al, parentTS, subTurnCfg)
-	}()
+	})
 
 	// Parent finishes quickly (after 100ms), while SubTurn is still running
 	time.Sleep(100 * time.Millisecond)
@@ -1925,15 +1923,13 @@ func TestAsyncSubTurn_ParentWaitsForChild(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Spawn async SubTurn in a goroutine
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		subTurnCfg := SubTurnConfig{
 			Model: "slow-model",
 			Async: true,
 		}
 		subTurnResult, subTurnErr = spawnSubTurn(parentTS.ctx, al, parentTS, subTurnCfg)
-	}()
+	})
 
 	// Parent WAITS for SubTurn to complete
 	t.Log("Parent waiting for SubTurn...")
@@ -1976,8 +1972,7 @@ func TestAsyncSubTurn_ParentWaitsForChild(t *testing.T) {
 func TestFinish_GracefulVsHard(t *testing.T) {
 	// Test 1: Graceful finish should set parentEnded but not cancel context
 	t.Run("Graceful_SetsParentEnded", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-		defer cancel()
+		ctx := t.Context()
 
 		ts := &turnState{
 			ctx:            ctx,
@@ -2091,16 +2086,14 @@ func TestSubTurn_IndependentContext(t *testing.T) {
 	var wg sync.WaitGroup
 
 	// Spawn SubTurn with Critical=true (should continue after parent finishes)
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		subTurnCfg := SubTurnConfig{
 			Model:    "slow-model",
 			Async:    true,
 			Critical: true, // Critical SubTurn should continue
 		}
 		_, subTurnErr = spawnSubTurn(parentTS.ctx, al, parentTS, subTurnCfg)
-	}()
+	})
 
 	// Let SubTurn start
 	time.Sleep(50 * time.Millisecond)

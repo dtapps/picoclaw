@@ -16,8 +16,8 @@ type Event struct {
 	Kind        Kind           `json:"kind"`
 	Time        time.Time      `json:"time"`
 	Source      Source         `json:"source"`
-	Scope       Scope          `json:"scope,omitempty"`
-	Correlation Correlation    `json:"correlation,omitempty"`
+	Scope       Scope          `json:"scope"`
+	Correlation Correlation    `json:"correlation"`
 	Severity    Severity       `json:"severity,omitempty"`
 	Payload     any            `json:"payload,omitempty"`
 	Attrs       map[string]any `json:"attrs,omitempty"`
