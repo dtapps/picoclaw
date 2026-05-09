@@ -228,11 +228,10 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 			return
 		}
 
-		// 记录会话类型
+		// 记录群组会话类型（仅记录 group，不记录 direct）
+		// 这样主动发消息时可通过 chatType 判断是否为群组
 		if chatType == "group" {
 			c.chatType.Store(sender.PlatformID, "group")
-		} else {
-			c.chatType.Store(sender.PlatformID, "direct")
 		}
 
 		// 构建标准化上下文
@@ -324,15 +323,11 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 }
 
 func (c *YuanbaoChannel) getChatKind(chatID string) string {
-	if v, ok := c.chatType.Load(chatID); ok {
-		if k, ok := v.(string); ok {
-			return k
-		}
+	// chatType 只记录 group，有记录即为群组，无记录默认按 direct 处理
+	if _, ok := c.chatType.Load(chatID); ok {
+		return "group"
 	}
-	logger.DebugCF(c.Name(), "聊天 ID 未知类型", map[string]any{
-		"chat_id": chatID,
-	})
-	return ""
+	return "direct"
 }
 
 // EditMessage implements channels.MessageEditor.
