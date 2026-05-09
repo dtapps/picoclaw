@@ -1,0 +1,27 @@
+name: event-driven-task
+description: "事件驱动示例：工具执行完成后根据结果决定后续操作"
+
+triggers:
+  - event: agent.tool.exec_end
+
+steps:
+  - id: analyze_result
+    action: agent_prompt
+    prompt: "分析最近的工具执行结果，判断是否需要进一步操作"
+    output_key: analysis
+
+  - id: decide_action
+    action: if
+    when: on_success
+    if_true:
+      - id: take_action
+        action: agent_prompt
+        prompt: "根据分析结果 {{.analyze_result.analysis}}，执行必要的后续操作"
+        output_key: action_result
+    if_false:
+      - id: log_skip
+        action: agent_prompt
+        prompt: "分析未通过，跳过后续操作并记录原因"
+
+config:
+  failure_strategy: continue

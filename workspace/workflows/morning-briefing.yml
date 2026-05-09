@@ -1,0 +1,36 @@
+name: morning-briefing
+description: "每天早上8点生成早间简报：汇总新闻和天气，失败时降级通知"
+
+triggers:
+  - cron: "0 8 * * 1-5"
+    tz: Asia/Shanghai
+
+steps:
+  - id: gather_news
+    action: agent_prompt
+    prompt: "搜索今天的重要科技新闻，列出3-5条"
+    output_key: tech_news
+
+  - id: check_weather
+    action: agent_prompt
+    prompt: "查询今天北京的天气情况"
+    output_key: weather
+
+  - id: summarize
+    action: if
+    when: on_success
+    if_true:
+      - id: generate_briefing
+        action: agent_prompt
+        prompt: |
+          汇总以下信息生成早间简报：
+          科技新闻：{{.gather_news.tech_news}}
+          天气：{{.check_weather.weather}}
+        output_key: briefing
+    if_false:
+      - id: notify_failure
+        action: agent_prompt
+        prompt: "早间简报生成失败，数据采集可能异常，请检查系统状态"
+
+config:
+  failure_strategy: continue

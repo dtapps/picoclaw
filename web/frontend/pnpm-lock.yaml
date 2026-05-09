@@ -77,6 +77,12 @@ importers:
       remark-gfm:
         specifier: ^4.0.1
         version: 4.0.1
+      sequential-workflow-designer:
+        specifier: ^0.37.3
+        version: 0.37.3(sequential-workflow-model@0.2.0)
+      sequential-workflow-designer-react:
+        specifier: ^0.37.3
+        version: 0.37.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sequential-workflow-designer@0.37.3(sequential-workflow-model@0.2.0))
       shadcn:
         specifier: ^4.7.0
         version: 4.7.0(@types/node@25.6.2)(typescript@6.0.3)
@@ -3499,6 +3505,21 @@ packages:
   send@1.2.1:
     resolution: {integrity: sha512-1gnZf7DFcoIcajTjTwjwuDjzuz4PPcY2StKPlsGAQ1+YH20IRVrBaXSWmdjowTJ6u8Rc01PoYOGHXfP1mYcZNQ==}
     engines: {node: '>= 18'}
+
+  sequential-workflow-designer-react@0.37.3:
+    resolution: {integrity: sha512-r86OOryk2pRHtkVCTptalb2uUrbgjnWwt3d/82xcqbIQQgrjuEmsLejW40xhSyA79OG0RtT8z9M1g5emkXeIag==}
+    peerDependencies:
+      react: '>=18.2.0'
+      react-dom: '>=18.2.0'
+      sequential-workflow-designer: ^0.37.3
+
+  sequential-workflow-designer@0.37.3:
+    resolution: {integrity: sha512-cDoKxO0EgAKFs+1YI88KXZHqJ2kYVWXVjT6IY8DHbM3YsSGCCaU2lvsiFW/YOIoSzcQzHOtkm6yfucpUtqLyLA==}
+    peerDependencies:
+      sequential-workflow-model: ^0.2.0
+
+  sequential-workflow-model@0.2.0:
+    resolution: {integrity: sha512-oK+He1N/0Ogg4Z/7KbAzhBRTJEqpPewQAIV7G9WvxhLcpTHvrR9rTMykDwWDVdroNFiLQYa00nYvjqrCIzYfqg==}
 
   seroval-plugins@1.5.4:
     resolution: {integrity: sha512-S0xQPhUTefAhNvNWFg0c1J8qJArHt5KdtJ/cFAofo06KD1MVSeFWyl4iiu+ApDIuw0WhjpOfCdgConOfAnLgkw==}
@@ -7563,6 +7584,18 @@ snapshots:
       statuses: 2.0.2
     transitivePeerDependencies:
       - supports-color
+
+  sequential-workflow-designer-react@0.37.3(react-dom@19.2.6(react@19.2.6))(react@19.2.6)(sequential-workflow-designer@0.37.3(sequential-workflow-model@0.2.0)):
+    dependencies:
+      react: 19.2.6
+      react-dom: 19.2.6(react@19.2.6)
+      sequential-workflow-designer: 0.37.3(sequential-workflow-model@0.2.0)
+
+  sequential-workflow-designer@0.37.3(sequential-workflow-model@0.2.0):
+    dependencies:
+      sequential-workflow-model: 0.2.0
+
+  sequential-workflow-model@0.2.0: {}
 
   seroval-plugins@1.5.4(seroval@1.5.4):
     dependencies:

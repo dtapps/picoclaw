@@ -42,6 +42,27 @@ type StopResult struct {
 	TaskName string
 }
 
+// WorkflowInfo 是用于命令输出的工作流摘要视图。
+type WorkflowInfo struct {
+	Name        string
+	Description string
+	Enabled     bool
+	TriggerType string
+	StepCount   int
+	Vars        map[string]string
+}
+
+// WorkflowInstanceInfo 是用于命令输出的工作流实例摘要视图。
+type WorkflowInstanceInfo struct {
+	ID           string
+	WorkflowName string
+	Status       string
+	TriggerType  string
+	StartedAt    string
+	FinishedAt   string
+	Error        string
+}
+
 // Runtime provides runtime dependencies to command handlers. It is constructed
 // per-request by the agent loop so that per-request state (like session scope)
 // can coexist with long-lived callbacks (like GetModelInfo).
@@ -62,4 +83,14 @@ type Runtime struct {
 	ClearHistory       func() error
 	ReloadConfig       func() error
 	StopActiveTurn     func() (StopResult, error)
+
+	// 工作流命令
+	WorkflowList      func() []WorkflowInfo
+	WorkflowRun       func(ctx context.Context, name, channel, chatID string) (string, error)
+	WorkflowShow      func(name string) (*WorkflowInfo, []string, error) // info, stepIDs, 错误
+	WorkflowBind      func(name, channel, chatID string) error
+	WorkflowUnbind    func(name string) error
+	WorkflowEnable    func(name string, enabled bool) error
+	WorkflowInstances func(name string) ([]WorkflowInstanceInfo, error)
+	WorkflowStop      func(instanceID string) error
 }

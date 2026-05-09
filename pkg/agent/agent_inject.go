@@ -3,8 +3,11 @@
 package agent
 
 import (
+	"context"
+
 	"github.com/sipeed/picoclaw/pkg/audio/asr"
 	"github.com/sipeed/picoclaw/pkg/channels"
+	"github.com/sipeed/picoclaw/pkg/commands"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/media"
 	"github.com/sipeed/picoclaw/pkg/tools"
@@ -58,6 +61,24 @@ func (al *AgentLoop) SetTranscriber(t asr.Transcriber) {
 
 func (al *AgentLoop) SetReloadFunc(fn func() error) {
 	al.reloadFunc = fn
+}
+
+// WorkflowServiceProvider 是 workflow.Service 必须满足的接口，
+// 用于注入到 AgentLoop 中。保留为本地接口以避免导入
+// workflow 包（否则会产生循环依赖）。
+type WorkflowServiceProvider interface {
+	ListWorkflowsForCommand() []commands.WorkflowInfo
+	RunWorkflow(ctx context.Context, name, channel, chatID string) (string, error)
+	ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error)
+	BindChannel(name, channel, chatID string) error
+	UnbindChannel(name string) error
+	SetEnabled(name string, enabled bool) error
+	InstancesForCommand(name string) ([]commands.WorkflowInstanceInfo, error)
+	StopInstance(instanceID string) error
+}
+
+func (al *AgentLoop) SetWorkflowService(svc WorkflowServiceProvider) {
+	al.workflowService = svc
 }
 
 func (al *AgentLoop) RecordLastChannel(channel string) error {

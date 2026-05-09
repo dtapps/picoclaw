@@ -737,6 +737,12 @@ func (m *Manager) SetupHTTPServerListeners(listeners []net.Listener, addr string
 	m.httpListeners = append([]net.Listener(nil), listeners...)
 }
 
+// Mux 返回底层的动态路由器，供外部模块注册额外端点。
+// 必须在 SetupHTTPServerListeners 之后、StartAll 之前调用。
+func (m *Manager) Mux() *dynamicServeMux {
+	return m.mux
+}
+
 // registerHTTPHandlersLocked registers webhook and health-check handlers for
 // all channels currently in m.channels. Caller must hold m.mu (or ensure
 // exclusive access).

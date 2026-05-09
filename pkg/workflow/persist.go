@@ -1,0 +1,271 @@
+package workflow
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"slices"
+	"sync"
+
+	"github.com/sipeed/picoclaw/pkg/fileutil"
+)
+
+// PersistStore 管理工作流定义和运行实例状态的磁盘持久化。
+// 工作流定义以 YAML 文件存储在 workspace/workflows/ 目录，
+// 运行实例状态以 JSON 文件存储在 workspace/workflows/.state/ 目录。
+// 所有写操作使用 fileutil.WriteFileAtomic 保证原子性。
+type PersistStore struct {
+	workflowsDir string // 工作流定义目录（workspace/workflows/）
+	stateDir     string // 实例状态目录（workspace/workflows/.state/）
+	mu           sync.RWMutex
+}
+
+// NewPersistStore 创建持久化存储实例。
+func NewPersistStore(workspaceDir string) *PersistStore {
+	return &PersistStore{
+		workflowsDir: filepath.Join(workspaceDir, "workflows"),
+		stateDir:     filepath.Join(workspaceDir, "workflows", ".state"),
+	}
+}
+
+// Init 创建目录结构（如果不存在）。
+func (ps *PersistStore) Init() error {
+	for _, dir := range []string{ps.workflowsDir, ps.stateDir} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// LoadAllWorkflows 从 workflows 目录读取所有 YAML 工作流定义。
+// 返回以名称为键的工作流映射。格式错误的文件会被跳过。
+func (ps *PersistStore) LoadAllWorkflows() (map[string]*Workflow, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	entries, err := os.ReadDir(ps.workflowsDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return make(map[string]*Workflow), nil
+		}
+		return nil, err
+	}
+
+	workflows := make(map[string]*Workflow)
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// 只处理 .yml 和 .yaml 文件
+		if filepath.Ext(name) != ".yml" && filepath.Ext(name) != ".yaml" {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(ps.workflowsDir, name))
+		if err != nil {
+			continue
+		}
+
+		wf, err := ParseYAMLWorkflow(data)
+		if err != nil {
+			continue
+		}
+
+		// 根据 .disabled 标记文件判断是否启用
+		wf.Enabled = !ps.isDisabled(wf.Name)
+		workflows[wf.Name] = wf
+	}
+
+	return workflows, nil
+}
+
+// SaveWorkflow 将工作流定义写入 YAML 文件。
+func (ps *PersistStore) SaveWorkflow(wf *Workflow) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	data, err := renderYAMLWorkflow(wf)
+	if err != nil {
+		return err
+	}
+
+	filename := sanitizeName(wf.Name) + ".yml"
+	return fileutil.WriteFileAtomic(filepath.Join(ps.workflowsDir, filename), data, 0o644)
+}
+
+// DeleteWorkflow 删除工作流定义文件及其状态。
+func (ps *PersistStore) DeleteWorkflow(name string) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	// 删除 YAML 定义文件
+	filename := sanitizeName(name) + ".yml"
+	ymlPath := filepath.Join(ps.workflowsDir, filename)
+	if err := os.Remove(ymlPath); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// 删除禁用标记文件
+	disabledPath := filepath.Join(ps.workflowsDir, sanitizeName(name)+".disabled")
+	_ = os.Remove(disabledPath)
+
+	// 删除运行状态
+	statePath := filepath.Join(ps.stateDir, sanitizeName(name)+".json")
+	_ = os.Remove(statePath)
+
+	return nil
+}
+
+// SetEnabled 持久化工作流的启用/禁用状态。
+// 通过创建/删除 .disabled 标记文件实现。
+func (ps *PersistStore) SetEnabled(name string, enabled bool) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	disabledPath := filepath.Join(ps.workflowsDir, sanitizeName(name)+".disabled")
+	if enabled {
+		return os.Remove(disabledPath)
+	}
+	return os.WriteFile(disabledPath, []byte{}, 0o644)
+}
+
+// isDisabled 检查工作流是否有 .disabled 标记文件。
+func (ps *PersistStore) isDisabled(name string) bool {
+	disabledPath := filepath.Join(ps.workflowsDir, sanitizeName(name)+".disabled")
+	_, err := os.Stat(disabledPath)
+	return err == nil
+}
+
+// --- 实例状态持久化 ---
+
+// SaveInstance 将工作流运行实例持久化到 state 目录。
+// 使用原子写入保证数据一致性。
+func (ps *PersistStore) SaveInstance(inst *WorkflowInstance) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	data, err := json.MarshalIndent(inst, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	// 文件名格式：{工作流名}_{实例ID}.json
+	filename := sanitizeName(inst.WorkflowName) + "_" + inst.ID + ".json"
+	return fileutil.WriteFileAtomic(filepath.Join(ps.stateDir, filename), data, 0o600)
+}
+
+// LoadInstances 读取指定工作流的所有运行实例。
+func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstance, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	entries, err := os.ReadDir(ps.stateDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	prefix := sanitizeName(workflowName) + "_"
+	var instances []*WorkflowInstance
+	for _, entry := range entries {
+		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
+			continue
+		}
+		// 只加载匹配工作流前缀的实例文件
+		if len(entry.Name()) < len(prefix) || entry.Name()[:len(prefix)] != prefix {
+			continue
+		}
+
+		data, err := os.ReadFile(filepath.Join(ps.stateDir, entry.Name()))
+		if err != nil {
+			continue
+		}
+
+		var inst WorkflowInstance
+		if err := json.Unmarshal(data, &inst); err != nil {
+			continue
+		}
+		instances = append(instances, &inst)
+	}
+
+	// 按 started_at 倒序排列（最新的在前）
+	slices.SortFunc(instances, func(a, b *WorkflowInstance) int {
+		if a.StartedAt.Before(b.StartedAt) {
+			return 1
+		} else if a.StartedAt.After(b.StartedAt) {
+			return -1
+		}
+		return 0
+	})
+
+	return instances, nil
+}
+
+// LoadInstance 读取单个运行实例。
+func (ps *PersistStore) LoadInstance(workflowName, instanceID string) (*WorkflowInstance, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	filename := sanitizeName(workflowName) + "_" + instanceID + ".json"
+	data, err := os.ReadFile(filepath.Join(ps.stateDir, filename))
+	if err != nil {
+		return nil, err
+	}
+
+	var inst WorkflowInstance
+	if err := json.Unmarshal(data, &inst); err != nil {
+		return nil, err
+	}
+	return &inst, nil
+}
+
+// PurgeOldInstances 清理超出保留数量的旧实例文件。
+func (ps *PersistStore) PurgeOldInstances(workflowName string, keepCount int) error {
+	instances, err := ps.LoadInstances(workflowName)
+	if err != nil || len(instances) <= keepCount {
+		return err
+	}
+
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	// 删除最早的实例，保留最近的 keepCount 个
+	for i := 0; i < len(instances)-keepCount; i++ {
+		filename := sanitizeName(workflowName) + "_" + instances[i].ID + ".json"
+		_ = os.Remove(filepath.Join(ps.stateDir, filename))
+	}
+	return nil
+}
+
+// DeleteInstance 删除指定工作流的单个运行实例。
+func (ps *PersistStore) DeleteInstance(workflowName, instanceID string) error {
+	ps.mu.Lock()
+	defer ps.mu.Unlock()
+
+	filename := sanitizeName(workflowName) + "_" + instanceID + ".json"
+	return os.Remove(filepath.Join(ps.stateDir, filename))
+}
+
+// sanitizeName 将工作流名称转换为安全的文件名前缀。
+// 大写转小写，空格转连字符，移除特殊字符。
+func sanitizeName(name string) string {
+	result := make([]byte, 0, len(name))
+	for i := 0; i < len(name); i++ {
+		c := name[i]
+		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
+			result = append(result, c)
+		} else if c >= 'A' && c <= 'Z' {
+			result = append(result, c+32) // 转小写
+		} else if c == ' ' {
+			result = append(result, '-')
+		}
+	}
+	if len(result) == 0 {
+		return "unnamed"
+	}
+	return string(result)
+}
