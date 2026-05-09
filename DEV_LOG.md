@@ -30,6 +30,7 @@
 | **频道**      | 无                                              | **新增 Browser 频道**              | 通过 WebSocket 直连浏览器扩展，支持 Token 认证，无需 Launcher 仪表板                   | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 | **浏览器插件** | 无                                                              | **新增 Chrome 浏览器扩展**         | Sidepanel UI + Background 操作执行 + Content Script 注入，支持点击/输入/导航/截图等操作 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 | **工具集**    | 无                                      | **新增 `browser_ext` 工具**        | 通过浏览器扩展执行操作（get_page_info/click/type/fill/scroll/screenshot 等），仅限 browser 频道使用 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
+| **工作流**    | 无                                      | **新增工作流引擎**                 | 声明式多步骤任务编排，支持 Cron/事件/手动触发、变量、条件分支、并行执行、重试超时、频道通知，含 Web UI 可视化编辑 | [feature/workflow-engine](https://github.com/dtapps/picoclaw/tree/feature/workflow-engine) |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>

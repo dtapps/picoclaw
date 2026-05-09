@@ -1,5 +1,6 @@
 import type { ReactNode } from "react"
 
+import { ThemeProvider } from "./hooks/use-theme"
 import { useHighlightTheme } from "./hooks/use-highlight-theme"
 
 interface AppProvidersProps {
@@ -9,5 +10,9 @@ interface AppProvidersProps {
 export function AppProviders({ children }: AppProvidersProps) {
   useHighlightTheme()
 
-  return <>{children}</>
+  return (
+    <ThemeProvider>
+      {children}
+    </ThemeProvider>
+  )
 }

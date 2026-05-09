@@ -14,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/sipeed/picoclaw/pkg/agent"
 	"github.com/sipeed/picoclaw/pkg/audio/asr"
 	"github.com/sipeed/picoclaw/pkg/audio/tts"
@@ -52,6 +54,8 @@ import (
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/state"
 	"github.com/sipeed/picoclaw/pkg/tools"
+	toolshared "github.com/sipeed/picoclaw/pkg/tools/shared"
+	"github.com/sipeed/picoclaw/pkg/workflow"
 )
 
 const (
@@ -66,6 +70,7 @@ const (
 
 type services struct {
 	CronService      *cron.CronService
+	WorkflowService  *workflow.Service
 	HeartbeatService *heartbeat.HeartbeatService
 	MediaStore       media.MediaStore
 	ChannelManager   *channels.Manager
@@ -383,6 +388,19 @@ func setupAndStartServices(
 	}
 	fmt.Println("✓ Cron service started")
 
+	// 工作流服务
+	runningServices.WorkflowService, err = setupWorkflowService(
+		agentLoop,
+		msgBus,
+		cfg.WorkspacePath(),
+		cfg,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error setting up workflow service: %w", err)
+	}
+	agentLoop.SetWorkflowService(runningServices.WorkflowService)
+	fmt.Println("✓ Workflow service started")
+
 	runningServices.HeartbeatService = heartbeat.NewHeartbeatService(
 		cfg.WorkspacePath(),
 		cfg.Heartbeat.Interval,
@@ -449,6 +467,12 @@ func setupAndStartServices(
 		listenAddr,
 		runningServices.HealthServer,
 	)
+
+	// 注册工作流内部 API 端点（供 Web 后端反向代理调用）
+	if runningServices.WorkflowService != nil {
+		workflowAPI := workflow.NewInternalAPI(runningServices.WorkflowService)
+		workflowAPI.RegisterOnMux(runningServices.ChannelManager.Mux())
+	}
 
 	if err = runningServices.ChannelManager.StartAll(context.Background()); err != nil {
 		return nil, fmt.Errorf("error starting channels: %w", err)
@@ -630,6 +654,26 @@ func restartServices(
 		return fmt.Errorf("error restarting cron service: %w", err)
 	}
 	fmt.Println("  ✓ Cron service restarted")
+
+	// 工作流服务
+	runningServices.WorkflowService, err = setupWorkflowService(
+		al,
+		msgBus,
+		cfg.WorkspacePath(),
+		cfg,
+	)
+	if err != nil {
+		return fmt.Errorf("error restarting workflow service: %w", err)
+	}
+	al.SetWorkflowService(runningServices.WorkflowService)
+
+	// 重新注册工作流内部 API（更新服务引用）
+	if runningServices.ChannelManager.Mux() != nil {
+		workflowAPI := workflow.NewInternalAPI(runningServices.WorkflowService)
+		workflowAPI.RegisterOnMux(runningServices.ChannelManager.Mux())
+	}
+
+	fmt.Println("  ✓ Workflow service restarted")
 
 	runningServices.HeartbeatService = heartbeat.NewHeartbeatService(
 		cfg.WorkspacePath(),
@@ -814,6 +858,158 @@ func setupCronTool(
 	}
 
 	return cronService, nil
+}
+
+// setupWorkflowService 初始化并启动工作流服务。
+// 创建持久化存储、步骤执行器、引擎和服务实例，
+// 注册 WorkflowTool 到 Agent（如果启用），并启动服务。
+// 设计模式与 setupCronTool 保持一致。
+func setupWorkflowService(
+	agentLoop *agent.AgentLoop,
+	msgBus *bus.MessageBus,
+	workspace string,
+	cfg *config.Config,
+) (*workflow.Service, error) {
+	// 创建持久化存储
+	store := workflow.NewPersistStore(workspace)
+
+	// 创建步骤执行器，注入 Agent 提示和工具调用的回调函数
+	executor := &workflow.StepExecutor{
+		// agent_prompt 类型步骤的回调：通过 AgentLoop 直接执行提示词
+		AgentPromptFunc: func(ctx context.Context, prompt string) (string, error) {
+			sessionKey := fmt.Sprintf("agent:workflow-%s", uuid.New().String())
+			// 从上下文中提取频道信息，由 Engine 在执行时注入
+			channel := "cli"
+			chatID := "workflow"
+			if ch, ok := workflow.ChannelFromCtx(ctx); ok {
+				channel = ch
+			}
+			if cid, ok := workflow.ChatIDFromCtx(ctx); ok {
+				chatID = cid
+			}
+			return agentLoop.ProcessDirectWithChannel(ctx, prompt, sessionKey, channel, chatID)
+		},
+		// tool_call 类型步骤的回调：通过工具注册表查找并执行指定工具
+		ToolCallFunc: func(ctx context.Context, toolName string, args map[string]any) (string, bool, error) {
+			registry := agentLoop.GetRegistry()
+			defaultAgent := registry.GetDefaultAgent()
+			if defaultAgent == nil {
+				return "", false, fmt.Errorf("no default agent available")
+			}
+			tool, ok := defaultAgent.Tools.Get(toolName)
+			if !ok {
+				return "", false, fmt.Errorf("tool '%s' not found", toolName)
+			}
+			ctx = toolshared.WithToolContext(ctx, "cli", "workflow")
+			result := tool.Execute(ctx, args)
+			return result.ForLLM, result.IsError, nil
+		},
+	}
+
+	// 创建引擎
+	engine := workflow.NewEngine(store, executor)
+
+	// 设置执行开始回调：推送开始通知到绑定频道
+	engine.SetOnStart(func(inst *workflow.WorkflowInstance) {
+		if inst.Channel == "" || inst.ChatID == "" {
+			return
+		}
+		msgBus.PublishOutbound(context.Background(), bus.OutboundMessage{
+			Context: bus.NewOutboundContext(inst.Channel, inst.ChatID, ""),
+			Content: fmt.Sprintf("🚀 工作流 '%s' 开始执行\n触发: %s", inst.WorkflowName, inst.TriggerType),
+		})
+	})
+
+	// 设置步骤开始回调：通知频道即将执行的步骤
+	engine.SetOnStepStart(func(step workflow.Step, inst *workflow.WorkflowInstance) {
+		if inst.Channel == "" || inst.ChatID == "" {
+			return
+		}
+		var actionDesc string
+		switch step.Action {
+		case "agent_prompt":
+			actionDesc = fmt.Sprintf("Agent 提示: %s", step.Prompt)
+		case "tool_call":
+			actionDesc = fmt.Sprintf("工具调用: %s", step.Tool)
+		case "parallel":
+			actionDesc = "并行执行"
+		case "if":
+			actionDesc = fmt.Sprintf("条件判断: %s", step.When)
+		default:
+			actionDesc = step.Action
+		}
+		// 截断过长的描述
+		if len(actionDesc) > 80 {
+			actionDesc = actionDesc[:77] + "..."
+		}
+		msgBus.PublishOutbound(context.Background(), bus.OutboundMessage{
+			Context: bus.NewOutboundContext(inst.Channel, inst.ChatID, ""),
+			Content: fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", step.ID, actionDesc),
+		})
+	})
+
+	// 设置步骤完成回调：将 AI 响应实时推送到绑定频道
+	engine.SetOnStepComplete(func(step workflow.Step, inst *workflow.WorkflowInstance, result workflow.StepResult) {
+		if inst.Channel == "" || inst.ChatID == "" {
+			return
+		}
+		// 仅推送 agent_prompt 类型的步骤输出（AI 响应）
+		if step.Action != "agent_prompt" || result.Error != nil || result.Output == "" {
+			return
+		}
+		msgBus.PublishOutbound(context.Background(), bus.OutboundMessage{
+			Context: bus.NewOutboundContext(inst.Channel, inst.ChatID, ""),
+			Content: result.Output,
+		})
+	})
+
+	// 设置执行完成回调：将结果推送到绑定频道
+	engine.SetOnComplete(func(inst *workflow.WorkflowInstance) {
+		if inst.Channel == "" || inst.ChatID == "" {
+			return
+		}
+		// 构建摘要消息
+		statusText := "✅ 完成"
+		if inst.Status == workflow.StatusFailed {
+			statusText = "❌ 失败"
+		} else if inst.Status == workflow.StatusCancelled {
+			statusText = "⛔ 已取消"
+		}
+		summary := fmt.Sprintf("工作流 '%s' %s\n实例: %s\n耗时: %s",
+			inst.WorkflowName, statusText, inst.ID,
+			inst.FinishedAt.Sub(inst.StartedAt).Round(time.Second))
+		if inst.Error != "" {
+			summary += "\n错误: " + inst.Error
+		}
+		msgBus.PublishOutbound(context.Background(), bus.OutboundMessage{
+			Context: bus.NewOutboundContext(inst.Channel, inst.ChatID, ""),
+			Content: summary,
+		})
+	})
+
+	// 创建服务
+	svcCfg := workflow.ServiceConfig{
+		WorkspaceDir: workspace,
+		MsgBus:       msgBus,
+		EventBus:     agentLoop.RuntimeEventBus(),
+	}
+	service := workflow.NewService(store, engine, svcCfg)
+
+	// 如果工作流工具已启用，注册到 Agent
+	if cfg.Tools.IsToolEnabled("workflow") {
+		workflowTool, err := tools.NewWorkflowTool(service)
+		if err != nil {
+			return nil, fmt.Errorf("critical error during WorkflowTool initialization: %w", err)
+		}
+		agentLoop.RegisterTool(workflowTool)
+	}
+
+	// 启动服务（加载工作流定义、订阅事件总线、启动 cron 检查循环）
+	if err := service.Start(); err != nil {
+		return nil, fmt.Errorf("error starting workflow service: %w", err)
+	}
+
+	return service, nil
 }
 
 func createHeartbeatHandler(agentLoop *agent.AgentLoop) func(prompt, channel, chatID string) *tools.ToolResult {

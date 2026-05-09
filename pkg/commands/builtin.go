@@ -20,5 +20,6 @@ func BuiltinDefinitions() []Definition {
 		subagentsCommand(),
 		reloadCommand(),
 		execCommand(),
+		workflowCommand(),
 	}
 }

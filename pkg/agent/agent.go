@@ -74,6 +74,18 @@ type AgentLoop struct {
 	reloadFunc func() error
 
 	providerFactory func(*config.ModelConfig) (providers.LLMProvider, string, error)
+
+	// 构造后注入的外部服务
+	workflowService interface {
+		ListWorkflowsForCommand() []commands.WorkflowInfo
+		RunWorkflow(ctx context.Context, name, channel, chatID string) (string, error)
+		ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error)
+		BindChannel(name, channel, chatID string) error
+		UnbindChannel(name string) error
+		SetEnabled(name string, enabled bool) error
+		InstancesForCommand(name string) ([]commands.WorkflowInstanceInfo, error)
+		StopInstance(instanceID string) error
+	}
 }
 
 // processOptions configures how a message is processed

@@ -1,0 +1,24 @@
+name: manual-quick-task
+description: "手动触发示例：快速执行多步骤任务，根据结果走不同分支"
+
+steps:
+  - id: step1
+    action: agent_prompt
+    prompt: "帮我整理今天的工作计划"
+    output_key: plan
+
+  - id: step2
+    action: if
+    when: on_success
+    if_true:
+      - id: prioritize
+        action: agent_prompt
+        prompt: "根据计划 {{.step1.plan}}，列出需要优先处理的3件事"
+        output_key: priorities
+    if_false:
+      - id: retry_plan
+        action: agent_prompt
+        prompt: "工作计划生成失败，请重新尝试或手动创建计划"
+
+config:
+  failure_strategy: continue

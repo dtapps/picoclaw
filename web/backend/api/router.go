@@ -119,6 +119,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// 智能体模型设置（活动模型 + 备选模型）
 	h.registerModelSettingsRoutes(mux)
+
+	// 工作流引擎
+	h.registerWorkflowRoutes(mux)
 }
 
 // Shutdown gracefully shuts down the handler, stopping the gateway if it was started by this handler.

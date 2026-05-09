@@ -1,0 +1,45 @@
+name: parallel-data-fetch
+description: "并行获取多个数据源，根据结果决定生成完整报告或降级报告"
+
+triggers:
+  - cron: "0 6 * * *"
+    tz: Asia/Shanghai
+
+steps:
+  - id: fetch_all
+    action: parallel
+    parallel:
+      - id: fetch_tech_news
+        action: agent_prompt
+        prompt: "搜索今日科技新闻摘要"
+        output_key: tech
+
+      - id: fetch_financial_news
+        action: agent_prompt
+        prompt: "搜索今日财经新闻摘要"
+        output_key: finance
+
+      - id: fetch_sports_news
+        action: agent_prompt
+        prompt: "搜索今日体育新闻摘要"
+        output_key: sports
+
+  - id: decide_report
+    action: if
+    when: on_success
+    if_true:
+      - id: compile_full_report
+        action: agent_prompt
+        prompt: |
+          根据以下数据生成每日完整简报：
+          科技：{{.fetch_tech_news.tech}}
+          财经：{{.fetch_financial_news.finance}}
+          体育：{{.fetch_sports_news.sports}}
+        output_key: full_report
+    if_false:
+      - id: compile_partial_report
+        action: agent_prompt
+        prompt: "部分数据源不可用，根据已有数据生成降级简报"
+
+config:
+  failure_strategy: continue

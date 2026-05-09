@@ -18,9 +18,11 @@ import { Route as EnvironmentRouteImport } from './routes/environment'
 import { Route as CredentialsRouteImport } from './routes/credentials'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AgentRouteImport } from './routes/agent'
+import { Route as WorkflowsRouteRouteImport } from './routes/workflows/route'
 import { Route as SessionsRouteRouteImport } from './routes/sessions/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkflowsEditorRouteImport } from './routes/workflows/editor'
 import { Route as SessionsIdRouteImport } from './routes/sessions/$id'
 import { Route as ConfigRawRouteImport } from './routes/config.raw'
 import { Route as ChannelsNameRouteImport } from './routes/channels/$name'
@@ -74,6 +76,11 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkflowsRouteRoute = WorkflowsRouteRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SessionsRouteRoute = SessionsRouteRouteImport.update({
   id: '/sessions',
   path: '/sessions',
@@ -88,6 +95,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const WorkflowsEditorRoute = WorkflowsEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => WorkflowsRouteRoute,
 } as any)
 const SessionsIdRoute = SessionsIdRouteImport.update({
   id: '/$id',
@@ -129,6 +141,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
   '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -145,11 +158,13 @@ export interface FileRoutesByFullPath {
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
   '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
   '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -166,12 +181,14 @@ export interface FileRoutesByTo {
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
   '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
   '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
@@ -188,6 +205,7 @@ export interface FileRoutesById {
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
   '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -195,6 +213,7 @@ export interface FileRouteTypes {
     | '/'
     | '/channels'
     | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -211,11 +230,13 @@ export interface FileRouteTypes {
     | '/channels/$name'
     | '/config/raw'
     | '/sessions/$id'
+    | '/workflows/editor'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/channels'
     | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -232,11 +253,13 @@ export interface FileRouteTypes {
     | '/channels/$name'
     | '/config/raw'
     | '/sessions/$id'
+    | '/workflows/editor'
   id:
     | '__root__'
     | '/'
     | '/channels'
     | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
@@ -253,12 +276,14 @@ export interface FileRouteTypes {
     | '/channels/$name'
     | '/config/raw'
     | '/sessions/$id'
+    | '/workflows/editor'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChannelsRouteRoute: typeof ChannelsRouteRouteWithChildren
   SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
+  WorkflowsRouteRoute: typeof WorkflowsRouteRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   ConfigRoute: typeof ConfigRouteWithChildren
   CredentialsRoute: typeof CredentialsRoute
@@ -335,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workflows': {
+      id: '/workflows'
+      path: '/workflows'
+      fullPath: '/workflows'
+      preLoaderRoute: typeof WorkflowsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/sessions': {
       id: '/sessions'
       path: '/sessions'
@@ -355,6 +387,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/workflows/editor': {
+      id: '/workflows/editor'
+      path: '/editor'
+      fullPath: '/workflows/editor'
+      preLoaderRoute: typeof WorkflowsEditorRouteImport
+      parentRoute: typeof WorkflowsRouteRoute
     }
     '/sessions/$id': {
       id: '/sessions/$id'
@@ -432,6 +471,18 @@ const SessionsRouteRouteWithChildren = SessionsRouteRoute._addFileChildren(
   SessionsRouteRouteChildren,
 )
 
+interface WorkflowsRouteRouteChildren {
+  WorkflowsEditorRoute: typeof WorkflowsEditorRoute
+}
+
+const WorkflowsRouteRouteChildren: WorkflowsRouteRouteChildren = {
+  WorkflowsEditorRoute: WorkflowsEditorRoute,
+}
+
+const WorkflowsRouteRouteWithChildren = WorkflowsRouteRoute._addFileChildren(
+  WorkflowsRouteRouteChildren,
+)
+
 interface AgentRouteChildren {
   AgentHubRoute: typeof AgentHubRoute
   AgentMcpRoute: typeof AgentMcpRoute
@@ -463,6 +514,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChannelsRouteRoute: ChannelsRouteRouteWithChildren,
   SessionsRouteRoute: SessionsRouteRouteWithChildren,
+  WorkflowsRouteRoute: WorkflowsRouteRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   ConfigRoute: ConfigRouteWithChildren,
   CredentialsRoute: CredentialsRoute,
