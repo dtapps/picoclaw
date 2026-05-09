@@ -567,16 +567,8 @@ func defaultChannels() ChannelsConfig {
 				"channels": []string{},
 			},
 		},
-		"weibo": map[string]any{
-			"settings": map[string]any{
-				"app_id": "",
-			},
-		},
-		"yuanbao": map[string]any{
-			"settings": map[string]any{
-				"app_id": "",
-			},
-		},
+		"weibo":   map[string]any{},
+		"yuanbao": map[string]any{},
 		"browser": map[string]any{},
 	}
 
