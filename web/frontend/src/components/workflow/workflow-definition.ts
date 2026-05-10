@@ -53,16 +53,22 @@ export function workflowToDefinition(wf: Workflow): Definition {
 
 /** 单个 Step 转换为 SWD Step */
 function stepToSwd(s: WorkflowStep): Step {
+  const displayName = s.name || s.id
+  const stepId = s.id
+
   // if 步骤使用 BranchedStep 格式
   if (s.action === "if") {
     return {
-      id: s.id,
+      id: stepId,
       componentType: COMPONENT_SWITCH,
       type: "if",
-      name: s.id,
+      name: displayName,
       properties: {
+        stepId,
         action: "if",
         when: s.when || "",
+        delay: s.delay || "",
+        timeout: s.timeout || "",
       },
       branches: {
         true: (s.if_true || []).map(stepToSwd),
@@ -79,29 +85,34 @@ function stepToSwd(s: WorkflowStep): Step {
       branches[`step_${i}`] = [stepToSwd(sub)]
     })
     return {
-      id: s.id,
+      id: stepId,
       componentType: COMPONENT_SWITCH,
       type: "parallel",
-      name: s.id,
+      name: displayName,
       properties: {
+        stepId,
         action: "parallel",
         when: s.when || "",
+        delay: s.delay || "",
         output_key: s.output_key || "",
+        timeout: s.timeout || "",
       },
       branches,
     } as BranchedStep
   }
 
   return {
-    id: s.id,
+    id: stepId,
     componentType: COMPONENT_TASK,
     type: s.action,
-    name: s.id,
+    name: displayName,
     properties: {
+      stepId,
       action: s.action,
       prompt: s.prompt || "",
       tool: s.tool || "",
       when: s.when || "",
+      delay: s.delay || "",
       output_key: s.output_key || "",
       timeout: s.timeout || "",
     },
@@ -150,13 +161,20 @@ export function definitionToWorkflow(def: Definition): {
 
 /** SWD Step 转换为我们的 Step */
 function swdToStep(s: Step): WorkflowStep {
+  // stepId 存在 properties 中，是实际的后端 ID；s.name 是显示名称
+  const stepId = ((s.properties.stepId as string) || s.name).replace(/[^a-zA-Z0-9_]/g, "_")
+  const displayName = s.name !== stepId ? s.name : undefined
+
   // BranchedStep（if 条件）
-  if (s.componentType === COMPONENT_SWITCH && "branches" in s) {
+  if (s.componentType === COMPONENT_SWITCH && s.type === "if" && "branches" in s) {
     const branched = s as BranchedStep
     return {
-      id: s.name,
+      id: stepId,
+      name: displayName,
       action: "if",
-      when: (s.properties.when as string) || "",
+      when: (s.properties.when as string) || undefined,
+      delay: (s.properties.delay as string) || undefined,
+      timeout: (s.properties.timeout as string) || undefined,
       if_true: (branched.branches.true || []).map(swdToStep),
       if_false: (branched.branches.false || []).map(swdToStep),
     }
@@ -169,10 +187,13 @@ function swdToStep(s: Step): WorkflowStep {
       .flat()
       .map(swdToStep)
     return {
-      id: s.name,
+      id: stepId,
+      name: displayName,
       action: "parallel",
       when: (s.properties.when as string) || undefined,
+      delay: (s.properties.delay as string) || undefined,
       output_key: (s.properties.output_key as string) || undefined,
+      timeout: (s.properties.timeout as string) || undefined,
       parallel: parallelSteps,
     }
   }
@@ -181,11 +202,13 @@ function swdToStep(s: Step): WorkflowStep {
   const sp = s.properties
   const action = (sp.action || s.type) as WorkflowStep["action"]
   return {
-    id: s.name,
+    id: stepId,
+    name: displayName,
     action,
     prompt: action === "agent_prompt" ? (sp.prompt as string) : undefined,
     tool: action === "tool_call" ? (sp.tool as string) : undefined,
     when: (sp.when as string) || undefined,
+    delay: (sp.delay as string) || undefined,
     output_key: (sp.output_key as string) || undefined,
     timeout: (sp.timeout as string) || undefined,
   }

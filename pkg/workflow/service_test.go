@@ -215,8 +215,8 @@ func TestService_CreateWorkflow(t *testing.T) {
 	if loaded.Vars["key"] != "value" {
 		t.Fatalf("Vars[key] = %q, want %q", loaded.Vars["key"], "value")
 	}
-	if !loaded.Enabled {
-		t.Fatal("workflow should be enabled by default")
+	if loaded.Enabled {
+		t.Fatal("workflow should be disabled by default when created via web")
 	}
 }
 

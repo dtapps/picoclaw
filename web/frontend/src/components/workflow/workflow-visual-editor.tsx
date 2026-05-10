@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { toast } from "sonner"
 import { useTheme } from "@/hooks/use-theme"
 import type {
   BranchedStep,
@@ -22,6 +23,8 @@ import "sequential-workflow-designer/css/designer.css"
 import "sequential-workflow-designer/css/designer-light.css"
 import "sequential-workflow-designer/css/designer-dark.css"
 import "./workflow-editor.css"
+
+import { wrapDefinition } from "./workflow-definition"
 
 import {
   COMPONENT_TASK,
@@ -147,6 +150,7 @@ interface StepEditorLabels {
   prompt: string
   tool: string
   outputKey: string
+  delay: string
   timeout: string
   agentPrompt: string
   toolCall: string
@@ -169,6 +173,21 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
   const action = (properties.action as string) || type
   const isIfStep = componentType === COMPONENT_SWITCH && type !== "parallel"
   const isParallelStep = type === "parallel"
+  const stepId = (properties.stepId as string) || ""
+
+  const handleStepIdChange = (value: string) => {
+    // 只允许 a-zA-Z0-9_
+    const sanitized = value.replace(/[^a-zA-Z0-9_]/g, "")
+    setProperty("stepId", sanitized)
+    // 如果显示名称和旧 ID 相同，同步更新显示名称
+    if (name === stepId) {
+      setName(sanitized)
+    }
+  }
+
+  const handleNameChange = (value: string) => {
+    setName(value)
+  }
 
   const handleAddBranch = () => {
     const walker = new DefinitionWalker()
@@ -196,11 +215,35 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
   return (
     <div className="sqd-editor">
       <div className="sqd-editor-field">
-        <label>{labels.name} (ID)</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="step_id" />
+        <label>ID *</label>
+        <input value={stepId} onChange={(e) => handleStepIdChange(e.target.value)} placeholder="step_id" />
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.name}</label>
+        <input value={name === stepId ? "" : name} onChange={(e) => handleNameChange(e.target.value)} placeholder={stepId} />
       </div>
       {isIfStep ? (
-        <IfStepEditor labels={labels} />
+        <>
+          <IfStepEditor labels={labels} />
+          <div className="sqd-editor-grid">
+            <div className="sqd-editor-field">
+              <label>{labels.delay}</label>
+              <input
+                value={(properties.delay as string) || ""}
+                onChange={(e) => setProperty("delay", e.target.value)}
+                placeholder="5s"
+              />
+            </div>
+            <div className="sqd-editor-field">
+              <label>{labels.timeout}</label>
+              <input
+                value={(properties.timeout as string) || ""}
+                onChange={(e) => setProperty("timeout", e.target.value)}
+                placeholder="30s"
+              />
+            </div>
+          </div>
+        </>
       ) : isParallelStep ? (
         <>
           <div className="sqd-editor-field">
@@ -218,6 +261,32 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
             <button type="button" onClick={handleRemoveBranch} style={{ fontSize: '0.8rem', padding: '4px 8px', border: '1px solid var(--input)', borderRadius: 'var(--radius)', background: 'transparent', color: 'var(--foreground)', cursor: 'pointer' }}>
               − {labels.removeBranch}
             </button>
+          </div>
+          <div className="sqd-editor-grid">
+            <div className="sqd-editor-field">
+              <label>{labels.outputKey}</label>
+              <input
+                value={(properties.output_key as string) || ""}
+                onChange={(e) => setProperty("output_key", e.target.value)}
+                placeholder="result"
+              />
+            </div>
+            <div className="sqd-editor-field">
+              <label>{labels.delay}</label>
+              <input
+                value={(properties.delay as string) || ""}
+                onChange={(e) => setProperty("delay", e.target.value)}
+                placeholder="5s"
+              />
+            </div>
+            <div className="sqd-editor-field">
+              <label>{labels.timeout}</label>
+              <input
+                value={(properties.timeout as string) || ""}
+                onChange={(e) => setProperty("timeout", e.target.value)}
+                placeholder="30s"
+              />
+            </div>
           </div>
         </>
       ) : (
@@ -259,6 +328,14 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               />
             </div>
             <div className="sqd-editor-field">
+              <label>{labels.delay}</label>
+              <input
+                value={(properties.delay as string) || ""}
+                onChange={(e) => setProperty("delay", e.target.value)}
+                placeholder="5s"
+              />
+            </div>
+            <div className="sqd-editor-field">
               <label>{labels.timeout}</label>
               <input
                 value={(properties.timeout as string) || ""}
@@ -293,6 +370,7 @@ interface RootEditorLabels {
 }
 
 function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
+  const { t } = useTranslation()
   const { properties, setProperty } = useRootEditor()
 
   const vars = (properties.vars as Record<string, string>) || {}
@@ -304,6 +382,15 @@ function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
     const [oldKey, oldValue] = entries[index]
     const newKey = field === "key" ? val : oldKey
     const newValue = field === "value" ? val : oldValue
+    // 检查 key 重复
+    if (field === "key" && newKey && newKey !== oldKey) {
+      for (let i = 0; i < entries.length; i++) {
+        if (i !== index && entries[i][0] === newKey) {
+          toast.warning(t("pages.workflows.duplicate_var_key", "Variable key '{{key}}' already exists, the previous value will be overwritten", { key: newKey }))
+          break
+        }
+      }
+    }
     // Rebuild preserving order, replacing entry at index
     const rebuilt: Record<string, string> = {}
     for (let i = 0; i < entries.length; i++) {
@@ -352,7 +439,7 @@ function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
         <label>{labels.name} *</label>
         <input
           value={(properties.name as string) || ""}
-          onChange={(e) => setProperty("name", e.target.value)}
+          onChange={(e) => setProperty("name", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
           placeholder="daily-report"
         />
       </div>
@@ -474,30 +561,35 @@ function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
 
 // --- 工具箱步骤模板 ---
 
-function createTaskStep(action: string, label: string) {
+function createTaskStep(action: string) {
   return {
     componentType: COMPONENT_TASK,
     type: action,
-    name: label,
+    name: "",
     properties: {
+      stepId: "",
       action,
       prompt: "",
       tool: "",
       when: "",
+      delay: "",
       output_key: "",
       timeout: "",
     },
   }
 }
 
-function createIfStep(label: string) {
+function createIfStep() {
   return {
     componentType: COMPONENT_SWITCH,
     type: "if",
-    name: label,
+    name: "",
     properties: {
+      stepId: "",
       action: "if",
       when: "",
+      delay: "",
+      timeout: "",
     },
     branches: {
       true: [] as Step[],
@@ -506,16 +598,19 @@ function createIfStep(label: string) {
   }
 }
 
-function createParallelStep(label: string): BranchedStep {
+function createParallelStep(): BranchedStep {
   return {
-    id: label,
+    id: "",
     componentType: COMPONENT_SWITCH,
     type: "parallel",
-    name: label,
+    name: "",
     properties: {
+      stepId: "",
       action: "parallel",
       when: "",
+      delay: "",
       output_key: "",
+      timeout: "",
     },
     branches: {
       step_0: [],
@@ -539,12 +634,111 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
   const [isToolboxCollapsed, setIsToolboxCollapsed] = useState(false)
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false)
 
+  // 步骤 ID 计数器（按类型独立计数）
+  const stepIdCounters = useRef<Record<string, number>>({})
+
+  const getStepPrefix = (action: string, type: string): string => {
+    if (action === "agent_prompt") return "prompt"
+    if (action === "tool_call") return "tool"
+    if (action === "parallel" || type === "parallel") return "parallel"
+    if (action === "if" || type === "if") return "if"
+    return "step"
+  }
+
+  // 为新增的空 ID 步骤自动分配递增 ID，仅在存在空 ID 时才返回新对象
+  const ensureStepIds = (def: Definition): Definition => {
+    const existingIds = new Set<string>()
+    // 第一遍：收集所有已有的 stepId
+    const collectIds = (steps: Step[]) => {
+      for (const s of steps) {
+        const sid = (s.properties.stepId as string) || ""
+        if (sid) existingIds.add(sid)
+        if ("branches" in s) {
+          const b = s as BranchedStep
+          for (const branch of Object.values(b.branches || {})) {
+            collectIds(branch)
+          }
+        }
+      }
+    }
+    collectIds(def.sequence)
+
+    // 检查是否有空 ID
+    const hasEmptyId = (steps: Step[]): boolean => {
+      for (const s of steps) {
+        if (!(s.properties.stepId as string)) return true
+        if ("branches" in s) {
+          const b = s as BranchedStep
+          for (const branch of Object.values(b.branches || {})) {
+            if (hasEmptyId(branch)) return true
+          }
+        }
+      }
+      return false
+    }
+
+    if (!hasEmptyId(def.sequence)) return def
+
+    // 第二遍：分配 ID（尽量保持原引用不变，避免触发不必要的重渲染）
+    const assignIds = (steps: Step[]): Step[] => {
+      let changed = false
+      const result = steps.map((s) => {
+        let newStep = s
+        const sid = (s.properties.stepId as string) || ""
+        if (!sid) {
+          const action = (s.properties.action as string) || s.type
+          const prefix = getStepPrefix(action, s.type)
+          // 按类型独立计数
+          if (!stepIdCounters.current[prefix]) stepIdCounters.current[prefix] = 1
+          while (existingIds.has(`${prefix}_${stepIdCounters.current[prefix]}`)) {
+            stepIdCounters.current[prefix]++
+          }
+          const newId = `${prefix}_${stepIdCounters.current[prefix]}`
+          stepIdCounters.current[prefix]++
+          existingIds.add(newId)
+          changed = true
+          newStep = { ...s, name: newId, properties: { ...s.properties, stepId: newId } }
+        }
+        if ("branches" in newStep) {
+          const b = newStep as BranchedStep
+          let branchChanged = false
+          const newBranches: Record<string, Step[]> = {}
+          for (const [key, branch] of Object.entries(b.branches || {})) {
+            const newBranch = assignIds(branch)
+            if (newBranch !== branch) branchChanged = true
+            newBranches[key] = newBranch
+          }
+          if (branchChanged) {
+            changed = true
+            newStep = { ...newStep, branches: newBranches } as BranchedStep
+          }
+        }
+        return newStep
+      })
+      return changed ? result : steps
+    }
+
+    const newSequence = assignIds(def.sequence)
+    if (newSequence === def.sequence) return def
+    return { ...def, sequence: newSequence }
+  }
+
+  const handleChange = (def: WrappedDefinition<Definition>) => {
+    const fixed = ensureStepIds(def.value)
+    if (fixed !== def.value) {
+      onChange(wrapDefinition(fixed))
+    } else {
+      onChange(def)
+    }
+  }
+
   const stepEditorLabels: StepEditorLabels = useMemo(() => ({
     name: t("pages.workflows.name", "Name"),
     action: t("pages.workflows.action", "Action"),
     prompt: t("pages.workflows.prompt_placeholder", "Prompt for the agent..."),
     tool: t("pages.workflows.tool_placeholder", "Tool name"),
     outputKey: t("pages.workflows.output_key", "Output Key"),
+    delay: t("pages.workflows.delay", "Delay"),
     timeout: t("pages.workflows.timeout", "Timeout"),
     agentPrompt: t("pages.workflows.trigger_agent", "Agent Prompt"),
     toolCall: t("pages.workflows.trigger_tool", "Tool Call"),
@@ -625,15 +819,15 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
         {
           name: t("pages.workflows.toolbox_steps", "Steps"),
           steps: [
-            createTaskStep("agent_prompt", t("pages.workflows.agent_prompt", "Agent Prompt")),
-            createTaskStep("tool_call", t("pages.workflows.tool_call", "Tool Call")),
+            createTaskStep("agent_prompt"),
+            createTaskStep("tool_call"),
           ],
         },
         {
           name: t("pages.workflows.toolbox_logic", "Logic"),
           steps: [
-            createParallelStep(t("pages.workflows.parallel", "Parallel")),
-            createIfStep(t("pages.workflows.trigger_if", "If")),
+            createParallelStep(),
+            createIfStep(),
           ],
         },
       ],
@@ -706,7 +900,7 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
     <div ref={designerRef} style={{ width: "100%", height: "100%" }}>
       <SequentialWorkflowDesigner
         definition={value}
-        onDefinitionChange={onChange}
+        onDefinitionChange={handleChange}
         stepsConfiguration={stepsConfiguration}
         toolboxConfiguration={toolboxConfiguration}
         validatorConfiguration={validatorConfiguration}

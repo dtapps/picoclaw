@@ -184,7 +184,7 @@ func (h *Handler) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 		Vars:        req.Vars,
 		Steps:       req.Steps,
 		Config:      req.Config,
-		Enabled:     true,
+		Enabled:     false,
 		CreatedAt:   time.Now(),
 		UpdatedAt:   time.Now(),
 	}
@@ -201,8 +201,19 @@ func (h *Handler) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if store.WorkflowExists(wf.Name) {
+		http.Error(w, fmt.Sprintf("Workflow %q already exists", wf.Name), http.StatusConflict)
+		return
+	}
+
 	if err := store.SaveWorkflow(wf); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to create workflow: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 默认禁用：创建 .disabled 标记文件，确保重新加载后 Enabled 仍为 false
+	if err := store.SetEnabled(wf.Name, false); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to set workflow disabled: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -229,8 +240,8 @@ func (h *Handler) handleImportWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 设置运行时字段
-	wf.Enabled = true
+	// 设置运行时字段（默认禁用，用户确认后再启用）
+	wf.Enabled = false
 	wf.CreatedAt = time.Now()
 	wf.UpdatedAt = time.Now()
 
@@ -245,8 +256,19 @@ func (h *Handler) handleImportWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if store.WorkflowExists(wf.Name) {
+		http.Error(w, fmt.Sprintf("Workflow %q already exists", wf.Name), http.StatusConflict)
+		return
+	}
+
 	if err := store.SaveWorkflow(wf); err != nil {
 		http.Error(w, fmt.Sprintf("Failed to save workflow: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	// 默认禁用：创建 .disabled 标记文件，确保重新加载后 Enabled 仍为 false
+	if err := store.SetEnabled(wf.Name, false); err != nil {
+		http.Error(w, fmt.Sprintf("Failed to set workflow disabled: %v", err), http.StatusInternalServerError)
 		return
 	}
 
@@ -285,8 +307,8 @@ func (h *Handler) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 仅更新请求中提供的字段
-	if req.Description != "" {
-		wf.Description = req.Description
+	if req.Description != nil {
+		wf.Description = *req.Description
 	}
 	if req.Triggers != nil {
 		wf.Triggers = req.Triggers
@@ -376,6 +398,12 @@ func (h *Handler) handleToggleWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	name := r.PathValue("name")
+
+	// 检查工作流是否存在
+	if !store.WorkflowExists(name) {
+		http.Error(w, "Workflow not found", http.StatusNotFound)
+		return
+	}
 
 	var req struct {
 		Enabled bool `json:"enabled"`
@@ -570,7 +598,7 @@ type createWorkflowRequest struct {
 // updateWorkflowRequest 更新工作流请求体。
 // 所有字段均为可选，仅更新请求中提供的字段。
 type updateWorkflowRequest struct {
-	Description string                   `json:"description,omitempty"`
+	Description *string                  `json:"description,omitempty"`
 	Triggers    []workflow.Trigger       `json:"triggers,omitempty"`
 	Vars        map[string]string        `json:"vars,omitempty"`
 	Steps       []workflow.Step          `json:"steps,omitempty"`

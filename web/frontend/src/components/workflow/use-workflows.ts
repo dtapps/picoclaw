@@ -16,12 +16,14 @@ import {
   updateWorkflow,
 } from "@/api/workflow"
 
-export type WorkflowFilter = "all" | "enabled" | "disabled"
+export type StatusFilter = "all" | "enabled" | "disabled"
+export type TriggerFilter = "all" | "manual" | "cron" | "event"
 
 export function useWorkflows() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [filter, setFilter] = useState<WorkflowFilter>("all")
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
+  const [triggerFilter, setTriggerFilter] = useState<TriggerFilter>("all")
   const [searchQuery, setSearchQuery] = useState("")
 
   const { data: workflowsData, isLoading, error } = useQuery({
@@ -32,8 +34,11 @@ export function useWorkflows() {
   const workflows = workflowsData?.workflows || []
 
   const filteredWorkflows = workflows.filter((wf: WorkflowListItem) => {
-    if (filter === "enabled" && !wf.enabled) return false
-    if (filter === "disabled" && wf.enabled) return false
+    if (statusFilter === "enabled" && !wf.enabled) return false
+    if (statusFilter === "disabled" && wf.enabled) return false
+    if (triggerFilter === "manual" && wf.trigger_type !== "manual") return false
+    if (triggerFilter === "cron" && wf.trigger_type !== "cron") return false
+    if (triggerFilter === "event" && wf.trigger_type !== "event") return false
 
     if (searchQuery) {
       const query = searchQuery.toLowerCase()
@@ -113,11 +118,11 @@ export function useWorkflows() {
   })
 
   const handleCreate = (data: CreateWorkflowRequest) => {
-    createMutation.mutate(data)
+    return createMutation.mutateAsync(data)
   }
 
   const handleUpdate = (name: string, data: UpdateWorkflowRequest) => {
-    updateMutation.mutate({ name, data })
+    return updateMutation.mutateAsync({ name, data })
   }
 
   const handleDelete = (name: string) => {
@@ -141,9 +146,11 @@ export function useWorkflows() {
     filteredWorkflows,
     isLoading,
     error,
-    filter,
+    statusFilter,
+    triggerFilter,
     searchQuery,
-    setFilter,
+    setStatusFilter,
+    setTriggerFilter,
     setSearchQuery,
     handleCreate,
     handleUpdate,
@@ -155,5 +162,6 @@ export function useWorkflows() {
     isDeleting: deleteMutation.isPending,
     isToggling: toggleMutation.isPending,
     isRunning: runMutation.isPending,
+    isStopping: stopMutation.isPending,
   }
 }

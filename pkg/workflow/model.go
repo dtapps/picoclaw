@@ -51,7 +51,8 @@ type Trigger struct {
 //   - parallel: 并行执行多个子步骤
 //   - if: 条件判断，根据 when 表达式执行 true 或 false 分支
 type Step struct {
-	ID        string         `yaml:"id"                   json:"id"`                   // 步骤唯一标识，用于步骤间引用
+	ID        string         `yaml:"id"                   json:"id"`                   // 步骤唯一标识，用于步骤间引用（仅限 a-zA-Z0-9_）
+	Name      string         `yaml:"name,omitempty"       json:"name,omitempty"`       // 步骤显示名称（可选，支持任意字符）
 	Action    string         `yaml:"action"               json:"action"`               // 动作类型：agent_prompt | tool_call | parallel | if
 	Prompt    string         `yaml:"prompt,omitempty"     json:"prompt,omitempty"`     // agent_prompt 的提示词内容
 	Tool      string         `yaml:"tool,omitempty"       json:"tool,omitempty"`       // tool_call 的工具名称
@@ -60,6 +61,7 @@ type Step struct {
 	IfTrue    []Step         `yaml:"if_true,omitempty"    json:"if_true,omitempty"`    // if 条件为 true 时执行的步骤
 	IfFalse   []Step         `yaml:"if_false,omitempty"   json:"if_false,omitempty"`   // if 条件为 false 时执行的步骤
 	When      string         `yaml:"when,omitempty"       json:"when,omitempty"`       // 执行条件：on_error | on_success | 模板比较
+	Delay     string         `yaml:"delay,omitempty"      json:"delay,omitempty"`      // 执行前等待时间，如 "5s"、"1m"
 	Retry     *RetryConfig   `yaml:"retry,omitempty"      json:"retry,omitempty"`      // 重试配置
 	Timeout   string         `yaml:"timeout,omitempty"    json:"timeout,omitempty"`    // 超时时间，如 "30s"、"5m"
 	OutputKey string         `yaml:"output_key,omitempty" json:"output_key,omitempty"` // 输出键名，用于步骤间数据传递
@@ -74,8 +76,6 @@ type RetryConfig struct {
 
 // WorkflowConfig 包含工作流的全局配置。
 type WorkflowConfig struct {
-	Timeout         string `yaml:"timeout,omitempty"          json:"timeout,omitempty"`          // 全局超时
-	MaxConcurrent   int    `yaml:"max_concurrent,omitempty"   json:"max_concurrent,omitempty"`   // 最大并发步骤数
 	FailureStrategy string `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
 	NotifyChannel   string `yaml:"notify_channel,omitempty"   json:"notify_channel,omitempty"`   // 完成通知频道，如 "telegram"
 	NotifyChatID    string `yaml:"notify_chat_id,omitempty"   json:"notify_chat_id,omitempty"`   // 完成通知聊天 ID，如 "chat-123"
@@ -153,39 +153,114 @@ func (w *Workflow) Validate() error {
 	if w.Name == "" {
 		return validationError("工作流校验：名称不能为空")
 	}
+	if !isValidWorkflowName(w.Name) {
+		return validationError("工作流校验：名称不合法，仅允许英文字母、数字、连字符和下划线")
+	}
 	if len(w.Steps) == 0 {
 		return validationError("工作流校验：至少需要一个步骤")
 	}
 	ids := make(map[string]bool)
-	for i, step := range w.Steps {
-		if step.ID == "" {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] 缺少 id", i))
+	for _, step := range w.Steps {
+		if err := validateStep(step, ids); err != nil {
+			return err
 		}
-		if ids[step.ID] {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] id '%s' 重复", i, step.ID))
+	}
+
+	return nil
+}
+
+// validateStep 递归校验步骤及其子步骤，同时检查 ID 唯一性。
+func validateStep(step Step, ids map[string]bool) error {
+	label := step.Name
+	if label == "" {
+		label = step.ID
+	}
+	if step.ID == "" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」缺少 id", label))
+	}
+	if !isValidStepID(step.ID) {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」id '%s' 不合法，仅允许英文字母、数字和下划线", label, step.ID))
+	}
+	if ids[step.ID] {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」id '%s' 重复", label, step.ID))
+	}
+	ids[step.ID] = true
+	if step.Action != "agent_prompt" && step.Action != "tool_call" && step.Action != "parallel" &&
+		step.Action != "if" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」动作类型 '%s' 无效", label, step.Action))
+	}
+	if step.Action == "agent_prompt" && step.Prompt == "" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要提供 prompt", label))
+	}
+	if step.Action == "tool_call" && step.Tool == "" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要提供 tool 名称", label))
+	}
+	if step.Action == "parallel" && len(step.Parallel) == 0 {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要至少一个子步骤", label))
+	}
+	if step.Action == "if" && step.When == "" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要提供 when 条件", label))
+	}
+	if step.Action == "if" && len(step.IfTrue) == 0 && len(step.IfFalse) == 0 {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要至少一个分支步骤", label))
+	}
+
+	// 校验 duration 格式字段
+	if step.Delay != "" {
+		if _, err := time.ParseDuration(step.Delay); err != nil {
+			return validationError(fmt.Sprintf("工作流校验：步骤「%s」delay '%s' 格式无效（如 5s、1m30s）", label, step.Delay))
 		}
-		ids[step.ID] = true
-		if step.Action != "agent_prompt" && step.Action != "tool_call" && step.Action != "parallel" &&
-			step.Action != "if" {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] 动作类型 '%s' 无效", i, step.Action))
+	}
+	if step.Timeout != "" {
+		if _, err := time.ParseDuration(step.Timeout); err != nil {
+			return validationError(fmt.Sprintf("工作流校验：步骤「%s」timeout '%s' 格式无效（如 30s、1m）", label, step.Timeout))
 		}
-		if step.Action == "agent_prompt" && step.Prompt == "" {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] agent_prompt 需要提供 prompt", i))
+	}
+	if step.Retry != nil && step.Retry.Delay != "" {
+		if _, err := time.ParseDuration(step.Retry.Delay); err != nil {
+			return validationError(fmt.Sprintf("工作流校验：步骤「%s」retry delay '%s' 格式无效（如 10s）", label, step.Retry.Delay))
 		}
-		if step.Action == "tool_call" && step.Tool == "" {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] tool_call 需要提供 tool 名称", i))
+	}
+
+	// 递归校验子步骤
+	for _, sub := range step.Parallel {
+		if err := validateStep(sub, ids); err != nil {
+			return err
 		}
-		if step.Action == "parallel" && len(step.Parallel) == 0 {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] parallel 需要至少一个子步骤", i))
+	}
+	for _, sub := range step.IfTrue {
+		if err := validateStep(sub, ids); err != nil {
+			return err
 		}
-		if step.Action == "if" && step.When == "" {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] if 需要提供 when 条件", i))
-		}
-		if step.Action == "if" && len(step.IfTrue) == 0 && len(step.IfFalse) == 0 {
-			return validationError(fmt.Sprintf("工作流校验：步骤[%d] if 需要至少一个分支步骤", i))
+	}
+	for _, sub := range step.IfFalse {
+		if err := validateStep(sub, ids); err != nil {
+			return err
 		}
 	}
 	return nil
+}
+
+// isValidStepID 检查步骤 ID 是否只包含合法字符（英文字母、数字、下划线）。
+// 这确保了模板引用 {{.step_id.key}} 能被正确解析。
+func isValidStepID(id string) bool {
+	for _, r := range id {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_') {
+			return false
+		}
+	}
+	return len(id) > 0
+}
+
+// isValidWorkflowName 检查工作流名称是否只包含合法字符（英文字母、数字、连字符、下划线）。
+// 这确保了文件名 sanitizeName() 不会产生空字符串（导致 unnamed.yml）。
+func isValidWorkflowName(name string) bool {
+	for _, r := range name {
+		if !((r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_') {
+			return false
+		}
+	}
+	return len(name) > 0
 }
 
 // validationError 表示工作流校验错误。

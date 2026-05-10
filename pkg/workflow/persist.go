@@ -95,6 +95,16 @@ func (ps *PersistStore) SaveWorkflow(wf *Workflow) error {
 	return fileutil.WriteFileAtomic(filepath.Join(ps.workflowsDir, filename), data, 0o644)
 }
 
+// WorkflowExists 检查指定名称的工作流是否已存在。
+func (ps *PersistStore) WorkflowExists(name string) bool {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	ymlPath := filepath.Join(ps.workflowsDir, sanitizeName(name)+".yml")
+	_, err := os.Stat(ymlPath)
+	return err == nil
+}
+
 // DeleteWorkflow 删除工作流定义文件及其状态。
 func (ps *PersistStore) DeleteWorkflow(name string) error {
 	ps.mu.Lock()
@@ -126,7 +136,10 @@ func (ps *PersistStore) SetEnabled(name string, enabled bool) error {
 
 	disabledPath := filepath.Join(ps.workflowsDir, sanitizeName(name)+".disabled")
 	if enabled {
-		return os.Remove(disabledPath)
+		if err := os.Remove(disabledPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
 	}
 	return os.WriteFile(disabledPath, []byte{}, 0o644)
 }
@@ -251,15 +264,14 @@ func (ps *PersistStore) DeleteInstance(workflowName, instanceID string) error {
 }
 
 // sanitizeName 将工作流名称转换为安全的文件名前缀。
-// 大写转小写，空格转连字符，移除特殊字符。
+// 仅保留合法字符，空格转连字符，移除特殊字符。
+// 注意：不进行大小写转换，以避免 MyWorkflow 和 myworkflow 在不区分大小写的文件系统上碰撞。
 func sanitizeName(name string) string {
 	result := make([]byte, 0, len(name))
 	for i := 0; i < len(name); i++ {
 		c := name[i]
-		if (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
+		if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-' || c == '_' {
 			result = append(result, c)
-		} else if c >= 'A' && c <= 'Z' {
-			result = append(result, c+32) // 转小写
 		} else if c == ' ' {
 			result = append(result, '-')
 		}

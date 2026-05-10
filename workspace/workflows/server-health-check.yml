@@ -11,6 +11,7 @@ steps:
     args:
       command: "curl -sf http://localhost:8080/health || echo 'FAILED'"
     output_key: health
+    delay: 2s
     retry:
       max_attempts: 3
       delay: 10s

@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"log"
 	"sync"
 	"time"
+
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 type contextKey string
@@ -135,7 +136,7 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 
 	// 持久化初始状态
 	if err := e.store.SaveInstance(inst); err != nil {
-		log.Printf("[workflow] 持久化初始实例状态失败: %v", err)
+		logger.ErrorCF("workflow", "持久化初始实例状态失败", map[string]any{"error": err.Error()})
 	}
 
 	// 异步执行工作流
@@ -325,14 +326,17 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		if result.Error != nil && failureStrategy == "stop" {
 			// 尝试查找并执行 on_error 处理步骤
 			handled := e.tryErrorHandlers(ctx, wf, inst, step.ID)
-			if !handled {
+			if handled {
+				// 错误已被处理，跳过后续步骤，标记为 completed
+				inst.Status = StatusCompleted
+			} else {
 				inst.Status = StatusFailed
 				inst.Error = fmt.Sprintf("步骤 '%s' 失败: %v", step.ID, result.Error)
-				now := time.Now()
-				inst.FinishedAt = &now
-				_ = e.store.SaveInstance(inst)
-				return
 			}
+			now := time.Now()
+			inst.FinishedAt = &now
+			_ = e.store.SaveInstance(inst)
+			return
 		}
 	}
 
@@ -343,12 +347,31 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 执行完成", wf.Name))
 	_ = e.store.SaveInstance(inst)
 
-	log.Printf("[workflow] ✓ 工作流 '%s' 实例 %s 执行完成", wf.Name, inst.ID)
+	logger.InfoCF(
+		"workflow",
+		"工作流执行完成",
+		map[string]any{"workflow": wf.Name, "instance": inst.ID, "status": inst.Status},
+	)
 }
 
 // executeStepWithState 执行单个步骤并更新实例状态。
 // 包括设置运行状态、执行步骤、记录输出、更新完成状态。
 func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
+	// 执行前延迟
+	if step.Delay != "" {
+		if d, err := time.ParseDuration(step.Delay); err == nil && d > 0 {
+			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 延迟 %s 后执行", step.ID, step.Delay))
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				inst.StepStates[step.ID] = &StepState{Status: StatusCancelled}
+				return StepResult{Error: ctx.Err()}
+			}
+		} else if err != nil {
+			logger.WarnCF("workflow", "步骤 delay 格式无效，跳过延迟", map[string]any{"step": step.ID, "delay": step.Delay})
+		}
+	}
+
 	now := time.Now()
 	state := &StepState{
 		Status:    StatusRunning,
@@ -426,7 +449,7 @@ func (e *Engine) tryErrorHandlers(ctx context.Context, wf *Workflow, inst *Workf
 
 		result := e.executeStepWithState(ctx, step, inst)
 		if result.Error != nil {
-			log.Printf("[workflow] 错误处理步骤 '%s' 也失败了: %v", step.ID, result.Error)
+			logger.ErrorCF("workflow", "错误处理步骤也失败了", map[string]any{"step": step.ID, "error": result.Error.Error()})
 		}
 	}
 

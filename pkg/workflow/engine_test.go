@@ -756,9 +756,9 @@ func TestRunWorkflow_IfStepOnError(t *testing.T) {
 	})
 
 	inst, _ := engine.store.LoadInstance("if-error-wf", instID)
-	// s1 失败 → on_error → if_true 分支
-	if inst.StepStates["handle_err"] == nil || inst.StepStates["handle_err"].Status != StatusCompleted {
-		t.Fatalf("handle_err status = %v, want completed", inst.StepStates["handle_err"])
+	// s1 失败 → on_error → if 步骤执行 → if_true 分支
+	if inst.StepStates["check"] == nil || inst.StepStates["check"].Status != StatusCompleted {
+		t.Fatalf("check status = %v, want completed", inst.StepStates["check"])
 	}
 }
 

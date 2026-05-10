@@ -10,6 +10,7 @@ export interface Trigger {
 
 export interface Step {
   id: string
+  name?: string
   action: "agent_prompt" | "tool_call" | "parallel" | "if"
   prompt?: string
   tool?: string
@@ -18,14 +19,13 @@ export interface Step {
   if_true?: Step[]
   if_false?: Step[]
   when?: string
+  delay?: string
   retry?: { max_attempts: number; delay: string }
   timeout?: string
   output_key?: string
 }
 
 export interface WorkflowConfig {
-  timeout?: string
-  max_concurrent?: number
   failure_strategy?: string
   notify_channel?: string
   notify_chat_id?: string

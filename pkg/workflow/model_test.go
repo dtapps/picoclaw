@@ -130,6 +130,126 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		{
+			name:    "step id with Chinese characters",
+			wf:      Workflow{Name: "test", Steps: []Step{{ID: "步骤1", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: true,
+			errMsg:  "不合法",
+		},
+		{
+			name:    "step id with spaces",
+			wf:      Workflow{Name: "test", Steps: []Step{{ID: "step one", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: true,
+			errMsg:  "不合法",
+		},
+		{
+			name:    "step id with dots",
+			wf:      Workflow{Name: "test", Steps: []Step{{ID: "step.one", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: true,
+			errMsg:  "不合法",
+		},
+		{
+			name:    "step id with underscores is valid",
+			wf:      Workflow{Name: "test", Steps: []Step{{ID: "step_one", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: false,
+		},
+		{
+			name: "step with optional name",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Name: "获取日期", Action: "agent_prompt", Prompt: "hi"}},
+			},
+			wantErr: false,
+		},
+		{
+			name:    "workflow name with Chinese characters",
+			wf:      Workflow{Name: "每日简报", Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: true,
+			errMsg:  "名称不合法",
+		},
+		{
+			name:    "workflow name with spaces",
+			wf:      Workflow{Name: "my workflow", Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: true,
+			errMsg:  "名称不合法",
+		},
+		{
+			name:    "workflow name with hyphen is valid",
+			wf:      Workflow{Name: "my-workflow", Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi"}}},
+			wantErr: false,
+		},
+		{
+			name: "invalid delay format",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Delay: "abc"}},
+			},
+			wantErr: true,
+			errMsg:  "delay",
+		},
+		{
+			name: "invalid delay format - number without unit",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Delay: "5"}},
+			},
+			wantErr: true,
+			errMsg:  "delay",
+		},
+		{
+			name: "valid delay format",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Delay: "5s"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid delay format - compound",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Delay: "1m30s"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid timeout format",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Timeout: "30"}},
+			},
+			wantErr: true,
+			errMsg:  "timeout",
+		},
+		{
+			name: "valid timeout format",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi", Timeout: "30s"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid retry delay format",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi", Retry: &RetryConfig{MaxAttempts: 3, Delay: "bad"}},
+				},
+			},
+			wantErr: true,
+			errMsg:  "retry delay",
+		},
+		{
+			name: "valid retry delay format",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi", Retry: &RetryConfig{MaxAttempts: 3, Delay: "10s"}},
+				},
+			},
+			wantErr: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -162,4 +282,55 @@ func searchString(s, substr string) bool {
 		}
 	}
 	return false
+}
+
+func TestIsValidWorkflowName(t *testing.T) {
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{"my-workflow", true},
+		{"my_workflow", true},
+		{"Workflow123", true},
+		{"", false},
+		{"每日简报", false},
+		{"my workflow", false},
+		{"my.workflow", false},
+		{"my!workflow", false},
+		{"_private", true},
+		{"123", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := isValidWorkflowName(tt.name); got != tt.want {
+				t.Errorf("isValidWorkflowName(%q) = %v, want %v", tt.name, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestIsValidStepID(t *testing.T) {
+	tests := []struct {
+		id   string
+		want bool
+	}{
+		{"s1", true},
+		{"get_date", true},
+		{"Step123", true},
+		{"", false},
+		{"步骤1", false},
+		{"step one", false},
+		{"step.one", false},
+		{"step-one", false},
+		{"step!1", false},
+		{"_private", true},
+		{"123", true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.id, func(t *testing.T) {
+			if got := isValidStepID(tt.id); got != tt.want {
+				t.Errorf("isValidStepID(%q) = %v, want %v", tt.id, got, tt.want)
+			}
+		})
+	}
 }

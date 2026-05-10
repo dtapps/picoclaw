@@ -114,22 +114,25 @@ RunWorkflow()
         │     │     ├── Condition not met → skip step (skipped)
         │     │     └── Condition met → proceed
         │     │
-        │     ├── 2. Template resolution: ResolveStepTemplates(prompt/args, completed outputs)
-        │     │     └── Replace {{.step_id.output_key}} with actual values
-        │     │
-        │     ├── 3. Execute step: ExecuteWithRetry()
+  │     ├── 2. Template resolution: ResolveStepTemplates(prompt/args, completed outputs)
+  │     │     └── Replace {{.step_id.output_key}} with actual values
+  │     │
+  │     ├── 3. Delay: if step.delay is set, wait for the specified duration
+  │     │     └── Cancelled during wait → step state: cancelled
+  │     │
+  │     ├── 4. Execute step: ExecuteWithRetry()
         │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
         │     │     ├── parallel    → goroutine concurrent sub-step execution
         │     │     └── if          → evaluate when condition, execute if_true or if_false branch
         │     │
-        │     ├── 4. Process result
+        │     ├── 5. Process result
         │     │     ├── Success → record output to output_key, continue
         │     │     └── Failure →
         │     │           ├── failure_strategy=stop → abort, find on_error handler
         │     │           └── failure_strategy=continue → record failure, continue
         │     │
-        │     └── 5. Save step state and instance state to disk
+        │     └── 6. Save step state and instance state to disk
         │
         ├── All steps done
         │     ├── No failures → instance state: completed
@@ -165,8 +168,10 @@ Step execution fails
   │     ├── Abort subsequent steps
   │     ├── Find steps with when="on_error"
   │     │     ├── Found → execute error handler step
+  │     │     │     ├── Handler succeeds → instance state: completed
+  │     │     │     └── Handler fails → instance state: failed
   │     │     └── Not found → instance marked as failed
-  │     └── Instance state: failed
+  │     └── (does not continue the main step loop)
   │
   └── failure_strategy = "continue"
         ├── Record step as failed
@@ -194,12 +199,14 @@ StopInstance(instanceID)
 
 A workflow is an executable unit composed of an ordered set of steps. Each workflow contains:
 
-- **Name**: Unique identifier for reference and management
+- **Name**: Unique identifier for reference and management, restricted to `a-zA-Z0-9_-` only
 - **Description**: Purpose description
 - **Triggers**: Define when the workflow auto-executes (manual/cron/event)
 - **Vars**: Workflow-level variables to avoid repeating the same values (e.g., paths, URLs) across steps
 - **Steps**: Ordered sequence of actions
 - **Config**: Global options like failure strategy (stop/continue)
+
+> **Name Rules**: Workflow names are restricted to `a-zA-Z0-9_-` because they are used as YAML file names. Non-ASCII or special characters would cause file system issues. The `enabled` state is a runtime property not stored in the YAML definition — it is managed via a `.disabled` marker file (see File Storage).
 
 ### Variables (Vars)
 
@@ -237,13 +244,18 @@ A step is the basic execution unit, supporting four action types:
 | `parallel` | Execute sub-steps concurrently | `parallel` (sub-step list) |
 | `if` | Conditional branch — execute true or false branch | `when` (condition), `if_true`/`if_false` (branch steps) |
 
-Each step supports optional configuration:
+Each step supports the following configuration:
 
+- **id**: Unique step identifier, restricted to `a-zA-Z0-9_` only, used for template references `{{.step_id.key}}` and condition evaluation
+- **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set
 - **when**: Condition expression; step executes only when satisfied
+- **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
 - **retry**: Maximum retry count (default: 0)
 - **retry_delay**: Retry interval in seconds
 - **timeout**: Timeout in seconds
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
+
+> **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
 
 ### Trigger
 
@@ -330,7 +342,6 @@ Workflow definitions are stored in `workspace/workflows/`, one YAML file per wor
 ```yaml
 name: morning-briefing
 description: Daily morning briefing workflow
-enabled: true
 
 triggers:
   - cron: "0 8 * * *"
@@ -346,16 +357,19 @@ config:
 
 steps:
   - id: fetch_weather
+    name: Fetch Weather
     action: agent_prompt
     prompt: "Check today's weather forecast for {{.vars.city}}"
     output_key: weather
 
   - id: fetch_news
+    name: Fetch News
     action: agent_prompt
     prompt: "Get today's tech news summary"
     output_key: news
 
   - id: summarize
+    name: Generate Briefing
     action: agent_prompt
     prompt: "Generate a daily briefing based on weather {{.fetch_weather.weather}} and news {{.fetch_news.news}}, save to {{.vars.output_dir}}"
     when: "on_success"
@@ -372,7 +386,8 @@ steps:
 
 ```yaml
 steps:
-  - id: step_id           # Required, unique step identifier for condition references and data passing
+  - id: step_id           # Required, unique step identifier (a-zA-Z0-9_ only), for condition references and data passing
+    name: Display Name    # Optional, display name supporting any characters; shown in UI and notifications, falls back to id
     action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
     tool: tool_name        # Required for tool_call, registered tool name
@@ -383,6 +398,7 @@ steps:
         action: agent_prompt
         prompt: "..."
     when: "on_error"       # Required for if / optional for others, condition expression
+    delay: 5s              # Optional, wait duration before step execution (e.g. 5s, 1m30s)
     if_true:               # Optional for if, steps to execute when condition is true
       - id: handle_success
         action: agent_prompt
@@ -433,8 +449,11 @@ The `when` condition for `if` steps supports:
 
 The workflow editor page provides a visual editor based on Sequential Workflow Designer, supporting:
 - Drag steps from the toolbox onto the canvas (each step type shows a description)
-- Click a step to edit its properties in the right panel
+- Click a step to edit its properties in the right panel (ID field accepts only alphanumeric characters and underscores; Name field accepts any characters)
 - Step types are fixed after dragging (Agent Prompt / Tool Call / Parallel / If)
+- Auto-assigned step IDs by type when dragging from toolbox (e.g., `prompt_1`, `tool_1`, `prompt_2`, `if_1`)
+- Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check)
+- Variable key duplicate warning when editing vars
 - Parallel steps display branches side by side; branches can be added or removed dynamically
 - if steps render as diamonds with true/false branch lines
 - Automatic save to YAML definition
@@ -454,11 +473,11 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 | Method | Path | Description | Dependency |
 |--------|------|-------------|------------|
 | GET | `/api/workflows` | List all workflows | File system only |
-| POST | `/api/workflows` | Create a workflow | File system only |
+| POST | `/api/workflows` | Create a workflow (default disabled, 409 on duplicate name) | File system only |
 | GET | `/api/workflows/{name}` | Get workflow details | File system only |
 | PUT | `/api/workflows/{name}` | Update a workflow | File system only |
 | DELETE | `/api/workflows/{name}` | Delete a workflow | File system only |
-| POST | `/api/workflows/{name}/run` | Trigger execution (no channel binding) | Requires Gateway running |
+| POST | `/api/workflows/{name}/run` | Trigger execution (falls back to bound channel for notifications) | Requires Gateway running |
 | POST | `/api/workflows/{name}/stop` | Stop all running instances | Requires Gateway running |
 | POST | `/api/workflows/{name}/toggle` | Enable/disable | File system only |
 | GET | `/api/workflows/{name}/instances` | List execution history (sorted by time descending) | Requires Gateway running |
@@ -469,6 +488,9 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 > Run/stop/instance/delete operations are proxied to the Gateway's internal API (`/internal/workflow/*`); some operations can fall back to direct file system access when the Gateway is unavailable.
 
 ### Create Workflow Example
+
+> Workflows created via REST API default to **disabled**. Use the toggle endpoint to enable after confirming the definition.
+> In the Web UI, Run/Stop/Disable actions require confirmation before execution.
 
 ```bash
 curl -X POST http://localhost:3000/api/workflows \
@@ -509,7 +531,7 @@ The agent can manage workflows via the `workflow` tool:
 |--------|-------------|---------------------|
 | `list` | List all workflows | - |
 | `show` | View workflow details | `name` |
-| `run` | Trigger execution (auto-binds current channel) | `name` |
+| `run` | Trigger execution (auto-passes current channel for notifications) | `name` |
 | `stop` | Stop an instance | `instance_id` |
 | `create` | Create a workflow | `name`, `steps_yaml` |
 | `delete` | Delete a workflow | `name` |
@@ -538,7 +560,7 @@ Workflows can also be managed via the `/workflow` slash command in any chat chan
 | Command | Description |
 |---------|-------------|
 | `/workflow list` | List all workflows |
-| `/workflow run <name>` | Trigger a workflow (auto-binds current channel) |
+| `/workflow run <name>` | Trigger a workflow (auto-passes current channel for notifications) |
 | `/workflow show <name>` | View workflow details |
 | `/workflow bind <name>` | Bind current channel for notifications |
 | `/workflow unbind <name>` | Remove channel binding |
@@ -559,14 +581,15 @@ Usage example:
 
 | Path | Description |
 |------|-------------|
-| `workspace/workflows/{name}.yml` | Workflow definition file (YAML) |
-| `workspace/workflows/{name}.yml.disabled` | Disable marker (presence = disabled) |
+| `workspace/workflows/{name}.yml` | Workflow definition file (YAML, case-sensitive on all platforms) |
+| `workspace/workflows/{name}.disabled` | Disable marker (presence = disabled) |
 | `workspace/workflows/.state/{name}_{instanceID}.json` | Instance state file (JSON, atomic writes) |
 
 Persistence mechanism (`persist.go`):
 - Definition files use YAML format for human readability and editing
 - Instance state files are stored in `.state/` subdirectory, written atomically via `fileutil.WriteFileAtomic` to prevent corruption from interrupted writes
-- Disable feature uses create/delete of `.disabled` suffix file, no YAML modification needed
+- The `enabled` field is a runtime state (`yaml:"-"` tag) not serialized to the YAML file; disable feature uses create/delete of `.disabled` suffix file to persist the state
+- File names preserve case sensitivity; `MyWorkflow` and `myworkflow` are treated as different workflows
 - File names processed through `sanitizeName()` for safety
 
 ## Execution Results & Notifications
@@ -592,13 +615,15 @@ Workflows support four-phase automatic channel notification:
 
 Notifications are implemented via four Engine callbacks (`onStart`, `onStepStart`, `onStepComplete`, `onComplete`) registered in Gateway's `setupWorkflowService()`, sent via `msgBus.PublishOutbound`.
 
-**Binding methods (in priority order)**:
+**Notification target priority**:
 
-1. **`/workflow bind <name>`** — Slash command, binds the current chat channel
-2. **`workflow action=bind name=xxx`** — LLM tool, binds from conversation context
-3. **`/workflow run <name>`** — Run command auto-binds the current channel
-4. **`workflow action=run name=xxx`** — Run tool auto-binds from conversation context
-5. **Config `notify_channel`/`notify_chat_id`** — Fallback default channel in YAML definition
+The engine determines the notification channel for each execution using this priority:
+
+1. **Run-time channel** — When triggered from a chat context (`/workflow run`, `workflow action=run`), the current channel/chatID is passed to the instance and used for notifications
+2. **Persistent binding** — When triggered without a chat context (Web UI, cron, event), the engine falls back to the channel set via `/workflow bind` or `workflow action=bind`
+3. **YAML config fallback** — If neither is available, the engine falls back to `notify_channel`/`notify_chat_id` from the workflow config
+
+> **Note**: `/workflow bind` and `workflow action=bind` persist the channel into the workflow definition, so future cron/event-triggered runs also send notifications there. `/workflow run` and `workflow action=run` only pass the channel for that specific execution — they do NOT update the persistent binding.
 
 Channel binding follows the same pattern as the Cron tool: `ToolChannel(ctx)` / `ToolChatID(ctx)` extract channel info from the execution context. When a workflow starts, a step begins, a step completes, or the workflow finishes, the `onStart`, `onStepStart`, `onStepComplete`, and `onComplete` callbacks send notifications to the bound channel via `msgBus.PublishOutbound`.
 
@@ -657,7 +682,6 @@ Each workflow instance records structured execution logs with timestamps, step I
 | UI execution history | ✅ Supported | History button on workflow card, execution logs in detail page, delete records |
 | Instance deletion | ✅ Supported | DELETE API + UI delete button |
 | Execution logs (realtime) | ❌ Not implemented | Need streaming log output (SSE) |
-| Webhook callback | ❌ Not implemented | Need to add `webhook` step type |
 
 ## Comparison with CronService
 
