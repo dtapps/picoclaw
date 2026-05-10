@@ -335,7 +335,24 @@ Template resolution logic (`conditions.go`):
                                  └──────────┘
 ```
 
-## YAML Definition Format
+Each step (including parallel sub-steps and if branch sub-steps) also has its own `StepState` tracking:
+`pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`.
+
+Unexecuted if-branch sub-steps are automatically marked as `skipped`.
+
+### Real-time Event Streaming (SSE)
+
+The workflow engine publishes state change events to the event bus (`pkg/events`), which can be consumed
+via SSE for real-time UI updates:
+
+- `workflow.instance.start` — instance begins execution
+- `workflow.instance.complete` — instance finishes (success/failure/cancel)
+- `workflow.step.start` — step begins execution
+- `workflow.step.complete` — step finishes (success/failure)
+
+The SSE endpoint (`GET /api/workflows/{name}/instances/{id}/stream`) delivers these events as
+Server-Sent Events. The frontend automatically connects to this stream for running instances,
+providing live step progress and log updates without polling.
 
 Workflow definitions are stored in `workspace/workflows/`, one YAML file per workflow:
 
@@ -482,6 +499,7 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 | POST | `/api/workflows/{name}/toggle` | Enable/disable | File system only |
 | GET | `/api/workflows/{name}/instances` | List execution history (sorted by time descending) | Requires Gateway running |
 | GET | `/api/workflows/{name}/instances/{id}` | Get instance details | Requires Gateway running |
+| GET | `/api/workflows/{name}/instances/{id}/stream` | SSE stream for real-time instance updates | Requires Gateway running |
 | DELETE | `/api/workflows/{name}/instances/{id}` | Delete execution record | Requires Gateway running |
 
 > CRUD operations use a temporary PersistStore to read/write files, independent of the Gateway process.
@@ -679,9 +697,10 @@ Each workflow instance records structured execution logs with timestamps, step I
 | Execution history query | ✅ Supported | Via REST API, slash command, or LLM tool |
 | Channel push notification | ✅ Supported | Four-phase notification: start / step start / step output / completion |
 | Execution logs | ✅ Supported | Stored in instance, viewable via API and UI |
+| Execution logs (realtime) | ✅ Supported | SSE streaming at `/api/workflows/{name}/instances/{id}/stream`, auto-updates UI |
+| Sub-step state tracking | ✅ Supported | parallel/if sub-steps have independent StepStates |
 | UI execution history | ✅ Supported | History button on workflow card, execution logs in detail page, delete records |
 | Instance deletion | ✅ Supported | DELETE API + UI delete button |
-| Execution logs (realtime) | ❌ Not implemented | Need streaming log output (SSE) |
 
 ## Comparison with CronService
 

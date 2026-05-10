@@ -548,9 +548,9 @@ func TestRunWorkflow_IfStepOnSuccess(t *testing.T) {
 	if inst.StepStates["handle_ok"] == nil || inst.StepStates["handle_ok"].Status != StatusCompleted {
 		t.Fatal("handle_ok step should be completed")
 	}
-	// if_false 分支的步骤不应在 StepStates 中（没有被引擎执行）
-	if _, exists := inst.StepStates["handle_err"]; exists {
-		t.Fatal("handle_err step should not be in StepStates")
+	// if_false 分支的步骤应标记为 skipped（未执行的分支）
+	if inst.StepStates["handle_err"] == nil || inst.StepStates["handle_err"].Status != StatusSkipped {
+		t.Fatal("handle_err step should be skipped")
 	}
 }
 
@@ -619,6 +619,54 @@ func TestRunWorkflow_ParallelStep(t *testing.T) {
 	}
 }
 
+func TestRunWorkflow_ParallelSubStepStateTracking(t *testing.T) {
+	engine, _ := setupTestEngine(t)
+
+	wf := &Workflow{
+		Name: "parallel-track-wf",
+		Steps: []Step{
+			{
+				ID:     "s1",
+				Action: "parallel",
+				Parallel: []Step{
+					{ID: "p1", Action: "agent_prompt", Prompt: "parallel-a", OutputKey: "a"},
+					{ID: "p2", Action: "agent_prompt", Prompt: "parallel-b", OutputKey: "b"},
+				},
+			},
+		},
+	}
+
+	var completed bool
+	var mu sync.Mutex
+	engine.SetOnComplete(func(inst *WorkflowInstance) {
+		mu.Lock()
+		completed = true
+		mu.Unlock()
+	})
+
+	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
+
+	waitFor(t, 2*time.Second, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return completed
+	})
+
+	inst, _ := engine.store.LoadInstance("parallel-track-wf", instID)
+
+	// 验证 parallel 父步骤有状态
+	if inst.StepStates["s1"].Status != StatusCompleted {
+		t.Fatalf("s1 status = %q, want completed", inst.StepStates["s1"].Status)
+	}
+	// 验证子步骤有独立的状态追踪
+	if inst.StepStates["p1"] == nil || inst.StepStates["p1"].Status != StatusCompleted {
+		t.Fatalf("p1 state = %v, want completed", inst.StepStates["p1"])
+	}
+	if inst.StepStates["p2"] == nil || inst.StepStates["p2"].Status != StatusCompleted {
+		t.Fatalf("p2 state = %v, want completed", inst.StepStates["p2"])
+	}
+}
+
 func TestRunWorkflow_VarsAndStepOutputCombined(t *testing.T) {
 	engine, executor := setupTestEngine(t)
 
@@ -661,6 +709,54 @@ func TestRunWorkflow_VarsAndStepOutputCombined(t *testing.T) {
 
 	if receivedPrompt != "Date 2026-05-09, save to /tmp/reports/output.txt" {
 		t.Fatalf("receivedPrompt = %q, want combined template resolution", receivedPrompt)
+	}
+}
+
+func TestRunWorkflow_IfBranchSkippedState(t *testing.T) {
+	engine, _ := setupTestEngine(t)
+
+	wf := &Workflow{
+		Name: "if-skip-wf",
+		Steps: []Step{
+			{ID: "s1", Action: "agent_prompt", Prompt: "first"},
+			{
+				ID:     "check",
+				Action: "if",
+				When:   "on_success",
+				IfTrue: []Step{
+					{ID: "ok_step", Action: "agent_prompt", Prompt: "success path"},
+				},
+				IfFalse: []Step{
+					{ID: "err_step", Action: "agent_prompt", Prompt: "error path"},
+				},
+			},
+		},
+	}
+
+	var completed bool
+	var mu sync.Mutex
+	engine.SetOnComplete(func(inst *WorkflowInstance) {
+		mu.Lock()
+		completed = true
+		mu.Unlock()
+	})
+
+	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
+
+	waitFor(t, 2*time.Second, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return completed
+	})
+
+	inst, _ := engine.store.LoadInstance("if-skip-wf", instID)
+	// s1 成功 → on_success → if_true 分支执行
+	if inst.StepStates["ok_step"] == nil || inst.StepStates["ok_step"].Status != StatusCompleted {
+		t.Fatalf("ok_step state = %v, want completed", inst.StepStates["ok_step"])
+	}
+	// if_false 分支的步骤应标记为 skipped
+	if inst.StepStates["err_step"] == nil || inst.StepStates["err_step"].Status != StatusSkipped {
+		t.Fatalf("err_step state = %v, want skipped", inst.StepStates["err_step"])
 	}
 }
 
@@ -845,4 +941,57 @@ func waitFor(t *testing.T, timeout time.Duration, cond func() bool) {
 		time.Sleep(10 * time.Millisecond)
 	}
 	t.Fatal("timed out waiting for condition")
+}
+
+func TestStepStateNamePreserved(t *testing.T) {
+	engine, _ := setupTestEngine(t)
+
+	wf := &Workflow{
+		Name: "name-test",
+		Steps: []Step{
+			{ID: "s1", Name: "第一步", Action: "agent_prompt", Prompt: "step1"},
+			{ID: "s2", Name: "第二步", Action: "agent_prompt", Prompt: "step2", When: "on_error"},
+		},
+	}
+
+	var completed bool
+	var mu sync.Mutex
+	var finalInst *WorkflowInstance
+	engine.SetOnComplete(func(inst *WorkflowInstance) {
+		mu.Lock()
+		completed = true
+		finalInst = inst
+		mu.Unlock()
+	})
+
+	_, err := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
+	if err != nil {
+		t.Fatalf("RunWorkflow() error: %v", err)
+	}
+
+	waitFor(t, 2*time.Second, func() bool {
+		mu.Lock()
+		defer mu.Unlock()
+		return completed
+	})
+
+	mu.Lock()
+	inst := finalInst
+	mu.Unlock()
+
+	// s1 completed — Name should be preserved
+	if ss, ok := inst.StepStates["s1"]; !ok {
+		t.Fatal("missing StepState for s1")
+	} else if ss.Name != "第一步" {
+		t.Errorf("s1 Name = %q, want %q", ss.Name, "第一步")
+	}
+
+	// s2 skipped — Name should be preserved
+	if ss, ok := inst.StepStates["s2"]; !ok {
+		t.Fatal("missing StepState for s2")
+	} else if ss.Name != "第二步" {
+		t.Errorf("s2 Name = %q, want %q", ss.Name, "第二步")
+	} else if ss.Status != StatusSkipped {
+		t.Errorf("s2 Status = %q, want %q", ss.Status, StatusSkipped)
+	}
 }

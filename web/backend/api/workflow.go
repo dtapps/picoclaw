@@ -17,18 +17,19 @@ import (
 // 路由设计遵循 RESTful 风格，支持 CRUD、执行/停止、启用/禁用、实例查询等操作。
 // CRUD 操作直接读写文件系统，执行/停止/实例查询通过反向代理转发到网关进程。
 func (h *Handler) registerWorkflowRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("GET /api/workflows", h.handleListWorkflows)                           // 列表
-	mux.HandleFunc("POST /api/workflows", h.handleCreateWorkflow)                         // 创建
-	mux.HandleFunc("GET /api/workflows/{name}", h.handleGetWorkflow)                      // 详情
-	mux.HandleFunc("PUT /api/workflows/{name}", h.handleUpdateWorkflow)                   // 更新
-	mux.HandleFunc("DELETE /api/workflows/{name}", h.handleDeleteWorkflow)                // 删除
-	mux.HandleFunc("POST /api/workflows/{name}/run", h.handleRunWorkflow)                 // 执行
-	mux.HandleFunc("POST /api/workflows/{name}/stop", h.handleStopWorkflow)               // 停止
-	mux.HandleFunc("POST /api/workflows/{name}/toggle", h.handleToggleWorkflow)           // 启用/禁用
-	mux.HandleFunc("GET /api/workflows/{name}/instances", h.handleListInstances)          // 实例列表
-	mux.HandleFunc("GET /api/workflows/{name}/instances/{id}", h.handleGetInstance)       // 实例详情
-	mux.HandleFunc("DELETE /api/workflows/{name}/instances/{id}", h.handleDeleteInstance) // 删除实例
-	mux.HandleFunc("POST /api/workflows/import", h.handleImportWorkflow)                  // 导入
+	mux.HandleFunc("GET /api/workflows", h.handleListWorkflows)                               // 列表
+	mux.HandleFunc("POST /api/workflows", h.handleCreateWorkflow)                             // 创建
+	mux.HandleFunc("GET /api/workflows/{name}", h.handleGetWorkflow)                          // 详情
+	mux.HandleFunc("PUT /api/workflows/{name}", h.handleUpdateWorkflow)                       // 更新
+	mux.HandleFunc("DELETE /api/workflows/{name}", h.handleDeleteWorkflow)                    // 删除
+	mux.HandleFunc("POST /api/workflows/{name}/run", h.handleRunWorkflow)                     // 执行
+	mux.HandleFunc("POST /api/workflows/{name}/stop", h.handleStopWorkflow)                   // 停止
+	mux.HandleFunc("POST /api/workflows/{name}/toggle", h.handleToggleWorkflow)               // 启用/禁用
+	mux.HandleFunc("GET /api/workflows/{name}/instances", h.handleListInstances)              // 实例列表
+	mux.HandleFunc("GET /api/workflows/{name}/instances/{id}", h.handleGetInstance)           // 实例详情
+	mux.HandleFunc("GET /api/workflows/{name}/instances/{id}/stream", h.handleStreamInstance) // 实例SSE流
+	mux.HandleFunc("DELETE /api/workflows/{name}/instances/{id}", h.handleDeleteInstance)     // 删除实例
+	mux.HandleFunc("POST /api/workflows/import", h.handleImportWorkflow)                      // 导入
 }
 
 // getWorkflowStore 从配置创建持久化存储实例。
@@ -557,6 +558,76 @@ func (h *Handler) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// handleStreamInstance 通过 SSE 实时推送工作流实例的状态变更事件。
+// 将客户端的 SSE 连接代理到网关进程的 /internal/workflow/stream 端点。
+func (h *Handler) handleStreamInstance(w http.ResponseWriter, r *http.Request) {
+	name := r.PathValue("name")
+	id := r.PathValue("id")
+
+	if !h.gatewayAvailableForWorkflow() {
+		http.Error(w, "Workflow engine not running", http.StatusServiceUnavailable)
+		return
+	}
+
+	target := h.gatewayProxyURL()
+	url := target.Scheme + "://" + target.Host + "/internal/workflow/stream?name=" + name + "&id=" + id
+
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		http.Error(w, "Failed to create proxy request", http.StatusInternalServerError)
+		return
+	}
+	// 传递客户端断开信号
+	req = req.WithContext(r.Context())
+
+	// 使用不支持缓冲的 transport 以获得流式响应
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		http.Error(w, "Workflow engine not available", http.StatusServiceUnavailable)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		http.Error(w, string(respBody), resp.StatusCode)
+		return
+	}
+
+	// 设置 SSE 响应头
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// 流式转发网关的 SSE 响应
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	buf := make([]byte, 4096)
+	for {
+		select {
+		case <-r.Context().Done():
+			return
+		default:
+		}
+
+		n, err := resp.Body.Read(buf)
+		if n > 0 {
+			if _, writeErr := w.Write(buf[:n]); writeErr != nil {
+				return
+			}
+			flusher.Flush()
+		}
+		if err != nil {
+			return
+		}
+	}
 }
 
 // --- 响应类型和辅助函数 ---

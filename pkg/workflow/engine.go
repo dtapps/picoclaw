@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -43,6 +44,7 @@ func withChannelCtx(ctx context.Context, channel, chatID string) context.Context
 type Engine struct {
 	store          *PersistStore                                              // 持久化存储
 	executor       *StepExecutor                                              // 步骤执行器
+	eventBus       runtimeevents.Bus                                          // 事件总线（可选，为 nil 时不发布事件）
 	onStart        func(inst *WorkflowInstance)                               // 执行开始回调（用于频道通知等）
 	onStepStart    func(step Step, inst *WorkflowInstance)                    // 步骤开始回调
 	onStepComplete func(step Step, inst *WorkflowInstance, result StepResult) // 步骤完成回调
@@ -88,6 +90,13 @@ func (e *Engine) SetOnStepComplete(fn func(step Step, inst *WorkflowInstance, re
 	e.onStepComplete = fn
 }
 
+// SetEventBus 设置事件总线，用于发布工作流状态变更事件。
+// 设置后，引擎在步骤开始/完成、实例开始/完成时发布事件，
+// 可供 SSE 等实时推送机制订阅。
+func (e *Engine) SetEventBus(bus runtimeevents.Bus) {
+	e.eventBus = bus
+}
+
 // RunWorkflow 启动一次工作流执行。
 // 创建 WorkflowInstance，初始化所有步骤状态为 pending，然后异步执行。
 // channel 和 chatID 用于绑定频道，执行完成后通过回调通知该频道。
@@ -118,12 +127,8 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 开始执行（触发: %s）", wf.Name, triggerType))
 
-	// 初始化所有步骤状态为 pending
-	for _, step := range wf.Steps {
-		inst.StepStates[step.ID] = &StepState{
-			Status: StatusPending,
-		}
-	}
+	// 初始化所有步骤状态为 pending（含子步骤）
+	initStepStatesRecursive(wf.Steps, inst.StepStates)
 
 	// 创建可取消的上下文（独立于调用方的上下文，避免 HTTP 请求结束后取消执行）
 	runCtx, cancel := context.WithCancel(context.Background())
@@ -217,13 +222,18 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		for k, v := range wf.Vars {
 			varsOutput[k] = v
 		}
+		inst.mu.Lock()
 		inst.StepOutputs["vars"] = varsOutput
+		inst.mu.Unlock()
 	}
 
 	// 执行开始回调（频道通知等）
 	if e.onStart != nil {
 		e.onStart(inst)
 	}
+	e.publishEvent(runtimeevents.KindWorkflowInstanceStart, inst, map[string]any{
+		"workflow": inst.WorkflowName, "trigger": inst.TriggerType,
+	})
 
 	defer func() {
 		e.mu.Lock()
@@ -234,6 +244,11 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			close(ch)
 		}
 		e.mu.Unlock()
+
+		// 发布实例完成事件
+		e.publishEvent(runtimeevents.KindWorkflowInstanceComplete, inst, map[string]any{
+			"workflow": inst.WorkflowName, "status": inst.Status, "error": inst.Error,
+		})
 
 		// 执行完成回调（频道通知等）
 		if e.onComplete != nil {
@@ -253,10 +268,12 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		// 检查取消信号
 		select {
 		case <-ctx.Done():
+			inst.mu.Lock()
 			inst.Status = StatusCancelled
 			now := time.Now()
 			inst.FinishedAt = &now
 			_ = e.store.SaveInstance(inst)
+			inst.mu.Unlock()
 			return
 		default:
 		}
@@ -265,55 +282,74 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		if step.Action == "if" {
 			condResult := EvaluateCondition(step.When, prevStepState, inst.StepOutputs)
 			var branchSteps []Step
+			var skippedBranch []Step
 			branchName := "false"
 			if condResult {
 				branchSteps = step.IfTrue
+				skippedBranch = step.IfFalse
 				branchName = "true"
 			} else {
 				branchSteps = step.IfFalse
+				skippedBranch = step.IfTrue
 			}
 			inst.appendLog(
 				step.ID,
 				"info",
 				fmt.Sprintf("if 条件 '%s' 评估结果: %s，执行 %s 分支", step.When, fmt.Sprintf("%v", condResult), branchName),
 			)
+			// 未执行的分支子步骤标记为 skipped
+			inst.mu.Lock()
+			for _, s := range skippedBranch {
+				inst.StepStates[s.ID] = &StepState{Name: s.Name, Status: StatusSkipped}
+			}
+			inst.mu.Unlock()
 			// 记录 if 步骤的开始时间
 			ifStepStart := time.Now()
 			// 执行选中的分支步骤
 			for _, branchStep := range branchSteps {
 				select {
 				case <-ctx.Done():
+					inst.mu.Lock()
 					inst.Status = StatusCancelled
 					now := time.Now()
 					inst.FinishedAt = &now
 					_ = e.store.SaveInstance(inst)
+					inst.mu.Unlock()
 					return
 				default:
 				}
 				result := e.executeStepWithState(ctx, branchStep, inst)
 				if result.Error != nil && failureStrategy == "stop" {
+					inst.mu.Lock()
 					inst.Status = StatusFailed
 					inst.Error = fmt.Sprintf("if 分支步骤 '%s' 失败: %v", branchStep.ID, result.Error)
 					now := time.Now()
 					inst.FinishedAt = &now
 					_ = e.store.SaveInstance(inst)
+					inst.mu.Unlock()
 					return
 				}
 			}
 			// if 步骤本身标记为完成
-			inst.StepStates[step.ID] = &StepState{Status: StatusCompleted, StartedAt: &ifStepStart}
+			inst.mu.Lock()
+			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusCompleted, StartedAt: &ifStepStart}
 			now := time.Now()
 			inst.StepStates[step.ID].FinishedAt = &now
 			_ = e.store.SaveInstance(inst)
+			inst.mu.Unlock()
 			prevStepState = inst.StepStates[step.ID]
 			continue
 		}
 
 		// 非 if 步骤：评估 when 条件，不满足则跳过
 		if !EvaluateCondition(step.When, prevStepState, inst.StepOutputs) {
-			inst.StepStates[step.ID] = &StepState{Status: StatusSkipped}
+			inst.mu.Lock()
+			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusSkipped}
+			inst.mu.Unlock()
 			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 条件不满足，跳过", step.ID))
+			inst.mu.Lock()
 			_ = e.store.SaveInstance(inst)
+			inst.mu.Unlock()
 			prevStepState = inst.StepStates[step.ID]
 			continue
 		}
@@ -326,6 +362,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		if result.Error != nil && failureStrategy == "stop" {
 			// 尝试查找并执行 on_error 处理步骤
 			handled := e.tryErrorHandlers(ctx, wf, inst, step.ID)
+			inst.mu.Lock()
 			if handled {
 				// 错误已被处理，跳过后续步骤，标记为 completed
 				inst.Status = StatusCompleted
@@ -336,16 +373,21 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			now := time.Now()
 			inst.FinishedAt = &now
 			_ = e.store.SaveInstance(inst)
+			inst.mu.Unlock()
 			return
 		}
 	}
 
 	// 所有步骤执行完成
+	inst.mu.Lock()
 	inst.Status = StatusCompleted
 	now := time.Now()
 	inst.FinishedAt = &now
+	inst.mu.Unlock()
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 执行完成", wf.Name))
+	inst.mu.Lock()
 	_ = e.store.SaveInstance(inst)
+	inst.mu.Unlock()
 
 	logger.InfoCF(
 		"workflow",
@@ -354,8 +396,22 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	)
 }
 
+// initStepStatesRecursive 递归初始化所有步骤（含 parallel/if 子步骤）的状态为 pending。
+func initStepStatesRecursive(steps []Step, states map[string]*StepState) {
+	for _, step := range steps {
+		if _, exists := states[step.ID]; !exists {
+			states[step.ID] = &StepState{Name: step.Name, Status: StatusPending}
+		}
+		initStepStatesRecursive(step.Parallel, states)
+		initStepStatesRecursive(step.IfTrue, states)
+		initStepStatesRecursive(step.IfFalse, states)
+	}
+}
+
 // executeStepWithState 执行单个步骤并更新实例状态。
 // 包括设置运行状态、执行步骤、记录输出、更新完成状态。
+// parallel 步骤在引擎层直接编排：为每个子步骤启动 goroutine 调用 executeStepWithState，
+// 确保子步骤也有完整的 state tracking、日志和回调。
 func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
 	// 执行前延迟
 	if step.Delay != "" {
@@ -364,7 +420,9 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 			select {
 			case <-time.After(d):
 			case <-ctx.Done():
-				inst.StepStates[step.ID] = &StepState{Status: StatusCancelled}
+				inst.mu.Lock()
+				inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusCancelled}
+				inst.mu.Unlock()
 				return StepResult{Error: ctx.Err()}
 			}
 		} else if err != nil {
@@ -374,22 +432,45 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 
 	now := time.Now()
 	state := &StepState{
+		Name:      step.Name,
 		Status:    StatusRunning,
 		StartedAt: &now,
 	}
+	inst.mu.Lock()
 	inst.StepStates[step.ID] = state
+	inst.mu.Unlock()
 	inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 开始执行（action: %s）", step.ID, step.Action))
+	inst.mu.Lock()
 	_ = e.store.SaveInstance(inst)
+	inst.mu.Unlock()
+
+	// 发布步骤开始事件
+	e.publishEvent(runtimeevents.KindWorkflowStepStart, inst, map[string]any{
+		"step_id": step.ID, "action": step.Action,
+	})
 
 	// 步骤开始回调（通知频道即将执行的步骤）
 	if e.onStepStart != nil {
 		e.onStepStart(step, inst)
 	}
 
-	// 执行步骤（含重试逻辑）
-	result := e.executor.ExecuteWithRetry(ctx, step, inst.StepOutputs)
+	// 执行步骤
+	var result StepResult
+	if step.Action == "parallel" {
+		result = e.executeParallelInEngine(ctx, step, inst)
+	} else {
+		// 快照 stepOutputs 避免并行子步骤写入时的 map 数据竞争
+		inst.mu.Lock()
+		outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs))
+		for k, v := range inst.StepOutputs {
+			outputsSnapshot[k] = v
+		}
+		inst.mu.Unlock()
+		result = e.executor.ExecuteWithRetry(ctx, step, outputsSnapshot)
+	}
 
 	// 更新步骤状态
+	inst.mu.Lock()
 	state.Attempts++
 	now2 := time.Now()
 	state.FinishedAt = &now2
@@ -397,7 +478,6 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	if result.Error != nil {
 		state.Status = StatusFailed
 		state.Error = result.Error.Error()
-		inst.appendLog(step.ID, "error", fmt.Sprintf("步骤 '%s' 执行失败: %s", step.ID, result.Error.Error()))
 	} else {
 		state.Status = StatusCompleted
 		// 存储步骤输出，供后续步骤引用
@@ -406,13 +486,26 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 				inst.StepOutputs[step.ID] = make(map[string]any)
 			}
 			inst.StepOutputs[step.ID][step.OutputKey] = result.Output
-			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成，输出键 '%s'", step.ID, step.OutputKey))
-		} else {
-			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成", step.ID))
 		}
 	}
+	inst.mu.Unlock()
 
+	if result.Error != nil {
+		inst.appendLog(step.ID, "error", fmt.Sprintf("步骤 '%s' 执行失败: %s", step.ID, result.Error.Error()))
+	} else if step.OutputKey != "" {
+		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成，输出键 '%s'", step.ID, step.OutputKey))
+	} else {
+		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成", step.ID))
+	}
+
+	inst.mu.Lock()
 	_ = e.store.SaveInstance(inst)
+	inst.mu.Unlock()
+
+	// 发布步骤完成事件
+	e.publishEvent(runtimeevents.KindWorkflowStepComplete, inst, map[string]any{
+		"step_id": step.ID, "action": step.Action, "status": state.Status,
+	})
 
 	// 步骤完成回调（将 AI 响应等实时推送到频道）
 	if e.onStepComplete != nil {
@@ -420,6 +513,56 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	}
 
 	return result
+}
+
+// executeParallelInEngine 在引擎层编排并行步骤，为每个子步骤调用 executeStepWithState。
+// 这样子步骤也有完整的 state tracking、日志记录和回调。
+func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
+	type parallelResult struct {
+		index  int
+		result StepResult
+	}
+
+	subSteps := step.Parallel
+	ch := make(chan parallelResult, len(subSteps))
+
+	for i, subStep := range subSteps {
+		go func(idx int, s Step) {
+			r := e.executeStepWithState(ctx, s, inst)
+			ch <- parallelResult{index: idx, result: r}
+		}(i, subStep)
+	}
+
+	var errs []error
+	outputs := make(map[string]any)
+	for range subSteps {
+		r := <-ch
+		if r.result.Error != nil {
+			errs = append(errs, fmt.Errorf("步骤[%d]: %w", r.index, r.result.Error))
+		}
+		if subSteps[r.index].OutputKey != "" {
+			outputs[subSteps[r.index].OutputKey] = r.result.Output
+		}
+	}
+
+	if len(errs) > 0 {
+		return StepResult{
+			Output: fmt.Sprintf("%v", outputs),
+			Error:  fmt.Errorf("并行步骤有 %d 个错误: %v", len(errs), errs),
+		}
+	}
+
+	// 合并输出
+	var combined string
+	for _, subStep := range subSteps {
+		if subStep.OutputKey != "" {
+			if v, ok := outputs[subStep.OutputKey]; ok {
+				combined += fmt.Sprintf("[%s] %s\n", subStep.OutputKey, valueToString(v))
+			}
+		}
+	}
+
+	return StepResult{Output: combined}
 }
 
 // tryErrorHandlers 在步骤失败后查找并执行 on_error 处理步骤。
@@ -463,4 +606,23 @@ func generateInstanceID() string {
 		return fmt.Sprintf("%d", time.Now().UnixNano())
 	}
 	return hex.EncodeToString(b)
+}
+
+// publishEvent 发布工作流事件到事件总线。
+// 如果事件总线未配置，则为空操作。
+func (e *Engine) publishEvent(kind runtimeevents.Kind, inst *WorkflowInstance, payload any) {
+	if e.eventBus == nil {
+		return
+	}
+	e.eventBus.PublishNonBlocking(runtimeevents.Event{
+		Kind: kind,
+		Source: runtimeevents.Source{
+			Component: "workflow",
+			Name:      inst.WorkflowName,
+		},
+		Scope: runtimeevents.Scope{
+			RuntimeID: inst.ID,
+		},
+		Payload: payload,
+	})
 }

@@ -167,7 +167,8 @@
     "deleting": "删除中...",
     "retry": "重试",
     "enable": "启用",
-    "disable": "禁用"
+    "disable": "禁用",
+    "back": "返回"
   },
   "environment": {
     "title": "环境变量",
@@ -1068,6 +1069,11 @@
       "no_instances": "暂无执行记录",
       "delete_instance_confirm": "确定要删除这条执行记录吗？",
       "delete_instance_title": "删除执行记录",
+      "view_detail": "查看详情",
+      "instance_detail": "实例详情",
+      "instance_id": "实例 ID",
+      "duration": "耗时",
+      "attempts": "{{count}} 次尝试",
       "import": "导入工作流",
       "import_error": "导入工作流失败",
       "import_success": "工作流导入成功",

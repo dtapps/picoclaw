@@ -167,7 +167,8 @@
     "deleting": "Excluindo...",
     "retry": "Tentar novamente",
     "enable": "Ativar",
-    "disable": "Desativar"
+    "disable": "Desativar",
+    "back": "Voltar"
   },
   "environment": {
     "title": "Variáveis de Ambiente",
@@ -1043,6 +1044,11 @@
       "no_instances": "Sem registros de execução",
       "delete_instance_confirm": "Tem certeza de que deseja excluir este registro de execução?",
       "delete_instance_title": "Excluir Registro de Execução",
+      "view_detail": "Detalhes",
+      "instance_detail": "Detalhes da Instância",
+      "instance_id": "ID da Instância",
+      "duration": "Duração",
+      "attempts": "{{count}} tentativas",
       "import": "Importar Fluxo de Trabalho",
       "import_error": "Falha ao importar fluxo de trabalho",
       "import_success": "Fluxo de trabalho importado com sucesso",

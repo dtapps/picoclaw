@@ -5,18 +5,24 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 )
 
 // InternalAPI 在网关进程的 HTTP 服务器上注册工作流内部端点。
 // Web 后端通过反向代理访问这些端点来执行运行时操作（运行、停止、查询实例）。
 // 路径以 /internal/workflow/ 为前缀，不与频道 webhook 冲突。
 type InternalAPI struct {
-	service *Service
+	service  *Service
+	eventBus runtimeevents.Bus
 }
 
 // NewInternalAPI 创建工作流内部 API 处理器。
 func NewInternalAPI(svc *Service) *InternalAPI {
-	return &InternalAPI{service: svc}
+	return &InternalAPI{
+		service:  svc,
+		eventBus: svc.cfg.EventBus,
+	}
 }
 
 // HandlerMux 是注册 HTTP 处理器的接口，与 health.Server 保持一致。
@@ -32,6 +38,7 @@ func (a *InternalAPI) RegisterOnMux(mux HandlerMux) {
 	mux.HandleFunc("/internal/workflow/instances", a.handleInstances)
 	mux.HandleFunc("/internal/workflow/instance", a.handleInstance)
 	mux.HandleFunc("/internal/workflow/delete_instance", a.handleDeleteInstance)
+	mux.HandleFunc("/internal/workflow/stream", a.handleStream)
 }
 
 // handleRun 手动触发工作流执行。
@@ -167,4 +174,101 @@ func (a *InternalAPI) handleDeleteInstance(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// handleStream 通过 SSE 实时推送工作流实例的状态变更事件。
+// 查询参数: name=workflow-name&id=instance-id
+// 客户端使用 EventSource 或 fetch + ReadableStream 接收事件。
+// 事件类型: step_start, step_complete, instance_complete
+func (a *InternalAPI) handleStream(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	name := r.URL.Query().Get("name")
+	instanceID := r.URL.Query().Get("id")
+	if name == "" || instanceID == "" {
+		http.Error(w, "missing name or id parameter", http.StatusBadRequest)
+		return
+	}
+
+	if a.eventBus == nil {
+		http.Error(w, "event bus not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	// 先创建订阅，避免 headers 写入后订阅失败无法回退
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+
+	sub, ch, subErr := a.eventBus.Channel().KindPrefix("workflow.").SubscribeChan(ctx, runtimeevents.SubscribeOptions{
+		Name:   "workflow-sse-" + instanceID,
+		Buffer: 32,
+	})
+	if subErr != nil {
+		http.Error(w, fmt.Sprintf("Failed to subscribe to events: %v", subErr), http.StatusInternalServerError)
+		return
+	}
+	defer sub.Close()
+
+	// 设置 SSE 响应头
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "streaming not supported", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
+	// 先发送当前实例状态
+	inst, err := a.service.GetInstance(name, instanceID)
+	if err == nil && inst != nil {
+		data, _ := json.Marshal(inst)
+		fmt.Fprintf(w, "event: snapshot\ndata: %s\n\n", data)
+		flusher.Flush()
+	}
+
+	// 监听工作流事件，过滤当前实例
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case evt, ok := <-ch:
+			if !ok {
+				return
+			}
+			// 只转发当前实例的事件
+			if evt.Scope.RuntimeID != instanceID {
+				continue
+			}
+
+			data, err := json.Marshal(map[string]any{
+				"event":   string(evt.Kind),
+				"payload": evt.Payload,
+				"time":    evt.Time,
+			})
+			if err != nil {
+				continue
+			}
+
+			// 根据 kind 决定 SSE event name
+			eventName := "step_update"
+			if evt.Kind == runtimeevents.KindWorkflowInstanceComplete {
+				eventName = "instance_complete"
+			} else if evt.Kind == runtimeevents.KindWorkflowInstanceStart {
+				eventName = "instance_start"
+			}
+
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventName, data)
+			flusher.Flush()
+
+			// 实例完成后关闭连接
+			if evt.Kind == runtimeevents.KindWorkflowInstanceComplete {
+				return
+			}
+		}
+	}
 }
