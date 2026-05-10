@@ -3,8 +3,9 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
+
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // StepExecutor 负责执行工作流中的单个步骤。
@@ -29,6 +30,17 @@ type StepResult struct {
 // Execute 执行单个步骤并返回结果。
 // 会先解析模板变量，再根据动作类型分发执行。
 func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[string]map[string]any) StepResult {
+	// 执行前延迟
+	if step.Delay != "" {
+		if d, err := time.ParseDuration(step.Delay); err == nil && d > 0 {
+			select {
+			case <-time.After(d):
+			case <-ctx.Done():
+				return StepResult{Error: ctx.Err()}
+			}
+		}
+	}
+
 	// 解析 prompt 和 args 中的模板引用
 	prompt := ResolveStepTemplates(step.Prompt, stepOutputs)
 	args := resolveArgsTemplates(step.Args, stepOutputs)
@@ -40,6 +52,12 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 		if err == nil {
 			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
+		} else {
+			logger.WarnCF(
+				"workflow",
+				"步骤 timeout 格式无效，跳过超时设置",
+				map[string]any{"step": step.ID, "timeout": step.Timeout},
+			)
 		}
 	}
 
@@ -104,7 +122,7 @@ func (se *StepExecutor) executeParallel(
 	ch := make(chan parallelResult, len(steps))
 	for i, step := range steps {
 		go func(idx int, s Step) {
-			ch <- parallelResult{index: idx, result: se.Execute(ctx, s, stepOutputs)}
+			ch <- parallelResult{index: idx, result: se.ExecuteWithRetry(ctx, s, stepOutputs)}
 		}(i, step)
 	}
 
@@ -168,8 +186,10 @@ func (se *StepExecutor) ExecuteWithRetry(
 		lastResult = result
 
 		if attempt < maxAttempts {
-			log.Printf("[workflow] 步骤 '%s' 第 %d/%d 次尝试失败: %v，%s 后重试",
-				step.ID, attempt, maxAttempts, result.Error, retryDelay)
+			logger.WarnCF("workflow", "步骤执行失败，即将重试", map[string]any{
+				"step": step.ID, "attempt": attempt, "max_attempts": maxAttempts,
+				"error": result.Error.Error(), "retry_delay": retryDelay.String(),
+			})
 			if retryDelay > 0 {
 				select {
 				case <-time.After(retryDelay):

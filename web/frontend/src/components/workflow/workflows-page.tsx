@@ -13,6 +13,8 @@ import {
 import { useEffect, useRef, useState, type DragEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
 
 import type { WorkflowInstance, WorkflowListItem } from "@/api/workflow"
 import {
@@ -47,20 +49,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+import { ConfirmDialog } from "./confirm-dialog"
 import { DeleteDialog } from "./delete-dialog"
+import { RunDialog } from "./run-dialog"
 import { WorkflowImportDialog } from "./import-dialog"
-import { type WorkflowFilter, useWorkflows } from "./use-workflows"
+import { type StatusFilter, type TriggerFilter, useWorkflows } from "./use-workflows"
 
 export function WorkflowsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const {
     filteredWorkflows,
     isLoading,
     error,
-    filter,
+    statusFilter,
+    triggerFilter,
     searchQuery,
-    setFilter,
+    setStatusFilter,
+    setTriggerFilter,
     setSearchQuery,
     handleDelete,
     handleToggle,
@@ -69,9 +76,13 @@ export function WorkflowsPage() {
     isDeleting,
     isToggling,
     isRunning,
+    isStopping,
   } = useWorkflows()
 
   const [deleteWorkflow, setDeleteWorkflow] = useState<WorkflowListItem | null>(null)
+  const [runWorkflow, setRunWorkflow] = useState<WorkflowListItem | null>(null)
+  const [stopWorkflow, setStopWorkflow] = useState<WorkflowListItem | null>(null)
+  const [toggleOffWorkflow, setToggleOffWorkflow] = useState<WorkflowListItem | null>(null)
   const [historyWorkflow, setHistoryWorkflow] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [importPending, setImportPending] = useState(false)
@@ -100,7 +111,7 @@ export function WorkflowsPage() {
   const doImport = async (file: File) => {
     const err = validateImportFile(file)
     if (err) {
-      alert(err)
+      toast.error(err)
       return
     }
     setImportPending(true)
@@ -108,9 +119,10 @@ export function WorkflowsPage() {
       const yamlContent = await file.text()
       await importWorkflow(yamlContent)
       setImportOpen(false)
-      window.location.reload()
+      await queryClient.invalidateQueries({ queryKey: ["workflows"] })
+      toast.success(t("pages.workflows.import_success", "Workflow imported successfully"))
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("pages.workflows.import_error"))
+      toast.error(err instanceof Error ? err.message : t("pages.workflows.import_error"))
     }
     setImportPending(false)
   }
@@ -205,10 +217,10 @@ export function WorkflowsPage() {
           <div className="flex items-center gap-2">
             <IconFilter className="text-muted-foreground h-4 w-4" />
             <Select
-              value={filter}
-              onValueChange={(v) => setFilter(v as WorkflowFilter)}
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -220,6 +232,28 @@ export function WorkflowsPage() {
                 </SelectItem>
                 <SelectItem value="disabled">
                   {t("pages.workflows.filter_disabled", "Disabled")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <Select
+              value={triggerFilter}
+              onValueChange={(v) => setTriggerFilter(v as TriggerFilter)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("pages.workflows.filter_all", "All")}
+                </SelectItem>
+                <SelectItem value="manual">
+                  {t("pages.workflows.trigger_manual", "Manual")}
+                </SelectItem>
+                <SelectItem value="cron">
+                  {t("pages.workflows.trigger_cron", "Cron")}
+                </SelectItem>
+                <SelectItem value="event">
+                  {t("pages.workflows.trigger_event", "Event")}
                 </SelectItem>
               </SelectContent>
             </Select>
@@ -261,9 +295,28 @@ export function WorkflowsPage() {
                 <WorkflowCard
                   key={wf.name}
                   workflow={wf}
-                  onToggle={handleToggle}
-                  onRun={handleRun}
-                  onStop={handleStop}
+                  onToggle={(name, checked) => {
+                    if (checked) {
+                      handleToggle(name, checked)
+                    } else {
+                      const found = filteredWorkflows.find(
+                        (w) => w.name === name,
+                      )
+                      setToggleOffWorkflow(found || null)
+                    }
+                  }}
+                  onRun={(name) => {
+                    const found = filteredWorkflows.find(
+                      (w) => w.name === name,
+                    )
+                    setRunWorkflow(found || null)
+                  }}
+                  onStop={(name) => {
+                    const found = filteredWorkflows.find(
+                      (w) => w.name === name,
+                    )
+                    setStopWorkflow(found || null)
+                  }}
                   onEdit={(name) =>
                     void navigate({ to: "/workflows/editor", search: { name } })
                   }
@@ -297,6 +350,44 @@ export function WorkflowsPage() {
         isDeleting={isDeleting}
       />
 
+      <RunDialog
+        workflow={runWorkflow}
+        open={!!runWorkflow}
+        onOpenChange={(open) => !open && setRunWorkflow(null)}
+        onConfirm={() => {
+          if (runWorkflow) handleRun(runWorkflow.name)
+          setRunWorkflow(null)
+        }}
+        isRunning={isRunning}
+      />
+
+      <ConfirmDialog
+        title={t("pages.workflows.stop_title", "Stop Workflow")}
+        description={t("pages.workflows.stop_description", "Are you sure you want to stop \"{{name}}\"?", { name: stopWorkflow?.name || "" })}
+        open={!!stopWorkflow}
+        onOpenChange={(open) => !open && setStopWorkflow(null)}
+        onConfirm={() => {
+          if (stopWorkflow) handleStop(stopWorkflow.name)
+          setStopWorkflow(null)
+        }}
+        confirmLabel={t("pages.workflows.stop", "Stop")}
+        confirmVariant="destructive"
+        isPending={isStopping}
+      />
+
+      <ConfirmDialog
+        title={t("pages.workflows.disable_title", "Disable Workflow")}
+        description={t("pages.workflows.disable_description", "Are you sure you want to disable \"{{name}}\"?", { name: toggleOffWorkflow?.name || "" })}
+        open={!!toggleOffWorkflow}
+        onOpenChange={(open) => !open && setToggleOffWorkflow(null)}
+        onConfirm={() => {
+          if (toggleOffWorkflow) handleToggle(toggleOffWorkflow.name, false)
+          setToggleOffWorkflow(null)
+        }}
+        confirmLabel={t("common.disable", "Disable")}
+        isPending={isToggling}
+      />
+
       <WorkflowImportDialog
         open={importOpen}
         isImportPending={importPending}
@@ -324,6 +415,7 @@ function InstanceDialog({
   const [instances, setInstances] = useState<WorkflowInstance[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
 
   const loadInstances = async (name: string) => {
     setLoading(true)
@@ -464,15 +556,7 @@ function InstanceDialog({
                           variant="ghost"
                           size="sm"
                           className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs"
-                          onClick={async () => {
-                            if (!confirm(t("pages.workflows.delete_instance_confirm", "Are you sure you want to delete this execution record?"))) return
-                            try {
-                              await deleteWorkflowInstance(inst.workflow_name, inst.id)
-                              setInstances(instances.filter(i => i.id !== inst.id))
-                            } catch {
-                              // ignore
-                            }
-                          }}
+                          onClick={() => setDeleteInstanceId(inst.id)}
                         >
                           <IconTrash className="mr-1 h-3 w-3" />
                           {t("common.delete", "Delete")}
@@ -485,6 +569,26 @@ function InstanceDialog({
             </div>
           )}
         </div>
+
+        <ConfirmDialog
+          title={t("pages.workflows.delete_instance_title", "Delete Execution Record")}
+          description={t("pages.workflows.delete_instance_confirm", "Are you sure you want to delete this execution record?")}
+          open={!!deleteInstanceId}
+          onOpenChange={(open) => !open && setDeleteInstanceId(null)}
+          onConfirm={async () => {
+            if (deleteInstanceId && workflowName) {
+              try {
+                await deleteWorkflowInstance(workflowName, deleteInstanceId)
+                setInstances(instances.filter(i => i.id !== deleteInstanceId))
+              } catch {
+                // ignore
+              }
+            }
+            setDeleteInstanceId(null)
+          }}
+          confirmVariant="destructive"
+          confirmLabel={t("common.delete", "Delete")}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -533,22 +637,22 @@ function WorkflowCard({
           </div>
           <div className="flex shrink-0 items-center gap-0.5 ml-2">
             {workflow.trigger_type !== "manual" && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Switch
-                      checked={workflow.enabled}
-                      onCheckedChange={(checked) => onToggle(workflow.name, checked)}
-                      disabled={isToggling}
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {workflow.enabled
-                    ? t("common.disable", "Disable")
-                    : t("common.enable", "Enable")}
-                </TooltipContent>
-              </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Switch
+                    checked={workflow.enabled}
+                    onCheckedChange={(checked) => onToggle(workflow.name, checked)}
+                    disabled={isToggling}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {workflow.enabled
+                  ? t("common.disable", "Disable")
+                  : t("common.enable", "Enable")}
+              </TooltipContent>
+            </Tooltip>
             )}
           </div>
         </div>

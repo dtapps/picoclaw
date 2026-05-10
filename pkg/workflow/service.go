@@ -3,7 +3,6 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/commands"
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // Service 管理工作流引擎的完整生命周期。
@@ -80,7 +80,7 @@ func (s *Service) Start() error {
 			s.eventSub = sub
 			s.eventCh = ch
 		} else {
-			log.Printf("[workflow] 订阅事件总线失败: %v", err)
+			logger.ErrorCF("workflow", "订阅事件总线失败", map[string]any{"error": err.Error()})
 		}
 	}
 
@@ -91,7 +91,7 @@ func (s *Service) Start() error {
 	// 启动主循环
 	go s.runLoop()
 
-	log.Printf("[workflow] 服务已启动，已加载 %d 个工作流", len(s.workflows))
+	logger.InfoCF("workflow", "服务已启动", map[string]any{"workflows": len(s.workflows)})
 	return nil
 }
 
@@ -126,7 +126,7 @@ func (s *Service) Stop() {
 	// 等待所有运行中的工作流实例完成
 	s.engine.WaitRunning()
 
-	log.Printf("[workflow] 服务已停止")
+	logger.InfoC("workflow", "服务已停止")
 }
 
 // Reload 重新从磁盘加载工作流定义。
@@ -191,7 +191,7 @@ func (s *Service) CreateWorkflow(wf *Workflow) error {
 
 	wf.CreatedAt = time.Now()
 	wf.UpdatedAt = time.Now()
-	wf.Enabled = true
+	wf.Enabled = false
 
 	if err := s.store.SaveWorkflow(wf); err != nil {
 		return err
@@ -294,10 +294,10 @@ func (s *Service) SetEnabled(name string, enabled bool) error {
 		return errNotFound(name)
 	}
 
-	wf.Enabled = enabled
 	if err := s.store.SetEnabled(name, enabled); err != nil {
 		return err
 	}
+	wf.Enabled = enabled
 	return nil
 }
 
@@ -450,7 +450,11 @@ func (s *Service) checkCronTriggers() {
 			// 检查 cron 表达式是否到期
 			isDue, err := s.cron.IsDue(trigger.Cron)
 			if err != nil {
-				log.Printf("[workflow] 无效的 cron 表达式 '%s'（工作流: %s）: %v", trigger.Cron, wf.Name, err)
+				logger.WarnCF(
+					"workflow",
+					"无效的 cron 表达式",
+					map[string]any{"cron": trigger.Cron, "workflow": wf.Name, "error": err.Error()},
+				)
 				continue
 			}
 			if !isDue {
@@ -459,14 +463,14 @@ func (s *Service) checkCronTriggers() {
 
 			// 避免重复触发：同一工作流同时只运行一个实例
 			if s.engine.IsRunning(wf.Name) {
-				log.Printf("[workflow] 跳过 cron 触发（工作流 '%s' 正在运行中）", wf.Name)
+				logger.InfoCF("workflow", "跳过 cron 触发，工作流正在运行中", map[string]any{"workflow": wf.Name})
 				continue
 			}
 
-			log.Printf("[workflow] cron 触发器触发工作流 '%s'", wf.Name)
+			logger.InfoCF("workflow", "cron 触发器触发工作流", map[string]any{"workflow": wf.Name})
 			ctx := context.Background()
 			if _, err := s.engine.RunWorkflow(ctx, wf, "cron", "", ""); err != nil {
-				log.Printf("[workflow] 运行工作流 '%s' 失败: %v", wf.Name, err)
+				logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 			}
 		}
 	}
@@ -488,14 +492,14 @@ func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
 			// 匹配事件类型
 			if string(evt.Kind) == trigger.Event {
 				if s.engine.IsRunning(wf.Name) {
-					log.Printf("[workflow] 跳过事件触发（工作流 '%s' 正在运行中）", wf.Name)
+					logger.InfoCF("workflow", "跳过事件触发，工作流正在运行中", map[string]any{"workflow": wf.Name})
 					continue
 				}
 
-				log.Printf("[workflow] 事件触发器 '%s' 触发工作流 '%s'", trigger.Event, wf.Name)
+				logger.InfoCF("workflow", "事件触发器触发工作流", map[string]any{"event": trigger.Event, "workflow": wf.Name})
 				ctx := context.Background()
 				if _, err := s.engine.RunWorkflow(ctx, wf, "event", "", ""); err != nil {
-					log.Printf("[workflow] 运行工作流 '%s' 失败: %v", wf.Name, err)
+					logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 				}
 			}
 		}

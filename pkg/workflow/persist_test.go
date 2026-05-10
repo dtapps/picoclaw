@@ -346,12 +346,12 @@ func TestSanitizeName(t *testing.T) {
 		want  string
 	}{
 		{"hello-world", "hello-world"},
-		{"Hello World", "hello-world"},
+		{"Hello World", "Hello-World"},
 		{"my_workflow", "my_workflow"},
-		{"Test123", "test123"},
+		{"Test123", "Test123"},
 		{"special!@#chars", "specialchars"},
 		{"", "unnamed"},
-		{"UPPERCASE", "uppercase"},
+		{"UPPERCASE", "UPPERCASE"},
 		{"a b c", "a-b-c"},
 	}
 

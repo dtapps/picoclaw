@@ -11,21 +11,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-interface DeleteDialogProps {
+interface RunDialogProps {
   workflow: WorkflowListItem | null
   open: boolean
   onOpenChange: (open: boolean) => void
   onConfirm: () => void
-  isDeleting: boolean
+  isRunning: boolean
 }
 
-export function DeleteDialog({
+export function RunDialog({
   workflow,
   open,
   onOpenChange,
   onConfirm,
-  isDeleting,
-}: DeleteDialogProps) {
+  isRunning,
+}: RunDialogProps) {
   const { t } = useTranslation()
 
   if (!workflow) return null
@@ -35,12 +35,12 @@ export function DeleteDialog({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {t("pages.workflows.delete_title", "Delete Workflow")}
+            {t("pages.workflows.run_title", "Run Workflow")}
           </DialogTitle>
           <DialogDescription>
             {t(
-              "pages.workflows.delete_description",
-              `Are you sure you want to delete "${workflow.name}"? This action cannot be undone.`,
+              "pages.workflows.run_description",
+              `Are you sure you want to run "${workflow.name}"?`,
               { name: workflow.name },
             )}
           </DialogDescription>
@@ -50,13 +50,12 @@ export function DeleteDialog({
             {t("common.cancel", "Cancel")}
           </Button>
           <Button
-            variant="destructive"
             onClick={onConfirm}
-            disabled={isDeleting}
+            disabled={isRunning}
           >
-            {isDeleting
-              ? t("common.deleting", "Deleting...")
-              : t("common.delete", "Delete")}
+            {isRunning
+              ? t("pages.workflows.running", "Running...")
+              : t("pages.workflows.run", "Run")}
           </Button>
         </DialogFooter>
       </DialogContent>
