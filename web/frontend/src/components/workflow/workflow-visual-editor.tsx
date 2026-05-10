@@ -54,7 +54,8 @@ function WhenEditor({ labels }: { labels: StepEditorLabels }) {
 
   // 切换步骤时同步 state
   useEffect(() => {
-    setUseCustomWhen(!isPreset && whenValue !== "")
+    const ip = whenValue === "" || whenValue === "on_success" || whenValue === "on_error"
+    setUseCustomWhen(!ip && whenValue !== "")
   }, [whenValue])
 
   const handleSelectChange = (v: string) => {
@@ -548,10 +549,11 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
 
   // 切换步骤时同步 state
   useEffect(() => {
-    setCondType(parsed.type)
-    setStepId(parsed.stepId)
-    setOutputKey(parsed.outputKey)
-    setCondValue(parsed.value)
+    const p = parseWhenExpression(whenExpr)
+    setCondType(p.type)
+    setStepId(p.stepId)
+    setOutputKey(p.outputKey)
+    setCondValue(p.value)
   }, [whenExpr])
 
   const handleCondTypeChange = (newType: string) => {

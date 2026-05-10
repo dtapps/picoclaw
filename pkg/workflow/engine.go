@@ -337,7 +337,12 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			}
 			// if 步骤本身标记为完成
 			inst.mu.Lock()
-			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusCompleted, StartedAt: &ifStepStart, Attempts: 1}
+			inst.StepStates[step.ID] = &StepState{
+				Name:      step.Name,
+				Status:    StatusCompleted,
+				StartedAt: &ifStepStart,
+				Attempts:  1,
+			}
 			now := time.Now()
 			inst.StepStates[step.ID].FinishedAt = &now
 			_ = e.store.SaveInstance(inst)
@@ -600,7 +605,11 @@ func (e *Engine) executeIfInEngine(ctx context.Context, step Step, inst *Workflo
 				return branchResult
 			}
 			// continue 策略：记录错误但继续执行
-			inst.appendLog(step.ID, "warn", fmt.Sprintf("if 分支步骤 '%s' 失败（continue 策略）: %v", branchStep.ID, branchResult.Error))
+			inst.appendLog(
+				step.ID,
+				"warn",
+				fmt.Sprintf("if 分支步骤 '%s' 失败（continue 策略）: %v", branchStep.ID, branchResult.Error),
+			)
 		}
 	}
 
