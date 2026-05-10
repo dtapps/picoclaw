@@ -909,6 +909,7 @@ func setupWorkflowService(
 
 	// 创建引擎
 	engine := workflow.NewEngine(store, executor)
+	engine.SetEventBus(agentLoop.RuntimeEventBus())
 
 	// 设置执行开始回调：推送开始通知到绑定频道
 	engine.SetOnStart(func(inst *workflow.WorkflowInstance) {

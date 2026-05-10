@@ -16,6 +16,7 @@ package workflow
 
 import (
 	"fmt"
+	"sync"
 	"time"
 )
 
@@ -107,6 +108,8 @@ type WorkflowInstance struct {
 	StartedAt    time.Time                 `json:"started_at"`            // 开始时间
 	FinishedAt   *time.Time                `json:"finished_at,omitempty"` // 结束时间
 	Error        string                    `json:"error,omitempty"`       // 错误信息
+
+	mu sync.Mutex `json:"-"` // 保护 StepStates/StepOutputs/Logs 等字段的并发访问
 }
 
 // LogEntry 记录工作流执行过程中的日志信息。
@@ -119,16 +122,19 @@ type LogEntry struct {
 
 // appendLog 追加一条日志到实例。
 func (inst *WorkflowInstance) appendLog(stepID, level, message string) {
+	inst.mu.Lock()
 	inst.Logs = append(inst.Logs, LogEntry{
 		Timestamp: time.Now(),
 		StepID:    stepID,
 		Level:     level,
 		Message:   message,
 	})
+	inst.mu.Unlock()
 }
 
 // StepState 记录单个步骤的执行状态。
 type StepState struct {
+	Name       string     `json:"name,omitempty"`        // 步骤显示名称
 	Status     string     `json:"status"`                // 步骤状态
 	StartedAt  *time.Time `json:"started_at,omitempty"`  // 开始时间
 	FinishedAt *time.Time `json:"finished_at,omitempty"` // 结束时间

@@ -9,6 +9,7 @@ import {
   IconSubtask,
   IconTrash,
   IconUpload,
+  IconExternalLink,
 } from "@tabler/icons-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
 import { useTranslation } from "react-i18next"
@@ -16,8 +17,9 @@ import { useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import type { WorkflowInstance, WorkflowListItem } from "@/api/workflow"
+import type { WorkflowInstance, WorkflowListItem, WorkflowStepEvent } from "@/api/workflow"
 import {
+  createInstanceStream,
   formatInstanceStatus,
   formatTriggerDescription,
   getInstanceStatusColor,
@@ -412,10 +414,16 @@ function InstanceDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [instances, setInstances] = useState<WorkflowInstance[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
+  const esRef = useRef<EventSource | null>(null)
+  const retryCountRef = useRef(0)
+  const instancesRef = useRef(instances)
+  useEffect(() => { instancesRef.current = instances })
+  const MAX_SSE_RETRIES = 5
 
   const loadInstances = async (name: string) => {
     setLoading(true)
@@ -435,6 +443,89 @@ function InstanceDialog({
       loadInstances(workflowName)
     }
   }, [workflowName])
+
+  // 对正在运行的展开实例建立 SSE 连接，实时更新状态
+  useEffect(() => {
+    // 清除旧连接
+    if (esRef.current) {
+      esRef.current.close()
+      esRef.current = null
+    }
+    retryCountRef.current = 0
+
+    if (!workflowName || !expandedId) return
+
+    // 仅对运行中的实例建立 SSE
+    const expanded = instancesRef.current.find((i) => i.id === expandedId)
+    if (!expanded || expanded.status !== "running") return
+
+    const es = createInstanceStream(workflowName, expandedId)
+    esRef.current = es
+
+    es.onopen = () => {
+      retryCountRef.current = 0
+    }
+
+    es.addEventListener("snapshot", (e) => {
+      try {
+        const updated = JSON.parse(e.data) as WorkflowInstance
+        setInstances((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+      } catch { /* ignore */ }
+    })
+
+    es.addEventListener("step_update", (e) => {
+      try {
+        const evt = JSON.parse(e.data) as WorkflowStepEvent
+        const payload = evt.payload
+        if (!payload.step_id) return
+        const stepID = payload.step_id
+        setInstances((prev) =>
+          prev.map((i) => {
+            if (i.id !== expandedId) return i
+            const stepStates = { ...i.step_states }
+            stepStates[stepID] = {
+              ...stepStates[stepID],
+              status: payload.status || stepStates[stepID]?.status || "running",
+            }
+            return { ...i, step_states: stepStates }
+          }),
+        )
+      } catch { /* ignore */ }
+    })
+
+    es.addEventListener("instance_complete", (e) => {
+      try {
+        const evt = JSON.parse(e.data) as WorkflowStepEvent
+        const payload = evt.payload
+        setInstances((prev) =>
+          prev.map((i) => {
+            if (i.id !== expandedId) return i
+            return {
+              ...i,
+              status: payload.status || i.status,
+              error: payload.error || i.error,
+              finished_at: evt.time,
+            }
+          }),
+        )
+      } catch { /* ignore */ }
+      es.close()
+      esRef.current = null
+    })
+
+    es.onerror = () => {
+      retryCountRef.current++
+      if (retryCountRef.current >= MAX_SSE_RETRIES) {
+        es.close()
+        if (esRef.current === es) esRef.current = null
+      }
+    }
+
+    return () => {
+      es.close()
+      if (esRef.current === es) esRef.current = null
+    }
+  }, [workflowName, expandedId])
 
   const handleOpenChange = (nextOpen: boolean) => {
     onOpenChange(nextOpen)
@@ -461,15 +552,21 @@ function InstanceDialog({
             <div className="space-y-2">
               {instances.map((inst) => (
                 <div key={inst.id} className="rounded-lg border">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50"
-                    onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
-                  >
-                    <div className="flex items-center gap-3">
+                  <div className="flex w-full items-center justify-between px-4 py-3">
+                    <button
+                      type="button"
+                      className="flex flex-1 items-center gap-3 text-left hover:bg-muted/50 -mx-4 -my-3 px-4 py-3"
+                      onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
+                    >
                       <Badge variant="outline" className={getInstanceStatusColor(inst.status)}>
                         {formatInstanceStatus(inst.status, t)}
                       </Badge>
+                      {inst.status === "running" && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                        </span>
+                      )}
                       <span className="text-sm text-muted-foreground">
                         {inst.trigger_type === "cron"
                           ? t("pages.workflows.trigger_cron", "Cron")
@@ -480,16 +577,37 @@ function InstanceDialog({
                       <span className="text-xs text-muted-foreground">
                         {new Date(inst.started_at).toLocaleString()}
                       </span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {inst.id.slice(0, 8)}
+                      </span>
                       {inst.channel && (
-                        <span className="text-xs text-muted-foreground">
-                          {t("pages.workflows.notify_channel", "Channel")}: {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
                         </span>
                       )}
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => void navigate({
+                          to: "/workflows/instance",
+                          search: { workflow: workflowName!, instance: inst.id },
+                        })}
+                      >
+                        <IconExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7"
+                        onClick={() => setDeleteInstanceId(inst.id)}
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {inst.id.slice(0, 8)}
-                    </span>
-                  </button>
+                  </div>
                   {expandedId === inst.id && (
                     <div className="border-t px-4 py-3 space-y-3">
                       {Object.entries(inst.step_states).length > 0 && (
@@ -510,7 +628,7 @@ function InstanceDialog({
                                 <span className={getInstanceStatusColor(state.status)}>
                                   {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
                                 </span>
-                                <span>{stepID}</span>
+                                <span>{state.name || `#${stepID}`}</span>
                                 {state.error && (
                                   <span className="text-destructive ml-2">{state.error}</span>
                                 )}
@@ -540,7 +658,7 @@ function InstanceDialog({
                                   {new Date(log.timestamp).toLocaleTimeString()}
                                 </span>
                                 {log.step_id && (
-                                  <span className="text-blue-600 shrink-0">[{log.step_id}]</span>
+                                  <span className="text-blue-600 shrink-0">[{inst.step_states?.[log.step_id]?.name || `#${log.step_id}`}]</span>
                                 )}
                                 <span>{log.message}</span>
                               </div>
@@ -551,17 +669,6 @@ function InstanceDialog({
                       {inst.error && (
                         <p className="text-xs text-destructive">{inst.error}</p>
                       )}
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs"
-                          onClick={() => setDeleteInstanceId(inst.id)}
-                        >
-                          <IconTrash className="mr-1 h-3 w-3" />
-                          {t("common.delete", "Delete")}
-                        </Button>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -579,7 +686,7 @@ function InstanceDialog({
             if (deleteInstanceId && workflowName) {
               try {
                 await deleteWorkflowInstance(workflowName, deleteInstanceId)
-                setInstances(instances.filter(i => i.id !== deleteInstanceId))
+                setInstances((prev) => prev.filter(i => i.id !== deleteInstanceId))
               } catch {
                 // ignore
               }

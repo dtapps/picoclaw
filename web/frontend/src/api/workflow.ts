@@ -54,6 +54,7 @@ export interface WorkflowListItem {
 }
 
 export interface StepState {
+  name?: string
   status: string
   started_at?: string
   finished_at?: string
@@ -201,6 +202,33 @@ export async function deleteWorkflowInstance(
     { method: "DELETE" },
   )
   if (!res.ok) throw new Error("Failed to delete workflow instance")
+}
+
+// --- SSE 实时事件 ---
+
+export interface WorkflowStepEvent {
+  event: string
+  payload: {
+    step_id?: string
+    action?: string
+    status?: string
+    workflow?: string
+    trigger?: string
+    error?: string
+  }
+  time: string
+}
+
+/**
+ * 创建工作流实例的 SSE 连接，返回 EventSource 实例。
+ * 用于实时监听步骤状态变更和实例完成事件。
+ */
+export function createInstanceStream(
+  name: string,
+  id: string,
+): EventSource {
+  const url = `/api/workflows/${encodeURIComponent(name)}/instances/${encodeURIComponent(id)}/stream`
+  return new EventSource(url)
 }
 
 export async function importWorkflow(

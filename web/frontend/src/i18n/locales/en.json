@@ -167,7 +167,8 @@
     "deleting": "Deleting...",
     "retry": "Retry",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "back": "Back"
   },
   "environment": {
     "title": "Environment Variables",
@@ -1074,6 +1075,11 @@
       "no_instances": "No execution records",
       "delete_instance_confirm": "Are you sure you want to delete this execution record?",
       "delete_instance_title": "Delete Execution Record",
+      "view_detail": "Details",
+      "instance_detail": "Instance Detail",
+      "instance_id": "Instance ID",
+      "duration": "Duration",
+      "attempts": "{{count}} attempts",
       "import": "Import Workflow",
       "import_error": "Failed to import workflow",
       "import_success": "Workflow imported successfully",

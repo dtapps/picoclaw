@@ -335,7 +335,22 @@ Cron 触发器的工作方式：
                                  └──────────┘
 ```
 
-## YAML 定义格式
+每个步骤（包括 parallel 子步骤和 if 分支子步骤）也有独立的 `StepState` 追踪：
+`pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`。
+
+未执行的 if 分支子步骤自动标记为 `skipped`。
+
+### 实时事件流（SSE）
+
+工作流引擎将状态变更事件发布到事件总线（`pkg/events`），可通过 SSE 实时推送到 UI：
+
+- `workflow.instance.start` — 实例开始执行
+- `workflow.instance.complete` — 实例执行结束（成功/失败/取消）
+- `workflow.step.start` — 步骤开始执行
+- `workflow.step.complete` — 步骤执行结束（成功/失败）
+
+SSE 端点（`GET /api/workflows/{name}/instances/{id}/stream`）以 Server-Sent Events 格式推送这些事件。
+前端对运行中的实例自动连接 SSE 流，无需轮询即可获得实时步骤进度和日志更新。
 
 工作流定义存放在 `workspace/workflows/` 目录下，每个工作流一个 YAML 文件：
 
@@ -482,6 +497,7 @@ steps:
 | POST | `/api/workflows/{name}/toggle` | 启用/禁用 | 仅文件系统 |
 | GET | `/api/workflows/{name}/instances` | 查询执行历史（按时间倒序） | 需 Gateway 运行 |
 | GET | `/api/workflows/{name}/instances/{id}` | 查询实例详情 | 需 Gateway 运行 |
+| GET | `/api/workflows/{name}/instances/{id}/stream` | SSE 实时推送实例状态变更 | 需 Gateway 运行 |
 | DELETE | `/api/workflows/{name}/instances/{id}` | 删除执行记录 | 需 Gateway 运行 |
 
 > CRUD 操作通过临时创建 PersistStore 读写文件，不依赖 Gateway 进程。
@@ -679,9 +695,10 @@ steps:
 | 执行历史查询 | ✅ 已支持 | 通过 REST API、斜杠命令或 LLM 工具 |
 | 频道推送通知 | ✅ 已支持 | 四阶段通知：开始/步骤开始/步骤输出/完成 |
 | 执行日志 | ✅ 已支持 | 存储在实例中，通过 API 和 UI 查看 |
+| 执行日志（实时） | ✅ 已支持 | SSE 流式推送 `/api/workflows/{name}/instances/{id}/stream`，UI 自动更新 |
+| 子步骤状态追踪 | ✅ 已支持 | parallel/if 子步骤拥有独立的 StepState |
 | UI 执行历史 | ✅ 已支持 | 工作流卡片历史按钮，详情页执行日志卡片，支持删除记录 |
 | 实例删除 | ✅ 已支持 | DELETE API + UI 删除按钮 |
-| 执行日志（实时） | ❌ 未实现 | 需要增加日志流式输出（SSE） |
 
 ## 与 CronService 的对比
 
