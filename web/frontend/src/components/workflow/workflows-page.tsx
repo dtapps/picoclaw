@@ -24,7 +24,7 @@ import {
   formatTriggerDescription,
   getInstanceStatusColor,
 } from "@/api/workflow"
-import { getWorkflowInstances, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
+import { getWorkflowInstances, getWorkflowInstance, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -493,22 +493,15 @@ function InstanceDialog({
       } catch { /* ignore */ }
     })
 
-    es.addEventListener("instance_complete", (e) => {
-      try {
-        const evt = JSON.parse(e.data) as WorkflowStepEvent
-        const payload = evt.payload
-        setInstances((prev) =>
-          prev.map((i) => {
-            if (i.id !== expandedId) return i
-            return {
-              ...i,
-              status: payload.status || i.status,
-              error: payload.error || i.error,
-              finished_at: evt.time,
-            }
-          }),
-        )
-      } catch { /* ignore */ }
+    es.addEventListener("instance_complete", () => {
+      // 重新获取完整实例数据（包含 step_states 的 error、timing、attempts 等）
+      if (workflowName && expandedId) {
+        getWorkflowInstance(workflowName, expandedId)
+          .then((inst) => {
+            setInstances((prev) => prev.map((i) => i.id === expandedId ? inst : i))
+          })
+          .catch(() => {})
+      }
       es.close()
       esRef.current = null
     })

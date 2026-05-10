@@ -261,6 +261,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	if failureStrategy == "" {
 		failureStrategy = "stop"
 	}
+	inst.FailureStrategy = failureStrategy
 
 	var prevStepState *StepState
 
@@ -280,6 +281,10 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 
 		// if 步骤：评估条件后执行对应分支（if 步骤始终执行，不跳过）
 		if step.Action == "if" {
+			// 步骤开始回调
+			if e.onStepStart != nil {
+				e.onStepStart(step, inst)
+			}
 			condResult := EvaluateCondition(step.When, prevStepState, inst.StepOutputs)
 			var branchSteps []Step
 			var skippedBranch []Step
@@ -332,11 +337,15 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			}
 			// if 步骤本身标记为完成
 			inst.mu.Lock()
-			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusCompleted, StartedAt: &ifStepStart}
+			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusCompleted, StartedAt: &ifStepStart, Attempts: 1}
 			now := time.Now()
 			inst.StepStates[step.ID].FinishedAt = &now
 			_ = e.store.SaveInstance(inst)
 			inst.mu.Unlock()
+			// 步骤完成回调
+			if e.onStepComplete != nil {
+				e.onStepComplete(step, inst, StepResult{Output: "if: true"})
+			}
 			prevStepState = inst.StepStates[step.ID]
 			continue
 		}
@@ -361,10 +370,10 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		// 处理失败
 		if result.Error != nil && failureStrategy == "stop" {
 			// 尝试查找并执行 on_error 处理步骤
-			handled := e.tryErrorHandlers(ctx, wf, inst, step.ID)
+			handled, handlerSuccess := e.tryErrorHandlers(ctx, wf, inst, step.ID)
 			inst.mu.Lock()
-			if handled {
-				// 错误已被处理，跳过后续步骤，标记为 completed
+			if handled && handlerSuccess {
+				// 错误已被成功处理，跳过后续步骤，标记为 completed
 				inst.Status = StatusCompleted
 			} else {
 				inst.Status = StatusFailed
@@ -458,6 +467,8 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	var result StepResult
 	if step.Action == "parallel" {
 		result = e.executeParallelInEngine(ctx, step, inst)
+	} else if step.Action == "if" {
+		result = e.executeIfInEngine(ctx, step, inst)
 	} else {
 		// 快照 stepOutputs 避免并行子步骤写入时的 map 数据竞争
 		inst.mu.Lock()
@@ -471,7 +482,10 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 
 	// 更新步骤状态
 	inst.mu.Lock()
-	state.Attempts++
+	if result.Attempts < 1 {
+		result.Attempts = 1
+	}
+	state.Attempts = result.Attempts
 	now2 := time.Now()
 	state.FinishedAt = &now2
 
@@ -517,6 +531,82 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 
 // executeParallelInEngine 在引擎层编排并行步骤，为每个子步骤调用 executeStepWithState。
 // 这样子步骤也有完整的 state tracking、日志记录和回调。
+// executeIfInEngine 在引擎层执行 if 步骤：评估条件，执行对应分支，标记跳过的分支。
+func (e *Engine) executeIfInEngine(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
+	// 快照 stepOutputs 避免并行子步骤写入时的数据竞争
+	inst.mu.Lock()
+	outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs))
+	for k, v := range inst.StepOutputs {
+		cp := make(map[string]any, len(v))
+		for k2, v2 := range v {
+			cp[k2] = v2
+		}
+		outputsSnapshot[k] = cp
+	}
+	// 对于 on_success/on_error 条件，需要前一个步骤的状态
+	// 查找最近一个已完成/失败/跳过的步骤状态作为 prevStepState
+	var prevStepState *StepState
+	for _, ss := range inst.StepStates {
+		if ss == nil || (ss.Status != StatusCompleted && ss.Status != StatusFailed && ss.Status != StatusSkipped) {
+			continue
+		}
+		if prevStepState == nil {
+			prevStepState = ss
+			continue
+		}
+		// 优先选择有 FinishedAt 的 step；都有则选最新的
+		if ss.FinishedAt != nil && prevStepState.FinishedAt == nil {
+			prevStepState = ss
+		} else if ss.FinishedAt != nil && prevStepState.FinishedAt != nil && ss.FinishedAt.After(*prevStepState.FinishedAt) {
+			prevStepState = ss
+		}
+	}
+	if prevStepState == nil {
+		prevStepState = inst.StepStates[step.ID] // fallback
+	}
+	inst.mu.Unlock()
+
+	condResult := EvaluateCondition(step.When, prevStepState, outputsSnapshot)
+
+	var branchSteps []Step
+	var skippedBranch []Step
+	if condResult {
+		branchSteps = step.IfTrue
+		skippedBranch = step.IfFalse
+	} else {
+		branchSteps = step.IfFalse
+		skippedBranch = step.IfTrue
+	}
+
+	// 未执行的分支子步骤标记为 skipped
+	inst.mu.Lock()
+	for _, s := range skippedBranch {
+		inst.StepStates[s.ID] = &StepState{Name: s.Name, Status: StatusSkipped}
+	}
+	inst.mu.Unlock()
+
+	inst.appendLog(step.ID, "info", fmt.Sprintf("if 条件 '%s' 评估结果: %v", step.When, condResult))
+
+	// 执行选中的分支步骤
+	for _, branchStep := range branchSteps {
+		select {
+		case <-ctx.Done():
+			return StepResult{Error: ctx.Err()}
+		default:
+		}
+		branchResult := e.executeStepWithState(ctx, branchStep, inst)
+		if branchResult.Error != nil {
+			if inst.FailureStrategy == "stop" {
+				return branchResult
+			}
+			// continue 策略：记录错误但继续执行
+			inst.appendLog(step.ID, "warn", fmt.Sprintf("if 分支步骤 '%s' 失败（continue 策略）: %v", branchStep.ID, branchResult.Error))
+		}
+	}
+
+	return StepResult{Output: fmt.Sprintf("if: %v", condResult)}
+}
+
 func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
 	type parallelResult struct {
 		index  int
@@ -546,10 +636,14 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 	}
 
 	if len(errs) > 0 {
-		return StepResult{
-			Output: fmt.Sprintf("%v", outputs),
-			Error:  fmt.Errorf("并行步骤有 %d 个错误: %v", len(errs), errs),
+		if inst.FailureStrategy == "stop" {
+			return StepResult{
+				Output: fmt.Sprintf("%v", outputs),
+				Error:  fmt.Errorf("并行步骤有 %d 个错误: %v", len(errs), errs),
+			}
 		}
+		// continue 策略：记录错误但返回成功
+		inst.appendLog(step.ID, "warn", fmt.Sprintf("并行步骤有 %d 个错误（continue 策略）: %v", len(errs), errs))
 	}
 
 	// 合并输出
@@ -566,8 +660,13 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 }
 
 // tryErrorHandlers 在步骤失败后查找并执行 on_error 处理步骤。
-// 返回 true 表示已找到并执行了错误处理步骤。
-func (e *Engine) tryErrorHandlers(ctx context.Context, wf *Workflow, inst *WorkflowInstance, failedStepID string) bool {
+// 返回两个值：是否有错误处理步骤、错误处理步骤是否全部成功。
+func (e *Engine) tryErrorHandlers(
+	ctx context.Context,
+	wf *Workflow,
+	inst *WorkflowInstance,
+	failedStepID string,
+) (found bool, allSuccess bool) {
 	var errorSteps []Step
 	for _, step := range wf.Steps {
 		if step.When == "on_error" {
@@ -576,9 +675,10 @@ func (e *Engine) tryErrorHandlers(ctx context.Context, wf *Workflow, inst *Workf
 	}
 
 	if len(errorSteps) == 0 {
-		return false
+		return false, false
 	}
 
+	allSuccess = true
 	for _, step := range errorSteps {
 		// 跳过失败步骤本身
 		if step.ID == failedStepID {
@@ -592,11 +692,12 @@ func (e *Engine) tryErrorHandlers(ctx context.Context, wf *Workflow, inst *Workf
 
 		result := e.executeStepWithState(ctx, step, inst)
 		if result.Error != nil {
+			allSuccess = false
 			logger.ErrorCF("workflow", "错误处理步骤也失败了", map[string]any{"step": step.ID, "error": result.Error.Error()})
 		}
 	}
 
-	return len(errorSteps) > 0
+	return len(errorSteps) > 0, allSuccess
 }
 
 // generateInstanceID 生成唯一的实例 ID。

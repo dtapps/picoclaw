@@ -334,9 +334,10 @@ func TestPersistStore_PurgeOldInstances(t *testing.T) {
 	if len(instances) != 2 {
 		t.Fatalf("len(instances) after purge = %d, want 2", len(instances))
 	}
-	// 应保留最新的 2 个
-	if instances[0].ID == "purge-inst-4" || instances[1].ID == "purge-inst-3" {
-		// 保留的是最新的
+	// 应保留最新的 2 个（LoadInstances 返回倒序，所以 [0] 是最新的）
+	if instances[0].ID != "purge-inst-4" || instances[1].ID != "purge-inst-3" {
+		t.Errorf("purge kept wrong instances: got [%s, %s], want [purge-inst-4, purge-inst-3]",
+			instances[0].ID, instances[1].ID)
 	}
 }
 

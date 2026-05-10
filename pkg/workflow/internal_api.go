@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"time"
 
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 )
@@ -229,6 +230,22 @@ func (a *InternalAPI) handleStream(w http.ResponseWriter, r *http.Request) {
 		data, _ := json.Marshal(inst)
 		fmt.Fprintf(w, "event: snapshot\ndata: %s\n\n", data)
 		flusher.Flush()
+
+		// 如果实例已经处于终态，发送 instance_complete 后立即关闭连接
+		if inst.Status == StatusCompleted || inst.Status == StatusFailed || inst.Status == StatusCancelled {
+			completeData, _ := json.Marshal(map[string]any{
+				"event": string(runtimeevents.KindWorkflowInstanceComplete),
+				"payload": map[string]any{
+					"workflow": inst.WorkflowName,
+					"status":   inst.Status,
+					"error":    inst.Error,
+				},
+				"time": time.Now(),
+			})
+			fmt.Fprintf(w, "event: instance_complete\ndata: %s\n\n", completeData)
+			flusher.Flush()
+			return
+		}
 	}
 
 	// 监听工作流事件，过滤当前实例

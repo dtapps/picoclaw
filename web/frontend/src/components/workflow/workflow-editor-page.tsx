@@ -129,7 +129,12 @@ export function WorkflowEditorPage() {
           triggers: wfData.triggers,
           vars: wfData.vars,
           steps: wfData.steps,
-          config: wfData.config,
+          config: {
+            ...wfData.config,
+            // 保留编辑器未管理的通知配置字段
+            notify_channel: editWorkflow!.config?.notify_channel,
+            notify_chat_id: editWorkflow!.config?.notify_chat_id,
+          },
         } as UpdateWorkflowRequest)
       } else {
         await handleCreate(wfData as CreateWorkflowRequest)

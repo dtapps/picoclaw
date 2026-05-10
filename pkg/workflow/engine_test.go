@@ -898,6 +898,10 @@ func TestRunWorkflow_OnErrorHandlerFails(t *testing.T) {
 	if inst.StepStates["s2"].Status != StatusFailed {
 		t.Fatalf("s2 status = %q, want failed (handler also failed)", inst.StepStates["s2"].Status)
 	}
+	// handler 也失败时，实例应标记为 failed 而非 completed
+	if inst.Status != StatusFailed {
+		t.Fatalf("instance status = %q, want failed (handler also failed)", inst.Status)
+	}
 }
 
 func TestStopInstance_NotFound(t *testing.T) {
