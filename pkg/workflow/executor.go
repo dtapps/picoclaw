@@ -23,23 +23,15 @@ type StepExecutor struct {
 
 // StepResult 保存步骤执行的输出结果。
 type StepResult struct {
-	Output string // 步骤输出文本
-	Error  error  // 执行错误
+	Output   string // 步骤输出文本
+	Error    error  // 执行错误
+	Attempts int    // 实际执行次数（含重试）
 }
 
 // Execute 执行单个步骤并返回结果。
 // 会先解析模板变量，再根据动作类型分发执行。
 func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[string]map[string]any) StepResult {
-	// 执行前延迟
-	if step.Delay != "" {
-		if d, err := time.ParseDuration(step.Delay); err == nil && d > 0 {
-			select {
-			case <-time.After(d):
-			case <-ctx.Done():
-				return StepResult{Error: ctx.Err()}
-			}
-		}
-	}
+	// 注意：delay 已由 Engine.executeStepWithState 处理，此处不再重复
 
 	// 解析 prompt 和 args 中的模板引用
 	prompt := ResolveStepTemplates(step.Prompt, stepOutputs)
@@ -180,6 +172,7 @@ func (se *StepExecutor) ExecuteWithRetry(
 	var lastResult StepResult
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		result := se.Execute(ctx, step, stepOutputs)
+		result.Attempts = attempt
 		if result.Error == nil {
 			return result
 		}
@@ -204,19 +197,36 @@ func (se *StepExecutor) ExecuteWithRetry(
 }
 
 // resolveArgsTemplates 解析工具调用参数中的模板引用。
-// 只对字符串类型的参数值进行模板替换。
+// 递归处理字符串值和嵌套 map/slice 中的模板替换。
 func resolveArgsTemplates(args map[string]any, outputs map[string]map[string]any) map[string]any {
 	if args == nil {
 		return nil
 	}
 	resolved := make(map[string]any, len(args))
 	for k, v := range args {
-		switch val := v.(type) {
-		case string:
-			resolved[k] = ResolveStepTemplates(val, outputs)
-		default:
-			resolved[k] = v
-		}
+		resolved[k] = resolveValueTemplates(v, outputs)
 	}
 	return resolved
+}
+
+// resolveValueTemplates 递归解析任意值中的模板引用。
+func resolveValueTemplates(v any, outputs map[string]map[string]any) any {
+	switch val := v.(type) {
+	case string:
+		return ResolveStepTemplates(val, outputs)
+	case map[string]any:
+		result := make(map[string]any, len(val))
+		for k, v2 := range val {
+			result[k] = resolveValueTemplates(v2, outputs)
+		}
+		return result
+	case []any:
+		result := make([]any, len(val))
+		for i, item := range val {
+			result[i] = resolveValueTemplates(item, outputs)
+		}
+		return result
+	default:
+		return v
+	}
 }

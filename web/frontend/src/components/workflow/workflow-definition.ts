@@ -111,6 +111,8 @@ function stepToSwd(s: WorkflowStep): Step {
       action: s.action,
       prompt: s.prompt || "",
       tool: s.tool || "",
+      args: s.args ? JSON.stringify(s.args) : "",
+      retry: s.retry ? JSON.stringify(s.retry) : "",
       when: s.when || "",
       delay: s.delay || "",
       output_key: s.output_key || "",
@@ -201,12 +203,41 @@ function swdToStep(s: Step): WorkflowStep {
   // 普通任务步骤
   const sp = s.properties
   const action = (sp.action || s.type) as WorkflowStep["action"]
+
+  // 解析 args: 从 SWD properties 中读取 JSON 字符串并还原为对象
+  let args: Record<string, unknown> | undefined
+  if (action === "tool_call" && sp.args) {
+    try {
+      const parsed = JSON.parse(sp.args as string)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        args = parsed as Record<string, unknown>
+      }
+    } catch {
+      // 如果不是有效 JSON，忽略
+    }
+  }
+
+  // 解析 retry
+  let retry: { max_attempts: number; delay: string } | undefined
+  if (sp.retry) {
+    try {
+      const parsed = JSON.parse(sp.retry as string)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && typeof parsed.max_attempts === "number") {
+        retry = parsed as { max_attempts: number; delay: string }
+      }
+    } catch {
+      // 如果不是有效 JSON，忽略
+    }
+  }
+
   return {
     id: stepId,
     name: displayName,
     action,
     prompt: action === "agent_prompt" ? (sp.prompt as string) : undefined,
     tool: action === "tool_call" ? (sp.tool as string) : undefined,
+    args,
+    retry,
     when: (sp.when as string) || undefined,
     delay: (sp.delay as string) || undefined,
     output_key: (sp.output_key as string) || undefined,

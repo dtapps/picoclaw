@@ -120,11 +120,11 @@ RunWorkflow()
   │     ├── 3. Delay: if step.delay is set, wait for the specified duration
   │     │     └── Cancelled during wait → step state: cancelled
   │     │
-  │     ├── 4. Execute step: ExecuteWithRetry()
+        │     ├── 4. Execute step: ExecuteWithRetry()
         │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
-        │     │     ├── parallel    → goroutine concurrent sub-step execution
-        │     │     └── if          → evaluate when condition, execute if_true or if_false branch
+        │     │     ├── parallel    → goroutine concurrent sub-step execution (sub-step failures respect failure_strategy)
+        │     │     └── if          → evaluate when condition, execute if_true or if_false branch (branch step failures respect failure_strategy)
         │     │
         │     ├── 5. Process result
         │     │     ├── Success → record output to output_key, continue
@@ -250,8 +250,9 @@ Each step supports the following configuration:
 - **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set
 - **when**: Condition expression; step executes only when satisfied
 - **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
-- **retry**: Maximum retry count (default: 0)
-- **retry_delay**: Retry interval in seconds
+- **retry**: Retry configuration in structured format (default: no retry)
+  - `max_attempts`: Maximum retry count
+  - `delay`: Retry interval, e.g., `"10s"`
 - **timeout**: Timeout in seconds
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
 
@@ -338,7 +339,16 @@ Template resolution logic (`conditions.go`):
 Each step (including parallel sub-steps and if branch sub-steps) also has its own `StepState` tracking:
 `pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`.
 
+`StepState` contains the following fields:
+- **Name**: Step display name
+- **Status**: Current state
+- **StartedAt** / **FinishedAt**: Start and finish timestamps
+- **Attempts**: Execution attempt count (1 on first execution, increments on retry)
+- **Error**: Error message on failure
+
 Unexecuted if-branch sub-steps are automatically marked as `skipped`.
+
+> **failureStrategy in nested steps**: The `failure_strategy` setting applies not only to top-level steps but also to if branch steps and parallel sub-steps. When `failure_strategy=continue`, failures in if branches or parallel sub-steps do not halt workflow execution — instead, a warning log is recorded and execution continues.
 
 ### Real-time Event Streaming (SSE)
 
@@ -462,11 +472,13 @@ The `when` condition for `if` steps supports:
 - `on_success`: Takes `if_true` branch when previous step succeeded, `if_false` when failed
 - `{{.step_id.key}} == value`: Takes `if_true` branch when a specific step output equals a value
 
+> **if step events and notifications**: `if` steps also emit `workflow.step.start` and `workflow.step.complete` SSE events, and trigger `onStepStart`/`onStepComplete` notification callbacks (consistent with agent_prompt/tool_call steps).
+
 ### Visual Editor
 
 The workflow editor page provides a visual editor based on Sequential Workflow Designer, supporting:
 - Drag steps from the toolbox onto the canvas (each step type shows a description)
-- Click a step to edit its properties in the right panel (ID field accepts only alphanumeric characters and underscores; Name field accepts any characters)
+- Click a step to edit its properties in the right panel (ID field accepts only alphanumeric characters and underscores; Name field accepts any characters; retry configuration is shown only for agent_prompt and tool_call steps)
 - Step types are fixed after dragging (Agent Prompt / Tool Call / Parallel / If)
 - Auto-assigned step IDs by type when dragging from toolbox (e.g., `prompt_1`, `tool_1`, `prompt_2`, `if_1`)
 - Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check)

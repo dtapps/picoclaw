@@ -246,8 +246,9 @@ func (ps *PersistStore) PurgeOldInstances(workflowName string, keepCount int) er
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 
+	// LoadInstances 返回倒序（最新在前），因此尾部是旧实例
 	// 删除最早的实例，保留最近的 keepCount 个
-	for i := 0; i < len(instances)-keepCount; i++ {
+	for i := keepCount; i < len(instances); i++ {
 		filename := sanitizeName(workflowName) + "_" + instances[i].ID + ".json"
 		_ = os.Remove(filepath.Join(ps.stateDir, filename))
 	}

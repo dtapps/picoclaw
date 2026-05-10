@@ -31,6 +31,9 @@ import {
   COMPONENT_SWITCH,
 } from "./workflow-definition"
 
+import { getTools, type ToolParamProperty } from "@/api/tools"
+import { getMCPConfig, getMCPServerDetails } from "@/api/mcp"
+
 // --- 步骤图标 ---
 
 const ICON_AGENT_PROMPT = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><path d="M8 16h0"/><path d="M16 16h0"/></svg>')}`
@@ -40,6 +43,464 @@ const ICON_TOOL_CALL = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="htt
 const ICON_IF = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3v12"/><path d="M18 9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/><path d="M15 6H9"/><path d="M9 18H3"/></svg>')}`
 
 const ICON_PARALLEL = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4 8h16"/><path d="M4 16h16"/><path d="M8 8v8"/><path d="M16 8v8"/></svg>')}`
+
+// --- When 条件编辑器（用于 task 步骤）---
+
+function WhenEditor({ labels }: { labels: StepEditorLabels }) {
+  const { properties, setProperty } = useStepEditor()
+  const whenValue = (properties.when as string) || ""
+  const isPreset = whenValue === "" || whenValue === "on_success" || whenValue === "on_error"
+  const [useCustomWhen, setUseCustomWhen] = useState(!isPreset && whenValue !== "")
+
+  // 切换步骤时同步 state
+  useEffect(() => {
+    const ip = whenValue === "" || whenValue === "on_success" || whenValue === "on_error"
+    setUseCustomWhen(!ip && whenValue !== "")
+  }, [whenValue])
+
+  const handleSelectChange = (v: string) => {
+    if (v === "__custom__") {
+      setUseCustomWhen(true)
+      setProperty("when", "")
+    } else {
+      setUseCustomWhen(false)
+      setProperty("when", v)
+    }
+  }
+
+  return (
+    <div className="sqd-editor-field">
+      <label>{labels.when}</label>
+      {useCustomWhen ? (
+        <input
+          value={whenValue}
+          onChange={(e) => setProperty("when", e.target.value)}
+          placeholder='{{.step.key}} == value'
+        />
+      ) : (
+        <select value={whenValue} onChange={(e) => handleSelectChange(e.target.value)}>
+          <option value="">—</option>
+          <option value="on_success">on_success</option>
+          <option value="on_error">on_error</option>
+          <option value="__custom__">{labels.whenCustom}</option>
+        </select>
+      )}
+      {useCustomWhen && (
+        <button type="button" className="sqd-text-button" onClick={() => { setUseCustomWhen(false); setProperty("when", "") }}>
+          {labels.whenPreset}
+        </button>
+      )}
+    </div>
+  )
+}
+
+// --- Retry 编辑器 ---
+
+function RetryEditor({ labels }: { labels: StepEditorLabels }) {
+  const { properties, setProperty } = useStepEditor()
+
+  const retryValue = (() => {
+    try { return JSON.parse((properties.retry as string) || "") || {} } catch { return {} }
+  })()
+
+  const handleMaxAttemptsChange = (v: string) => {
+    const n = v ? parseInt(v, 10) : undefined
+    setProperty("retry", JSON.stringify({ ...retryValue, max_attempts: n && !isNaN(n) ? n : undefined }))
+  }
+
+  const handleDelayChange = (v: string) => {
+    setProperty("retry", JSON.stringify({ ...retryValue, delay: v || undefined }))
+  }
+
+  return (
+    <div className="sqd-editor-grid">
+      <div className="sqd-editor-field">
+        <label>{labels.retry_max_attempts}</label>
+        <input
+          type="number"
+          min="1"
+          value={retryValue.max_attempts ?? ""}
+          onChange={(e) => handleMaxAttemptsChange(e.target.value)}
+          placeholder="1"
+        />
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.retry_delay}</label>
+        <input
+          value={retryValue.delay ?? ""}
+          onChange={(e) => handleDelayChange(e.target.value)}
+          placeholder="10s"
+        />
+      </div>
+    </div>
+  )
+}
+
+// --- Tool Call 步骤编辑器（工具选择 + 参数配置）---
+
+/** 下拉列表中的工具项，统一内置和 MCP */
+interface ToolOption {
+  name: string // 运行时名称（作为 value）
+  label: string // 显示名称（作为显示文本）
+  category: "builtin" | "mcp"
+  params: ToolParamDef[] // 工具参数定义
+}
+
+/** 工具参数定义 */
+interface ToolParamDef {
+  name: string
+  type: string
+  description: string
+  required: boolean
+}
+
+/** 截断过长描述用于下拉显示 */
+function formatToolLabel(name: string, description?: string): string {
+  if (!description) return name
+  const short = description.length > 40 ? description.slice(0, 40) + "…" : description
+  return `${name} — ${short}`
+}
+
+/** 将 MCP 工具名转为运行时名称格式 mcp_{server}_{tool} */
+function mcpRuntimeName(server: string, tool: string): string {
+  const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_]/g, "_")
+  return `mcp_${sanitize(server)}_${sanitize(tool)}`
+}
+
+/** 从 JSON Schema properties 提取参数定义 */
+function extractParamDefs(schema?: { properties?: Record<string, ToolParamProperty>; required?: string[] }): ToolParamDef[] {
+  if (!schema?.properties) return []
+  const requiredSet = new Set(schema.required || [])
+  return Object.entries(schema.properties).map(([name, prop]) => ({
+    name,
+    type: prop.type || "string",
+    description: prop.description || "",
+    required: requiredSet.has(name),
+  }))
+}
+
+function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
+  const { properties, setProperty } = useStepEditor()
+  const [toolOptions, setToolOptions] = useState<ToolOption[]>([])
+  const [toolsLoaded, setToolsLoaded] = useState(false)
+  const [useCustomTool, setUseCustomTool] = useState(false)
+
+  useEffect(() => {
+    if (toolsLoaded) return
+
+    let cancelled = false
+
+    async function loadAllTools() {
+      // 1. 获取内置工具
+      const builtinTools: ToolOption[] = []
+      try {
+        const res = await getTools()
+        for (const t of res.tools) {
+          if (t.status === "enabled") {
+            builtinTools.push({
+              name: t.name,
+              label: formatToolLabel(t.name, t.description),
+              category: "builtin",
+              params: extractParamDefs(t.parameters),
+            })
+          }
+        }
+      } catch {
+        // 忽略
+      }
+
+      if (cancelled) return
+
+      // 2. 获取 MCP 工具（并行探测所有已启用服务器）
+      const mcpTools: ToolOption[] = []
+      try {
+        const mcpConfig = await getMCPConfig()
+        if (mcpConfig.enabled) {
+          const enabledServers = mcpConfig.servers.filter((s) => s.enabled)
+          const details = await Promise.allSettled(
+            enabledServers.map((s) => getMCPServerDetails(s.name))
+          )
+          for (const result of details) {
+            if (result.status === "fulfilled" && result.value.connected) {
+              for (const tool of result.value.tools) {
+                const runtimeName = mcpRuntimeName(result.value.server_name, tool.name)
+                mcpTools.push({
+                  name: runtimeName,
+                  label: formatToolLabel(`${result.value.server_name} / ${tool.name}`, tool.description),
+                  category: "mcp",
+                  params: tool.parameters.map((p) => ({
+                    name: p.name,
+                    type: p.type,
+                    description: p.description,
+                    required: p.required,
+                  })),
+                })
+              }
+            }
+          }
+        }
+      } catch {
+        // MCP 不可用时忽略，仍可手动输入
+      }
+
+      if (cancelled) return
+
+      // 3. 合并：内置在前，MCP 在后
+      setToolOptions([...builtinTools, ...mcpTools])
+      setToolsLoaded(true)
+    }
+
+    loadAllTools()
+    return () => { cancelled = true }
+  }, [toolsLoaded])
+
+  const toolValue = (properties.tool as string) || ""
+  const argsRaw = (properties.args as string) || ""
+
+  /** 尝试将字符串值解析为原始 JSON 类型（number/boolean/null），否则保持字符串 */
+  const tryParseValue = (v: string, forceString?: boolean): unknown => {
+    if (forceString) return v
+    if (v === "true") return true
+    if (v === "false") return false
+    if (v === "null") return null
+    if (v !== "" && !isNaN(Number(v))) return Number(v)
+    return v
+  }
+
+  // 解析 args JSON 为 key-value 对（显示用，字符串化）
+  const argsEntries = useMemo(() => {
+    if (!argsRaw.trim()) return [] as [string, string][]
+    try {
+      const parsed = JSON.parse(argsRaw)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        return Object.entries(parsed).map(([k, v]) => [k, typeof v === "string" ? v : JSON.stringify(v)])
+      }
+    } catch { /* ignore */ }
+    // 如果不是有效 JSON 对象，作为单行兜底
+    return argsRaw.trim() ? [["", argsRaw] as [string, string]] : []
+  }, [argsRaw])
+
+  // 保留原始解析后的 args（带类型信息），用于重建 JSON 时保留非字符串类型
+  const originalArgs = useMemo(() => {
+    if (!argsRaw.trim()) return {} as Record<string, unknown>
+    try {
+      const parsed = JSON.parse(argsRaw)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        return parsed as Record<string, unknown>
+      }
+    } catch { /* ignore */ }
+    return {} as Record<string, unknown>
+  }, [argsRaw])
+
+  // 当前工具的参数类型映射（key → 是否 string 类型），用于避免对 string 类型参数做自动类型转换
+  const paramStringTypes = useMemo(() => {
+    const m = new Map<string, boolean>()
+    const selectedTool = toolOptions.find((t) => t.name === toolValue)
+    if (selectedTool) {
+      for (const p of selectedTool.params) {
+        m.set(p.name, p.type === "string")
+      }
+    }
+    return m
+  }, [toolOptions, toolValue])
+
+  // 如果当前工具不在列表中，自动切换到自定义输入模式
+  useEffect(() => {
+    if (toolsLoaded && toolOptions.length > 0 && toolValue) {
+      setUseCustomTool(!toolOptions.some((t) => t.name === toolValue))
+    }
+  }, [toolsLoaded, toolOptions, toolValue])
+
+  const handleToolChange = (value: string) => {
+    if (value === "__custom__") {
+      setUseCustomTool(true)
+      setProperty("tool", "")
+    } else {
+      setUseCustomTool(false)
+      setProperty("tool", value)
+      // 自动填充参数 key
+      autofillArgs(value)
+    }
+  }
+
+  /** 根据工具参数定义重建 args，保留重叠 key 的已有值 */
+  const autofillArgs = (toolName: string) => {
+    const selectedTool = toolOptions.find((t) => t.name === toolName)
+    if (!selectedTool || selectedTool.params.length === 0) return
+
+    // 解析当前 args
+    let currentArgs: Record<string, unknown> = {}
+    const raw = (properties.args as string) || ""
+    if (raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw)
+        if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+          currentArgs = parsed as Record<string, unknown>
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 按工具参数定义顺序重建，保留已有值
+    const rebuilt: Record<string, unknown> = {}
+    for (const param of selectedTool.params) {
+      rebuilt[param.name] = param.name in currentArgs ? currentArgs[param.name] : ""
+    }
+    setProperty("args", JSON.stringify(rebuilt))
+  }
+
+  const handleArgChange = (index: number, field: "key" | "value", val: string) => {
+    const entries = [...argsEntries]
+    if (index >= entries.length) {
+      entries.push(field === "key" ? [val, ""] : ["", val])
+    } else {
+      const [oldKey, oldValue] = entries[index]
+      entries[index] = field === "key" ? [val, oldValue] : [oldKey, val]
+    }
+    // 重建 JSON，保留非字符串值类型；对 string 类型参数不做自动类型转换
+    const obj: Record<string, unknown> = {}
+    for (const [k, v] of entries) {
+      if (!k) continue
+      const isStringType = paramStringTypes.get(k) === true
+      if (field === "value" && entries[index][0] === k) {
+        obj[k] = tryParseValue(v, isStringType)
+      } else if (originalArgs[k] !== undefined && v === String(originalArgs[k])) {
+        obj[k] = originalArgs[k]
+      } else {
+        obj[k] = tryParseValue(v, isStringType)
+      }
+    }
+    setProperty("args", Object.keys(obj).length > 0 ? JSON.stringify(obj) : "")
+  }
+
+  const handleAddArg = () => {
+    const obj: Record<string, unknown> = {}
+    for (const [k, v] of argsEntries) {
+      if (k) {
+        const isStringType = paramStringTypes.get(k) === true
+        obj[k] = originalArgs[k] !== undefined && v === String(originalArgs[k]) ? originalArgs[k] : tryParseValue(v, isStringType)
+      }
+    }
+    let key = "arg_1"
+    let n = 1
+    while (Object.prototype.hasOwnProperty.call(obj, key)) {
+      n++
+      key = `arg_${n}`
+    }
+    obj[key] = ""
+    setProperty("args", JSON.stringify(obj))
+  }
+
+  const handleRemoveArg = (index: number) => {
+    const entries = argsEntries.filter((_, i) => i !== index)
+    const obj: Record<string, unknown> = {}
+    for (const [k, v] of entries) {
+      if (k) {
+        const isStringType = paramStringTypes.get(k) === true
+        obj[k] = originalArgs[k] !== undefined && v === String(originalArgs[k]) ? originalArgs[k] : tryParseValue(v, isStringType)
+      }
+    }
+    setProperty("args", Object.keys(obj).length > 0 ? JSON.stringify(obj) : "")
+  }
+
+  const builtinTools = toolOptions.filter((t) => t.category === "builtin")
+  const mcpTools = toolOptions.filter((t) => t.category === "mcp")
+  const showDropdown = toolsLoaded && toolOptions.length > 0 && !useCustomTool
+
+  return (
+    <>
+      <div className="sqd-editor-field">
+        <label>{labels.tool}</label>
+        {showDropdown ? (
+          <select
+            value={toolValue}
+            onChange={(e) => handleToolChange(e.target.value)}
+          >
+            <option value="">{labels.toolSelect}</option>
+            {builtinTools.length > 0 && (
+              <optgroup label={labels.builtinTools}>
+                {builtinTools.map((t) => (
+                  <option key={t.name} value={t.name}>{t.label}</option>
+                ))}
+              </optgroup>
+            )}
+            {mcpTools.length > 0 && (
+              <optgroup label={labels.mcpTools}>
+                {mcpTools.map((t) => (
+                  <option key={t.name} value={t.name}>{t.label}</option>
+                ))}
+              </optgroup>
+            )}
+            <option value="__custom__">{labels.toolCustom}</option>
+          </select>
+        ) : (
+          <input
+            value={toolValue}
+            onChange={(e) => setProperty("tool", e.target.value)}
+            placeholder={labels.toolSelect}
+          />
+        )}
+        {useCustomTool && toolOptions.length > 0 && (
+          <button type="button" className="sqd-text-button" onClick={() => setUseCustomTool(false)}>
+            {labels.toolBackToList}
+          </button>
+        )}
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.args}</label>
+        <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+          {argsEntries.map(([k, v], index) => (
+            <div key={index} className="sqd-editor-grid" style={{ gap: "4px", alignItems: "center" }}>
+              <input
+                value={k}
+                onChange={(e) => handleArgChange(index, "key", e.target.value)}
+                placeholder={labels.argsKey}
+                style={{ flex: 1 }}
+              />
+              <input
+                value={v}
+                onChange={(e) => handleArgChange(index, "value", e.target.value)}
+                placeholder={labels.argsValue}
+                style={{ flex: 2 }}
+              />
+              <button
+                type="button"
+                onClick={() => handleRemoveArg(index)}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--input)",
+                  borderRadius: "var(--radius)",
+                  color: "var(--destructive)",
+                  cursor: "pointer",
+                  fontSize: "0.75rem",
+                  padding: "2px 6px",
+                  lineHeight: 1,
+                }}
+                title={labels.argsRemove}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={handleAddArg}
+            style={{
+              background: "transparent",
+              border: "1px dashed var(--input)",
+              borderRadius: "var(--radius)",
+              color: "var(--muted-foreground)",
+              cursor: "pointer",
+              fontSize: "0.75rem",
+              padding: "4px 8px",
+            }}
+          >
+            + {labels.argsAdd}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
 
 // --- If 步骤编辑器（结构化条件表单）---
 
@@ -85,6 +546,15 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
   const [stepId, setStepId] = useState(parsed.stepId)
   const [outputKey, setOutputKey] = useState(parsed.outputKey)
   const [condValue, setCondValue] = useState(parsed.value)
+
+  // 切换步骤时同步 state
+  useEffect(() => {
+    const p = parseWhenExpression(whenExpr)
+    setCondType(p.type)
+    setStepId(p.stepId)
+    setOutputKey(p.outputKey)
+    setCondValue(p.value)
+  }, [whenExpr])
 
   const handleCondTypeChange = (newType: string) => {
     const t = newType as "prev_success" | "prev_error" | "output_equals"
@@ -149,9 +619,21 @@ interface StepEditorLabels {
   action: string
   prompt: string
   tool: string
+  toolSelect: string
+  toolCustom: string
+  toolBackToList: string
+  builtinTools: string
+  mcpTools: string
+  args: string
+  argsKey: string
+  argsValue: string
+  argsAdd: string
+  argsRemove: string
   outputKey: string
   delay: string
   timeout: string
+  retry_max_attempts: string
+  retry_delay: string
   agentPrompt: string
   toolCall: string
   parallelLabel: string
@@ -159,6 +641,8 @@ interface StepEditorLabels {
   removeBranch: string
   ifLabel: string
   when: string
+  whenCustom: string
+  whenPreset: string
   condPrevSuccess: string
   condPrevError: string
   condOutputEquals: string
@@ -222,7 +706,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
         <label>{labels.name}</label>
         <input value={name === stepId ? "" : name} onChange={(e) => handleNameChange(e.target.value)} placeholder={stepId} />
       </div>
-      {isIfStep ? (
+          {isIfStep ? (
         <>
           <IfStepEditor labels={labels} />
           <div className="sqd-editor-grid">
@@ -310,14 +794,9 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
             </div>
           )}
           {action === "tool_call" && (
-            <div className="sqd-editor-field">
-              <label>{labels.tool}</label>
-              <input
-                value={(properties.tool as string) || ""}
-                onChange={(e) => setProperty("tool", e.target.value)}
-              />
-            </div>
+            <ToolCallEditor labels={labels} />
           )}
+          <WhenEditor labels={labels} />
           <div className="sqd-editor-grid">
             <div className="sqd-editor-field">
               <label>{labels.outputKey}</label>
@@ -344,6 +823,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               />
             </div>
           </div>
+          <RetryEditor labels={labels} />
         </>
       )}
     </div>
@@ -571,6 +1051,8 @@ function createTaskStep(action: string) {
       action,
       prompt: "",
       tool: "",
+      args: "",
+      retry: "",
       when: "",
       delay: "",
       output_key: "",
@@ -737,9 +1219,21 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
     action: t("pages.workflows.action", "Action"),
     prompt: t("pages.workflows.prompt_placeholder", "Prompt for the agent..."),
     tool: t("pages.workflows.tool_placeholder", "Tool name"),
+    toolSelect: t("pages.workflows.tool_select", "Select or type tool name"),
+    toolCustom: t("pages.workflows.tool_custom", "Custom..."),
+    toolBackToList: t("pages.workflows.tool_back_to_list", "Back to list"),
+    builtinTools: t("pages.workflows.builtin_tools", "Built-in Tools"),
+    mcpTools: t("pages.workflows.mcp_tools", "MCP Tools"),
+    args: t("pages.workflows.tool_args", "Arguments"),
+    argsKey: t("pages.workflows.tool_args_key", "Key"),
+    argsValue: t("pages.workflows.tool_args_value", "Value"),
+    argsAdd: t("pages.workflows.tool_args_add", "Add Argument"),
+    argsRemove: t("pages.workflows.tool_args_remove", "Remove"),
     outputKey: t("pages.workflows.output_key", "Output Key"),
     delay: t("pages.workflows.delay", "Delay"),
     timeout: t("pages.workflows.timeout", "Timeout"),
+    retry_max_attempts: t("pages.workflows.retry_max_attempts", "Max Attempts"),
+    retry_delay: t("pages.workflows.retry_delay", "Retry Delay"),
     agentPrompt: t("pages.workflows.trigger_agent", "Agent Prompt"),
     toolCall: t("pages.workflows.trigger_tool", "Tool Call"),
     parallelLabel: t("pages.workflows.parallel", "Parallel"),
@@ -747,6 +1241,8 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
     removeBranch: t("pages.workflows.remove_branch", "Remove Branch"),
     ifLabel: t("pages.workflows.trigger_if", "If"),
     when: t("pages.workflows.when", "When"),
+    whenCustom: t("pages.workflows.when_custom", "Custom condition..."),
+    whenPreset: t("pages.workflows.when_preset", "Preset"),
     condPrevSuccess: t("pages.workflows.cond_prev_success", "Previous step succeeded"),
     condPrevError: t("pages.workflows.cond_prev_error", "Previous step failed"),
     condOutputEquals: t("pages.workflows.cond_output_equals", "Step output equals"),

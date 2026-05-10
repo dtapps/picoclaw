@@ -123,8 +123,8 @@ RunWorkflow()
   │     ├── 4. 执行步骤：ExecuteWithRetry()
         │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
-        │     │     ├── parallel    → goroutine 并行执行子步骤
-        │     │     └── if          → 评估 when 条件，执行 if_true 或 if_false 分支
+        │     │     ├── parallel    → goroutine 并行执行子步骤（子步骤失败遵守 failure_strategy）
+        │     │     └── if          → 评估 when 条件，执行 if_true 或 if_false 分支（分支步骤失败遵守 failure_strategy）
         │     │
         │     ├── 5. 处理执行结果
         │     │     ├── 成功 → 记录输出到 output_key，继续下一步
@@ -250,8 +250,9 @@ steps:
 - **name**：步骤显示名称（可选），支持中文等任意字符，用于 UI 展示和通知，不填写时显示 id
 - **when**：条件表达式，满足时才执行该步骤
 - **delay**：步骤执行前的等待时间，如 `"5s"`、`"1m"`，等待期间支持取消
-- **retry**：最大重试次数（默认 0）
-- **retry_delay**：重试间隔（秒）
+- **retry**：重试配置，结构化格式（默认不重试）
+  - `max_attempts`：最大重试次数
+  - `delay`：重试间隔，如 `"10s"`
 - **timeout**：超时时间（秒）
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
 
@@ -338,7 +339,16 @@ Cron 触发器的工作方式：
 每个步骤（包括 parallel 子步骤和 if 分支子步骤）也有独立的 `StepState` 追踪：
 `pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`。
 
+`StepState` 包含以下字段：
+- **Name**：步骤显示名称
+- **Status**：当前状态
+- **StartedAt** / **FinishedAt**：开始和结束时间
+- **Attempts**：执行尝试次数（首次执行为 1，重试后递增）
+- **Error**：失败时的错误信息
+
 未执行的 if 分支子步骤自动标记为 `skipped`。
+
+> **failureStrategy 在嵌套步骤中的行为**：`failure_strategy` 不仅作用于顶级步骤，也作用于 if 分支步骤和 parallel 子步骤。当 `failure_strategy=continue` 时，if 分支或 parallel 子步骤的失败不会中断工作流执行，而是记录警告日志并继续。
 
 ### 实时事件流（SSE）
 
@@ -460,11 +470,13 @@ steps:
 - `on_success`：上一步成功时走 `if_true`，失败时走 `if_false`
 - `{{.step_id.key}} == value`：指定步骤输出等于某值时走 `if_true`
 
+> **if 步骤的事件与通知**：`if` 步骤也会触发 `workflow.step.start` 和 `workflow.step.complete` SSE 事件，以及 `onStepStart`/`onStepComplete` 通知回调（与 agent_prompt/tool_call 步骤一致）。
+
 ### 可视化编辑器
 
 工作流编辑页面提供基于 Sequential Workflow Designer 的可视化编辑器，支持：
 - 从工具箱拖拽步骤到画布（每种步骤类型显示说明文字）
-- 点击步骤在右侧面板编辑属性（ID 字段仅允许输入字母、数字和下划线，名称字段支持任意字符）
+- 点击步骤在右侧面板编辑属性（ID 字段仅允许输入字母、数字和下划线，名称字段支持任意字符；重试配置仅对 agent_prompt 和 tool_call 步骤显示）
 - 步骤类型拖出后固定（Agent 提示 / 工具调用 / 并行 / If 条件）
 - 从工具箱拖拽步骤时自动按类型分配 ID（如 `prompt_1`、`tool_1`、`prompt_2`、`if_1`）
 - 保存前前端校验，支持 i18n 错误提示（递归校验子步骤、嵌套 ID 唯一性检查）
