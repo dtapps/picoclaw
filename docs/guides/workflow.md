@@ -232,6 +232,7 @@ steps:
 - During template resolution, `{{.vars.key}}` is replaced with the defined variable value
 - Variable values support template references (e.g., referencing previous step outputs), but are typically used for static values
 - Variables can be used in `prompt`, `args`, and `when` fields
+- Template references are validated on save: if a `{{.vars.key}}` references a key not defined in `vars`, an error is raised
 
 ### Step
 
@@ -247,7 +248,7 @@ A step is the basic execution unit, supporting four action types:
 Each step supports the following configuration:
 
 - **id**: Unique step identifier, restricted to `a-zA-Z0-9_` only, used for template references `{{.step_id.key}}` and condition evaluation
-- **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set
+- **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set. Can be referenced via `{{.self.name}}` in templates to avoid hardcoding the name in `args`
 - **when**: Condition expression; step executes only when satisfied
 - **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
 - **retry**: Retry configuration in structured format (default: no retry)
@@ -304,10 +305,30 @@ Step A (fetch_weather)                  Step B (summarize)
 ```
 
 Template resolution logic (`conditions.go`):
-1. Regex match `{{.step_id.key}}` or `{{.vars.key}}` pattern
-2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables)
+1. Regex match `{{.step_id.key}}`, `{{.vars.key}}`, or `{{.self.key}}` pattern
+2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables; `self` references the current step's own properties)
 3. Replace template with actual output content
 4. Applied to `prompt`, `args`, and `when` fields
+
+**Self-property references (`self`)**:
+
+A step can reference its own properties via `{{.self.name}}` and `{{.self.id}}` in templates (only these two fields are supported), avoiding duplicate hardcoding:
+
+```yaml
+steps:
+  - id: search_maoming
+    name: Maoming
+    action: tool_call
+    tool: web_search
+    args:
+      query: "{{.self.name}} news {{.vars.date}}"
+```
+
+> **Template reference validation**: All template references are validated when saving a workflow:
+> - `{{.vars.key}}` — the key must be defined in `vars`
+> - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
+> - `{{.self.key}}` — the key only supports `id` and `name`
+> - Referencing non-existent variables, steps, or output keys will raise an error, preventing silent template passthrough at runtime
 
 ### Instance State Machine
 

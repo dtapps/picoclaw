@@ -250,6 +250,140 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: false,
 		},
+		// 模板引用校验
+		{
+			name: "valid step output reference",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi", OutputKey: "result"},
+					{ID: "s2", Action: "agent_prompt", Prompt: "{{.s1.result}}"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid vars reference - key not defined",
+			wf: Workflow{
+				Name:  "test",
+				Vars:  map[string]string{"name": "alice"},
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "{{.vars.missing_key}}"}},
+			},
+			wantErr: true,
+			errMsg:  "不存在的变量",
+		},
+		{
+			name: "invalid step reference - step not defined",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "{{.nonexistent.key}}"}},
+			},
+			wantErr: true,
+			errMsg:  "不存在的步骤",
+		},
+		{
+			name: "invalid step reference - step has no output_key",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi"},
+					{ID: "s2", Action: "agent_prompt", Prompt: "{{.s1.result}}"},
+				},
+			},
+			wantErr: true,
+			errMsg:  "不存在的步骤",
+		},
+		{
+			name: "invalid output_key mismatch",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi", OutputKey: "data"},
+					{ID: "s2", Action: "agent_prompt", Prompt: "{{.s1.wrong_key}}"},
+				},
+			},
+			wantErr: true,
+			errMsg:  "不存在的输出键",
+		},
+		{
+			name: "template ref in args validated",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{"q": "{{.vars.missing}}"}},
+				},
+			},
+			wantErr: true,
+			errMsg:  "不存在的变量",
+		},
+		{
+			name: "template ref in when validated",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi", OutputKey: "ok"},
+					{
+						ID:     "s2",
+						Action: "if",
+						When:   "{{.missing_step.val}}",
+						IfTrue: []Step{{ID: "t1", Action: "agent_prompt", Prompt: "x"}},
+					},
+				},
+			},
+			wantErr: true,
+			errMsg:  "不存在的步骤",
+		},
+		{
+			name: "valid vars reference passes",
+			wf: Workflow{
+				Name:  "test",
+				Vars:  map[string]string{"dir": "/tmp"},
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "{{.vars.dir}}"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "parallel sub-step template ref validated",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "parallel", Parallel: []Step{
+						{ID: "p1", Action: "agent_prompt", Prompt: "{{.vars.missing}}"},
+					}},
+				},
+			},
+			wantErr: true,
+			errMsg:  "不存在的变量",
+		},
+		// self 引用校验
+		{
+			name: "self.name reference passes",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{{
+					ID: "s1", Name: "hello", Action: "tool_call", Tool: "search",
+					Args: map[string]any{"query": "{{.self.name}} world"},
+				}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "self.id reference passes",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "step={{.self.id}}"}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "self with unsupported property fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "{{.self.foo}}"}},
+			},
+			wantErr: true,
+			errMsg:  "不存在的自身属性",
+		},
 	}
 
 	for _, tt := range tests {

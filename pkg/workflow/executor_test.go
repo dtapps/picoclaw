@@ -273,6 +273,54 @@ func TestExecute_TemplateResolution(t *testing.T) {
 	})
 }
 
+func TestExecute_SelfReference(t *testing.T) {
+	se := &StepExecutor{
+		AgentPromptFunc: func(ctx context.Context, prompt string) (string, error) {
+			return "got: " + prompt, nil
+		},
+		ToolCallFunc: func(ctx context.Context, toolName string, args map[string]any) (string, bool, error) {
+			return args["query"].(string), false, nil
+		},
+	}
+
+	t.Run("self.name in prompt", func(t *testing.T) {
+		step := Step{ID: "s1", Name: "hello", Action: "agent_prompt", Prompt: "{{.self.name}} world"}
+		result := se.Execute(context.Background(), step, nil)
+		if result.Output != "got: hello world" {
+			t.Fatalf("Output = %q, want %q", result.Output, "got: hello world")
+		}
+	})
+
+	t.Run("self.name in args", func(t *testing.T) {
+		step := Step{
+			ID: "search_item", Name: "hello", Action: "tool_call", Tool: "search",
+			Args: map[string]any{"query": "{{.self.name}} world {{.vars.date}}"},
+		}
+		outputs := map[string]map[string]any{"vars": {"date": "2025-01-01"}}
+		result := se.Execute(context.Background(), step, outputs)
+		if result.Output != "hello world 2025-01-01" {
+			t.Fatalf("Output = %q, want %q", result.Output, "hello world 2025-01-01")
+		}
+	})
+
+	t.Run("self.id resolved", func(t *testing.T) {
+		step := Step{ID: "search_maoming", Action: "agent_prompt", Prompt: "step={{.self.id}}"}
+		result := se.Execute(context.Background(), step, nil)
+		if result.Output != "got: step=search_maoming" {
+			t.Fatalf("Output = %q, want %q", result.Output, "got: step=search_maoming")
+		}
+	})
+
+	t.Run("self.name missing when no name", func(t *testing.T) {
+		step := Step{ID: "s1", Action: "agent_prompt", Prompt: "{{.self.name}}"}
+		result := se.Execute(context.Background(), step, nil)
+		// name 未设置时模板无法解析，保留原文
+		if result.Output != "got: {{.self.name}}" {
+			t.Fatalf("Output = %q, want %q", result.Output, "got: {{.self.name}}")
+		}
+	})
+}
+
 func TestResolveArgsTemplates(t *testing.T) {
 	outputs := map[string]map[string]any{
 		"vars": {"dir": "/tmp"},

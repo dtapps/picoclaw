@@ -75,7 +75,7 @@ function WhenEditor({ labels }: { labels: StepEditorLabels }) {
         <input
           value={whenValue}
           onChange={(e) => setProperty("when", e.target.value)}
-          placeholder='{{.step.key}} == value'
+          placeholder='{{.step.key}} == value / {{.self.name}}'
         />
       ) : (
         <select value={whenValue} onChange={(e) => handleSelectChange(e.target.value)}>
@@ -587,7 +587,7 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
           <div className="sqd-editor-grid">
             <div className="sqd-editor-field">
               <label>{labels.condStepId}</label>
-              <input value={stepId} onChange={(e) => handleFieldChange("stepId", e.target.value)} placeholder="fetch_data" />
+              <input value={stepId} onChange={(e) => handleFieldChange("stepId", e.target.value)} placeholder="step_id / self" />
             </div>
             <div className="sqd-editor-field">
               <label>{labels.condOutputKey}</label>
@@ -790,6 +790,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
                 value={(properties.prompt as string) || ""}
                 onChange={(e) => setProperty("prompt", e.target.value)}
                 rows={3}
+                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.self.name}} 模板引用"
               />
             </div>
           )}
