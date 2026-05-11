@@ -48,6 +48,8 @@ type Config struct {
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
 	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
 	EnvVars EnvVarsConfig `json:"env_vars,omitempty" yaml:"-"`
+	// Tracing 配置请求追踪，将上下文字段映射为自定义 HTTP 请求头
+	Tracing TracingConfig `json:"tracing,omitempty" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
 
@@ -122,6 +124,37 @@ type BuildInfo struct {
 	GitCommit string `json:"git_commit"`
 	BuildTime string `json:"build_time"`
 	GoVersion string `json:"go_version"`
+}
+
+// TracingConfig 配置请求追踪功能，将上下文字段映射为自定义 HTTP 请求头。
+// 启用后，PicoClaw 会在发给 LLM 的 HTTP 请求中自动携带用户配置的追踪请求头。
+//
+// 配置示例（兼容 AxonHub）：
+//
+//	"tracing": {
+//	  "enabled": true,
+//	  "headers": {
+//	    "AH-Thread-Id": "session_key",
+//	    "AH-Trace-Id":  "turn_id"
+//	  }
+//	}
+//
+// 支持的上下文字段名：
+//   - session_key: 会话标识（对应完整对话会话）
+//   - turn_id:     轮次标识（对应一次用户消息+所有 agent 请求）
+//   - agent_id:    Agent 标识
+type TracingConfig struct {
+	// Enabled 是否启用请求追踪
+	Enabled bool `json:"enabled,omitempty"`
+	// Headers 是 HTTP 请求头到上下文字段的映射。
+	// key = 请求头名称（如 "X-Thread-Id"），value = 上下文字段名（如 "session_key"）。
+	// 只有配置了映射的请求头才会被注入，未配置的不受影响。
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// IsEnabled 当 enabled 为 true 且 headers 非空时视为启用
+func (t TracingConfig) IsEnabled() bool {
+	return t.Enabled && len(t.Headers) > 0
 }
 
 // MarshalJSON implements custom JSON marshaling for Config
