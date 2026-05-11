@@ -79,9 +79,9 @@ function WhenEditor({ labels }: { labels: StepEditorLabels }) {
         />
       ) : (
         <select value={whenValue} onChange={(e) => handleSelectChange(e.target.value)}>
-          <option value="">—</option>
-          <option value="on_success">on_success</option>
-          <option value="on_error">on_error</option>
+          <option value="">{labels.whenEmpty}</option>
+          <option value="on_success">{labels.whenOnSuccess}</option>
+          <option value="on_error">{labels.whenOnError}</option>
           <option value="__custom__">{labels.whenCustom}</option>
         </select>
       )}
@@ -304,6 +304,18 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
     return m
   }, [toolOptions, toolValue])
 
+  // 当前工具的必填参数集合，用于 UI 标记
+  const requiredParamKeys = useMemo(() => {
+    const s = new Set<string>()
+    const selectedTool = toolOptions.find((t) => t.name === toolValue)
+    if (selectedTool) {
+      for (const p of selectedTool.params) {
+        if (p.required) s.add(p.name)
+      }
+    }
+    return s
+  }, [toolOptions, toolValue])
+
   // 如果当前工具不在列表中，自动切换到自定义输入模式
   useEffect(() => {
     if (toolsLoaded && toolOptions.length > 0 && toolValue) {
@@ -448,39 +460,48 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
       <div className="sqd-editor-field">
         <label>{labels.args}</label>
         <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-          {argsEntries.map(([k, v], index) => (
-            <div key={index} className="sqd-editor-grid" style={{ gap: "4px", alignItems: "center" }}>
-              <input
-                value={k}
-                onChange={(e) => handleArgChange(index, "key", e.target.value)}
-                placeholder={labels.argsKey}
-                style={{ flex: 1 }}
-              />
-              <input
-                value={v}
-                onChange={(e) => handleArgChange(index, "value", e.target.value)}
-                placeholder={labels.argsValue}
-                style={{ flex: 2 }}
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveArg(index)}
-                style={{
-                  background: "transparent",
-                  border: "1px solid var(--input)",
-                  borderRadius: "var(--radius)",
-                  color: "var(--destructive)",
-                  cursor: "pointer",
-                  fontSize: "0.75rem",
-                  padding: "2px 6px",
-                  lineHeight: 1,
-                }}
-                title={labels.argsRemove}
-              >
-                ×
-              </button>
-            </div>
-          ))}
+          {argsEntries.map(([k, v], index) => {
+            const isRequired = requiredParamKeys.has(k)
+            return (
+              <div key={index} className="sqd-editor-grid" style={{ gap: "4px", alignItems: "center" }}>
+                <input
+                  value={k}
+                  onChange={(e) => handleArgChange(index, "key", e.target.value)}
+                  placeholder={labels.argsKey}
+                  style={{
+                    flex: 1,
+                    ...(isRequired ? { borderColor: "var(--destructive)" } : {}),
+                  }}
+                />
+                <input
+                  value={v}
+                  onChange={(e) => handleArgChange(index, "value", e.target.value)}
+                  placeholder={isRequired ? `* ${labels.argsValue}` : labels.argsValue}
+                  style={{
+                    flex: 2,
+                    ...(isRequired ? { borderColor: "var(--destructive)" } : {}),
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveArg(index)}
+                  style={{
+                    background: "transparent",
+                    border: "1px solid var(--input)",
+                    borderRadius: "var(--radius)",
+                    color: "var(--destructive)",
+                    cursor: "pointer",
+                    fontSize: "0.75rem",
+                    padding: "2px 6px",
+                    lineHeight: 1,
+                  }}
+                  title={labels.argsRemove}
+                >
+                  ×
+                </button>
+              </div>
+            )
+          })}
           <button
             type="button"
             onClick={handleAddArg}
@@ -496,6 +517,11 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
           >
             + {labels.argsAdd}
           </button>
+          {requiredParamKeys.size > 0 && (
+            <p style={{ fontSize: "0.7rem", color: "var(--muted-foreground)", margin: "2px 0 0" }}>
+              {labels.argsRequiredHint}
+            </p>
+          )}
         </div>
       </div>
     </>
@@ -629,6 +655,7 @@ interface StepEditorLabels {
   argsValue: string
   argsAdd: string
   argsRemove: string
+  argsRequiredHint: string
   outputKey: string
   delay: string
   timeout: string
@@ -641,6 +668,9 @@ interface StepEditorLabels {
   removeBranch: string
   ifLabel: string
   when: string
+  whenEmpty: string
+  whenOnSuccess: string
+  whenOnError: string
   whenCustom: string
   whenPreset: string
   condPrevSuccess: string
@@ -1230,6 +1260,7 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
     argsValue: t("pages.workflows.tool_args_value", "Value"),
     argsAdd: t("pages.workflows.tool_args_add", "Add Argument"),
     argsRemove: t("pages.workflows.tool_args_remove", "Remove"),
+    argsRequiredHint: t("pages.workflows.tool_args_required_hint", "* Required parameters must have a value before saving. Template references like {{.vars.x}} are allowed."),
     outputKey: t("pages.workflows.output_key", "Output Key"),
     delay: t("pages.workflows.delay", "Delay"),
     timeout: t("pages.workflows.timeout", "Timeout"),
@@ -1241,8 +1272,11 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
     addBranch: t("pages.workflows.add_branch", "Add Branch"),
     removeBranch: t("pages.workflows.remove_branch", "Remove Branch"),
     ifLabel: t("pages.workflows.trigger_if", "If"),
-    when: t("pages.workflows.when", "When"),
-    whenCustom: t("pages.workflows.when_custom", "Custom condition..."),
+    when: t("pages.workflows.when", "Pre-condition"),
+    whenEmpty: t("pages.workflows.when_empty", "None"),
+    whenOnSuccess: t("pages.workflows.when_on_success", "Run when previous step succeeded"),
+    whenOnError: t("pages.workflows.when_on_error", "Run when previous step failed"),
+    whenCustom: t("pages.workflows.when_custom", "Custom Condition"),
     whenPreset: t("pages.workflows.when_preset", "Preset"),
     condPrevSuccess: t("pages.workflows.cond_prev_success", "Previous step succeeded"),
     condPrevError: t("pages.workflows.cond_prev_error", "Previous step failed"),
