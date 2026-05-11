@@ -139,15 +139,13 @@ func (s *Service) Reload() error {
 // RunWorkflow 手动触发指定工作流的执行。
 // channel 和 chatID 用于绑定频道，执行完成后通过回调通知该频道。
 func (s *Service) RunWorkflow(ctx context.Context, name, channel, chatID string) (string, error) {
-	s.mu.RLock()
-	wf, ok := s.workflows[name]
-	s.mu.RUnlock()
-
-	if !ok {
+	// 从磁盘读取最新定义，避免用过期内存状态执行旧步骤
+	freshWf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
 		return "", errNotFound(name)
 	}
 
-	return s.engine.RunWorkflow(ctx, wf, "manual", channel, chatID)
+	return s.engine.RunWorkflow(ctx, freshWf, "manual", channel, chatID)
 }
 
 // StopInstance 取消正在运行的实例。
@@ -185,7 +183,7 @@ func (s *Service) CreateWorkflow(wf *Workflow) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.workflows[wf.Name]; exists {
+	if s.store.WorkflowExists(wf.Name) {
 		return errAlreadyExists(wf.Name)
 	}
 
@@ -210,7 +208,7 @@ func (s *Service) UpdateWorkflow(wf *Workflow) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.workflows[wf.Name]; !exists {
+	if !s.store.WorkflowExists(wf.Name) {
 		return errNotFound(wf.Name)
 	}
 
@@ -229,7 +227,7 @@ func (s *Service) DeleteWorkflow(name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if _, exists := s.workflows[name]; !exists {
+	if !s.store.WorkflowExists(name) {
 		return errNotFound(name)
 	}
 
@@ -247,19 +245,26 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wf, ok := s.workflows[name]
-	if !ok {
+	if _, ok := s.workflows[name]; !ok {
 		return errNotFound(name)
 	}
 
-	wf.Config.NotifyChannel = channel
-	wf.Config.NotifyChatID = chatID
-	wf.UpdatedAt = time.Now()
-
-	if err := s.store.SaveWorkflow(wf); err != nil {
+	// 从磁盘重新读取最新数据，避免用过期内存状态覆写外部修改（如 Web UI 编辑）
+	freshWf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
 		return err
 	}
 
+	freshWf.Config.NotifyChannel = channel
+	freshWf.Config.NotifyChatID = chatID
+	freshWf.UpdatedAt = time.Now()
+
+	if err := s.store.SaveWorkflow(freshWf); err != nil {
+		return err
+	}
+
+	// 同步更新内存状态
+	s.workflows[name] = freshWf
 	return nil
 }
 
@@ -268,19 +273,25 @@ func (s *Service) UnbindChannel(name string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wf, ok := s.workflows[name]
-	if !ok {
+	if _, ok := s.workflows[name]; !ok {
 		return errNotFound(name)
 	}
 
-	wf.Config.NotifyChannel = ""
-	wf.Config.NotifyChatID = ""
-	wf.UpdatedAt = time.Now()
-
-	if err := s.store.SaveWorkflow(wf); err != nil {
+	// 从磁盘重新读取最新数据，避免用过期内存状态覆写外部修改
+	freshWf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
 		return err
 	}
 
+	freshWf.Config.NotifyChannel = ""
+	freshWf.Config.NotifyChatID = ""
+	freshWf.UpdatedAt = time.Now()
+
+	if err := s.store.SaveWorkflow(freshWf); err != nil {
+		return err
+	}
+
+	s.workflows[name] = freshWf
 	return nil
 }
 
@@ -289,15 +300,20 @@ func (s *Service) SetEnabled(name string, enabled bool) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	wf, ok := s.workflows[name]
-	if !ok {
+	if _, ok := s.workflows[name]; !ok {
 		return errNotFound(name)
 	}
 
 	if err := s.store.SetEnabled(name, enabled); err != nil {
 		return err
 	}
-	wf.Enabled = enabled
+
+	// 从磁盘重新读取以同步内存状态（包括 Enabled 和可能被外部修改的其他字段）
+	freshWf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
+		return err
+	}
+	s.workflows[name] = freshWf
 	return nil
 }
 
@@ -468,8 +484,14 @@ func (s *Service) checkCronTriggers() {
 			}
 
 			logger.InfoCF("workflow", "cron 触发器触发工作流", map[string]any{"workflow": wf.Name})
+			// 从磁盘读取最新定义，避免用过期步骤执行
+			freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
+			if err != nil {
+				logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
+				continue
+			}
 			ctx := context.Background()
-			if _, err := s.engine.RunWorkflow(ctx, wf, "cron", "", ""); err != nil {
+			if _, err := s.engine.RunWorkflow(ctx, freshWf, "cron", "", ""); err != nil {
 				logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 			}
 		}
@@ -497,8 +519,14 @@ func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
 				}
 
 				logger.InfoCF("workflow", "事件触发器触发工作流", map[string]any{"event": trigger.Event, "workflow": wf.Name})
+				// 从磁盘读取最新定义，避免用过期步骤执行
+				freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
+				if err != nil {
+					logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
+					continue
+				}
 				ctx := context.Background()
-				if _, err := s.engine.RunWorkflow(ctx, wf, "event", "", ""); err != nil {
+				if _, err := s.engine.RunWorkflow(ctx, freshWf, "event", "", ""); err != nil {
 					logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 				}
 			}

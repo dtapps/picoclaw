@@ -33,22 +33,20 @@ type StepResult struct {
 func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[string]map[string]any) StepResult {
 	// 注意：delay 已由 Engine.executeStepWithState 处理，此处不再重复
 
-	// 注入步骤自身属性，支持 {{.self.name}}、{{.self.id}} 引用
-	if stepOutputs == nil {
-		stepOutputs = make(map[string]map[string]any)
+	// 构建包含 self 属性的模板输出映射（不修改共享的 stepOutputs，避免并行步骤数据竞争）
+	localOutputs := make(map[string]map[string]any, len(stepOutputs)+1)
+	for k, v := range stepOutputs {
+		localOutputs[k] = v
 	}
 	selfOutput := map[string]any{"id": step.ID}
 	if step.Name != "" {
 		selfOutput["name"] = step.Name
 	}
-	stepOutputs["self"] = selfOutput
+	localOutputs["self"] = selfOutput
 
 	// 解析 prompt 和 args 中的模板引用
-	prompt := ResolveStepTemplates(step.Prompt, stepOutputs)
-	args := resolveArgsTemplates(step.Args, stepOutputs)
-
-	// 清理 self 注入，避免污染后续步骤
-	delete(stepOutputs, "self")
+	prompt := ResolveStepTemplates(step.Prompt, localOutputs)
+	args := resolveArgsTemplates(step.Args, localOutputs)
 
 	// 应用步骤级超时
 	if step.Timeout != "" {
