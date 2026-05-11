@@ -17,14 +17,14 @@ import { useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import type { WorkflowInstance, WorkflowListItem, WorkflowStepEvent } from "@/api/workflow"
+import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
   formatTriggerDescription,
   getInstanceStatusColor,
 } from "@/api/workflow"
-import { getWorkflowInstances, getWorkflowInstance, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
+import { getWorkflowInstances, getWorkflowInstance, getWorkflow, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -207,10 +207,7 @@ export function WorkflowsPage() {
           <div className="relative max-w-md flex-1">
             <IconSearch className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
-              placeholder={t(
-                "pages.workflows.search_placeholder",
-                "Search workflows...",
-              )}
+              placeholder={t("pages.workflows.search_placeholder", "Search workflows...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -263,15 +260,23 @@ export function WorkflowsPage() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 py-6">
+      <div
+        className="flex-1 overflow-auto px-6 py-6"
+        onDragEnter={handleDragEnter}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragActive && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80">
+            <p className="text-lg font-medium">{t("pages.workflows.drop_yaml", "Drop YAML file here")}</p>
+          </div>
+        )}
         <div className="mx-auto w-full max-w-6xl">
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-card h-48 animate-pulse rounded-lg border"
-                />
+                <div key={i} className="bg-card h-48 animate-pulse rounded-lg border" />
               ))}
             </div>
           ) : filteredWorkflows.length === 0 ? (
@@ -281,10 +286,7 @@ export function WorkflowsPage() {
                 {t("pages.workflows.empty_title", "No workflows yet")}
               </h3>
               <p className="text-muted-foreground mt-1">
-                {t(
-                  "pages.workflows.empty_description",
-                  "Create your first workflow to automate multi-step tasks.",
-                )}
+                {t("pages.workflows.empty_description", "Create your first workflow to automate multi-step tasks.")}
               </p>
               <Button className="mt-4" onClick={() => void navigate({ to: "/workflows/editor", search: { name: "" } })}>
                 <IconPlus className="mr-2 h-4 w-4" />
@@ -301,31 +303,23 @@ export function WorkflowsPage() {
                     if (checked) {
                       handleToggle(name, checked)
                     } else {
-                      const found = filteredWorkflows.find(
-                        (w) => w.name === name,
-                      )
+                      const found = filteredWorkflows.find((w) => w.name === name)
                       setToggleOffWorkflow(found || null)
                     }
                   }}
                   onRun={(name) => {
-                    const found = filteredWorkflows.find(
-                      (w) => w.name === name,
-                    )
+                    const found = filteredWorkflows.find((w) => w.name === name)
                     setRunWorkflow(found || null)
                   }}
                   onStop={(name) => {
-                    const found = filteredWorkflows.find(
-                      (w) => w.name === name,
-                    )
+                    const found = filteredWorkflows.find((w) => w.name === name)
                     setStopWorkflow(found || null)
                   }}
                   onEdit={(name) =>
                     void navigate({ to: "/workflows/editor", search: { name } })
                   }
                   onDelete={(name) => {
-                    const found = filteredWorkflows.find(
-                      (w) => w.name === name,
-                    )
+                    const found = filteredWorkflows.find((w) => w.name === name)
                     setDeleteWorkflow(found || null)
                   }}
                   onHistory={(name) => setHistoryWorkflow(name)}
@@ -416,6 +410,7 @@ function InstanceDialog({
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [instances, setInstances] = useState<WorkflowInstance[]>([])
+  const [workflowSteps, setWorkflowSteps] = useState<Step[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
@@ -441,6 +436,10 @@ function InstanceDialog({
     if (workflowName) {
       setExpandedId(null)
       loadInstances(workflowName)
+      // 同时获取工作流定义（步骤层级结构，用于树形渲染）
+      getWorkflow(workflowName)
+        .then((wf) => setWorkflowSteps(wf.steps))
+        .catch(() => setWorkflowSteps([]))
     }
   }, [workflowName])
 
@@ -609,24 +608,28 @@ function InstanceDialog({
                             {t("pages.workflows.step_progress", "Step Progress")}
                           </p>
                           <div className="space-y-1">
-                            {Object.entries(inst.step_states)
-                              .sort(([, a], [, b]) => {
-                                if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
-                                if (a.started_at) return -1
-                                if (b.started_at) return 1
-                                return 0
-                              })
-                              .map(([stepID, state]) => (
-                              <div key={stepID} className="flex items-center gap-2 text-xs">
-                                <span className={getInstanceStatusColor(state.status)}>
-                                  {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
-                                </span>
-                                <span>{state.name || `#${stepID}`}</span>
-                                {state.error && (
-                                  <span className="text-destructive ml-2">{state.error}</span>
-                                )}
-                              </div>
-                            ))}
+                            {workflowSteps.length > 0 ? (
+                              <CompactStepTree steps={workflowSteps} stepStates={inst.step_states} />
+                            ) : (
+                              Object.entries(inst.step_states)
+                                .sort(([, a], [, b]) => {
+                                  if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
+                                  if (a.started_at) return -1
+                                  if (b.started_at) return 1
+                                  return 0
+                                })
+                                .map(([stepID, state]) => (
+                                <div key={stepID} className="flex items-center gap-2 text-xs">
+                                  <span className={getInstanceStatusColor(state.status)}>
+                                    {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+                                  </span>
+                                  <span>{state.name || `#${stepID}`}</span>
+                                  {state.error && (
+                                    <span className="text-destructive ml-2">{state.error}</span>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
@@ -855,5 +858,78 @@ function WorkflowCard({
         </TooltipProvider>
       </CardContent>
     </Card>
+  )
+}
+
+/** 紧凑树形步骤进度（用于实例弹窗） */
+function CompactStepTree({
+  steps,
+  stepStates,
+}: {
+  steps: Step[]
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+}) {
+  return (
+    <div className="space-y-1">
+      {steps.map((step) => (
+        <CompactStepNode key={step.id} step={step} stepStates={stepStates} depth={0} />
+      ))}
+    </div>
+  )
+}
+
+/** 紧凑步骤节点 */
+function CompactStepNode({
+  step,
+  stepStates,
+  depth,
+}: {
+  step: Step
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  depth: number
+}) {
+  const state = stepStates[step.id]
+  if (!state) return null
+
+  const indent = depth * 16
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-xs" style={{ paddingLeft: indent }}>
+        <span className={getInstanceStatusColor(state.status)}>
+          {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+        </span>
+        <span>{state.name || `#${step.id}`}</span>
+        {(step.action === "parallel" || step.action === "if") && (
+          <span className="text-muted-foreground">{step.action === "parallel" ? "∥" : "↔"}</span>
+        )}
+        {step.action === "tool_call" && step.tool && (
+          <span className="text-muted-foreground">{step.tool}</span>
+        )}
+        {state.error && (
+          <span className="text-destructive ml-1">{state.error}</span>
+        )}
+      </div>
+      {/* 递归渲染子步骤 */}
+      {step.action === "if" && step.if_true && step.if_true.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✓ true</div>
+          {step.if_true.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "if" && step.if_false && step.if_false.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✗ false</div>
+          {step.if_false.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
+        <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+      ))}
+    </div>
   )
 }

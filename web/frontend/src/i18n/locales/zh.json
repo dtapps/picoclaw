@@ -1170,7 +1170,8 @@
       "invalid_var_ref": "步骤「{{step}}」引用了不存在的变量 {{.vars.{{key}}}}",
       "invalid_step_ref": "步骤「{{step}}」引用了不存在的步骤 {{.{{refId}}.*}}",
       "invalid_self_ref": "步骤「{{step}}」引用了不支持的自身属性 {{.self.{{key}}}}（仅支持 id 和 name）",
-      "invalid_output_key_ref": "步骤「{{step}}」引用了步骤 '{{refId}}' 不存在的输出键 '{{refKey}}'（该步骤的 output_key 为 '{{actualKey}}'）"
+      "invalid_output_key_ref": "步骤「{{step}}」引用了步骤 '{{refId}}' 不存在的输出键 '{{refKey}}'（该步骤的 output_key 为 '{{actualKey}}'）",
+      "missing_required_param": "步骤「{{step}}」缺少工具 '{{tool}}' 的必填参数 '{{param}}'"
     }
   },
   "tour": {

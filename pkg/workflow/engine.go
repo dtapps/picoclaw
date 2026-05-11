@@ -144,6 +144,14 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 		logger.ErrorCF("workflow", "持久化初始实例状态失败", map[string]any{"error": err.Error()})
 	}
 
+	// 在启动 goroutine 前同步执行开始回调，确保"工作流开始"通知早于步骤通知
+	if e.onStart != nil {
+		e.onStart(inst)
+	}
+	e.publishEvent(runtimeevents.KindWorkflowInstanceStart, inst, map[string]any{
+		"workflow": inst.WorkflowName, "trigger": inst.TriggerType,
+	})
+
 	// 异步执行工作流
 	go e.executeWorkflow(runCtx, wf, inst)
 
@@ -226,14 +234,6 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		inst.StepOutputs["vars"] = varsOutput
 		inst.mu.Unlock()
 	}
-
-	// 执行开始回调（频道通知等）
-	if e.onStart != nil {
-		e.onStart(inst)
-	}
-	e.publishEvent(runtimeevents.KindWorkflowInstanceStart, inst, map[string]any{
-		"workflow": inst.WorkflowName, "trigger": inst.TriggerType,
-	})
 
 	defer func() {
 		e.mu.Lock()

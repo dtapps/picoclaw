@@ -35,9 +35,10 @@ type Service struct {
 
 // ServiceConfig 工作流服务配置。
 type ServiceConfig struct {
-	WorkspaceDir string            // 工作空间目录
-	MsgBus       *bus.MessageBus   // 消息总线
-	EventBus     runtimeevents.Bus // 事件总线
+	WorkspaceDir string             // 工作空间目录
+	MsgBus       *bus.MessageBus    // 消息总线
+	EventBus     runtimeevents.Bus  // 事件总线
+	ToolSchema   ToolSchemaProvider // 工具参数 Schema 查询（可选，用于保存时校验 tool_call 必填参数）
 }
 
 // NewService 创建新的工作流服务。
@@ -176,7 +177,7 @@ func (s *Service) ListWorkflows() []*Workflow {
 // CreateWorkflow 创建新工作流并持久化。
 // 会先校验定义合法性，然后写入 YAML 文件。
 func (s *Service) CreateWorkflow(wf *Workflow) error {
-	if err := wf.Validate(); err != nil {
+	if err := wf.ValidateWithToolSchema(s.cfg.ToolSchema); err != nil {
 		return err
 	}
 
@@ -201,7 +202,7 @@ func (s *Service) CreateWorkflow(wf *Workflow) error {
 
 // UpdateWorkflow 更新已有工作流定义。
 func (s *Service) UpdateWorkflow(wf *Workflow) error {
-	if err := wf.Validate(); err != nil {
+	if err := wf.ValidateWithToolSchema(s.cfg.ToolSchema); err != nil {
 		return err
 	}
 

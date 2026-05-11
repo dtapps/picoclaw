@@ -1176,7 +1176,8 @@
       "invalid_var_ref": "Step '{{step}}' references undefined variable {{.vars.{{key}}}}",
       "invalid_step_ref": "Step '{{step}}' references undefined step {{.{{refId}}.*}}",
       "invalid_self_ref": "Step '{{step}}' references unsupported self-property {{.self.{{key}}}} (only id and name supported)",
-      "invalid_output_key_ref": "Step '{{step}}' references non-existent output key '{{refKey}}' on step '{{refId}}' (output_key is '{{actualKey}}')"
+      "invalid_output_key_ref": "Step '{{step}}' references non-existent output key '{{refKey}}' on step '{{refId}}' (output_key is '{{actualKey}}')",
+      "missing_required_param": "Step '{{step}}' is missing required parameter '{{param}}' for tool '{{tool}}'"
     }
   },
   "tour": {
