@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -93,6 +94,27 @@ func (ps *PersistStore) SaveWorkflow(wf *Workflow) error {
 
 	filename := sanitizeName(wf.Name) + ".yml"
 	return fileutil.WriteFileAtomic(filepath.Join(ps.workflowsDir, filename), data, 0o644)
+}
+
+// LoadSingleWorkflow 从磁盘读取指定名称的工作流定义。
+// 返回最新磁盘数据，用于避免用过期内存状态覆写外部修改。
+func (ps *PersistStore) LoadSingleWorkflow(name string) (*Workflow, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	filename := sanitizeName(name) + ".yml"
+	data, err := os.ReadFile(filepath.Join(ps.workflowsDir, filename))
+	if err != nil {
+		return nil, fmt.Errorf("读取工作流 '%s' 失败: %w", name, err)
+	}
+
+	wf, err := ParseYAMLWorkflow(data)
+	if err != nil {
+		return nil, fmt.Errorf("解析工作流 '%s' 失败: %w", name, err)
+	}
+
+	wf.Enabled = !ps.isDisabled(wf.Name)
+	return wf, nil
 }
 
 // WorkflowExists 检查指定名称的工作流是否已存在。

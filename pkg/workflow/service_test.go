@@ -719,3 +719,146 @@ func TestService_GetWorkflow_NotFound(t *testing.T) {
 		t.Fatal("expected false for nonexistent workflow")
 	}
 }
+
+// TestService_BindChannel_ReadsFreshFromDisk 验证 BindChannel 不会用过期内存数据覆写磁盘。
+// 模拟场景：Web UI 修改了工作流步骤，然后用户执行 /workflow bind。
+func TestService_BindChannel_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	// 1. 创建工作流
+	wf := &Workflow{
+		Name:  "fresh-test",
+		Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old prompt"}},
+		Vars:  map[string]string{"key": "old"},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 2. 模拟外部修改磁盘（如 Web UI）：绕过 Service 直接修改磁盘
+	externalWf, _ := svc.store.LoadSingleWorkflow("fresh-test")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new prompt"}}
+	externalWf.Vars = map[string]string{"key": "new", "extra": "added"}
+	svc.store.SaveWorkflow(externalWf)
+
+	// 3. 内存中的 s.workflows 仍是旧数据，执行 BindChannel
+	if err := svc.BindChannel("fresh-test", "telegram", "-100"); err != nil {
+		t.Fatalf("BindChannel() error: %v", err)
+	}
+
+	// 4. 从磁盘验证：步骤和变量应保留外部修改，不被旧内存数据覆盖
+	diskWf, err := svc.store.LoadSingleWorkflow("fresh-test")
+	if err != nil {
+		t.Fatalf("LoadSingleWorkflow() error: %v", err)
+	}
+	if diskWf.Steps[0].Prompt != "new prompt" {
+		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new prompt")
+	}
+	if diskWf.Vars["key"] != "new" {
+		t.Fatalf("Vars[key] = %q, want %q (external change preserved)", diskWf.Vars["key"], "new")
+	}
+	if diskWf.Vars["extra"] != "added" {
+		t.Fatalf("Vars[extra] = %q, want %q (external addition preserved)", diskWf.Vars["extra"], "added")
+	}
+	if diskWf.Config.NotifyChannel != "telegram" {
+		t.Fatalf("NotifyChannel = %q, want %q (bind applied)", diskWf.Config.NotifyChannel, "telegram")
+	}
+}
+
+// TestService_UnbindChannel_ReadsFreshFromDisk 验证 UnbindChannel 同样读取最新磁盘数据。
+func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	wf := &Workflow{
+		Name:   "unbind-fresh",
+		Steps:  []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old"}},
+		Config: WorkflowConfig{NotifyChannel: "telegram", NotifyChatID: "-100"},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改
+	externalWf, _ := svc.store.LoadSingleWorkflow("unbind-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// UnbindChannel 应基于最新磁盘数据操作
+	if err := svc.UnbindChannel("unbind-fresh"); err != nil {
+		t.Fatalf("UnbindChannel() error: %v", err)
+	}
+
+	diskWf, _ := svc.store.LoadSingleWorkflow("unbind-fresh")
+	if diskWf.Steps[0].Prompt != "new" {
+		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new")
+	}
+	if diskWf.Config.NotifyChannel != "" {
+		t.Fatalf("NotifyChannel = %q, want empty (unbind applied)", diskWf.Config.NotifyChannel)
+	}
+}
+
+// TestService_RunWorkflow_ReadsFreshFromDisk 验证 RunWorkflow 执行最新步骤定义。
+func TestService_RunWorkflow_ReadsFreshFromDisk(t *testing.T) {
+	svc, executor := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	var mu sync.Mutex
+	var executedPrompt string
+	executor.AgentPromptFunc = func(ctx context.Context, prompt string) (string, error) {
+		mu.Lock()
+		executedPrompt = prompt
+		mu.Unlock()
+		return "result", nil
+	}
+
+	wf := &Workflow{Name: "run-fresh", Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old prompt"}}}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改磁盘
+	externalWf, _ := svc.store.LoadSingleWorkflow("run-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new prompt"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// RunWorkflow 应执行最新步骤
+	svc.RunWorkflow(context.Background(), "run-fresh", "", "")
+
+	// 等待引擎完成
+	svc.engine.WaitRunning()
+
+	mu.Lock()
+	got := executedPrompt
+	mu.Unlock()
+	if got != "new prompt" {
+		t.Fatalf("executed prompt = %q, want %q (fresh from disk)", got, "new prompt")
+	}
+}
+
+// TestService_SetEnabled_ReadsFreshFromDisk 验证 SetEnabled 同步最新磁盘数据到内存。
+func TestService_SetEnabled_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	wf := &Workflow{
+		Name:  "enable-fresh",
+		Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old"}},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改
+	externalWf, _ := svc.store.LoadSingleWorkflow("enable-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// SetEnabled 应从磁盘同步最新数据
+	svc.SetEnabled("enable-fresh", true)
+
+	loaded, _ := svc.GetWorkflow("enable-fresh")
+	if loaded.Steps[0].Prompt != "new" {
+		t.Fatalf("in-memory Steps[0].Prompt = %q, want %q (synced from disk)", loaded.Steps[0].Prompt, "new")
+	}
+	if !loaded.Enabled {
+		t.Fatal("in-memory Enabled = false, want true")
+	}
+}
