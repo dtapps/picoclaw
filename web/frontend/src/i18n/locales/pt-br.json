@@ -321,7 +321,7 @@
       "description": "Definir automaticamente este modelo como padrão após salvar.",
       "unsupportedProvider": "Este provedor pode ser salvo na model_list, mas não pode ser usado como modelo de chat padrão.",
       "clearOnSave": "Salvar este modelo apenas para ASR limpará a seleção atual do modelo de chat padrão."
-    },
+  },
     "add": {
       "button": "Adicionar Modelo",
       "title": "Adicionar Modelo Customizado",

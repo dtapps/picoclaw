@@ -1,10 +1,11 @@
 import {
+  IconDatabase,
   IconLoader2,
   IconPlus,
   IconSettings,
   IconStar,
 } from "@tabler/icons-react"
-import { useCallback, useEffect, useState } from "react"
+import { type ComponentType, useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
@@ -26,12 +27,9 @@ import { refreshGatewayState } from "@/store/gateway"
 import { AddModelSheet } from "./add-model-sheet"
 import { DeleteModelDialog } from "./delete-model-dialog"
 import { EditModelSheet } from "./edit-model-sheet"
+import { getProviderKey, getProviderLabel } from "./provider-label"
+import { PROVIDER_PRIORITY } from "./provider-registry"
 import { ModelSettingsDialog } from "./model-settings-dialog"
-import {
-  PROVIDER_PRIORITY,
-  getProviderKey,
-  getProviderLabel,
-} from "./provider-label"
 import { ProviderSection } from "./provider-section"
 
 interface ProviderGroup {
@@ -45,19 +43,27 @@ interface ProviderGroup {
 export function ModelsPage() {
   const { t } = useTranslation()
   const [models, setModels] = useState<ModelInfo[]>([])
-  const [providerOptions, setProviderOptions] = useState<ModelProviderOption[]>(
-    [],
-  )
+  const [providerOptions, setProviderOptions] = useState<
+    ModelProviderOption[]
+  >([])
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState("")
 
   const [editingModel, setEditingModel] = useState<ModelInfo | null>(null)
   const [deletingModel, setDeletingModel] = useState<ModelInfo | null>(null)
   const [addOpen, setAddOpen] = useState(false)
+  const [catalogOpen, setCatalogOpen] = useState(false)
   const [settingDefaultIndex, setSettingDefaultIndex] = useState<number | null>(
     null,
   )
-  const addDisabled = loading || providerOptions.length === 0
+
+  // Dynamic import for CatalogDialog (added in PR2)
+  const [CatalogDialogComp, setCatalogDialogComp] = useState<ComponentType<{
+    open: boolean; onClose: () => void; onModelAdded: () => void;
+  }> | null>(null)
+  useEffect(() => {
+    import("./catalog-dialog").then((m) => setCatalogDialogComp(() => m.CatalogDialog)).catch(() => {})
+  }, [])
 
   // ModelSettings 相关状态
   const [activeModel, setActiveModel] = useState("")
@@ -230,9 +236,13 @@ export function ModelsPage() {
           <Button
             size="sm"
             variant="outline"
-            disabled={addDisabled}
-            onClick={() => setAddOpen(true)}
+            disabled={!CatalogDialogComp}
+            onClick={() => setCatalogOpen(true)}
           >
+            <IconDatabase className="size-4" />
+            {t("models.catalog.button")}
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setAddOpen(true)}>
             <IconPlus className="size-4" />
             {t("models.add.button")}
           </Button>
@@ -300,18 +310,18 @@ export function ModelsPage() {
 
       <EditModelSheet
         model={editingModel}
-        providerOptions={providerOptions}
         open={editingModel !== null}
         onClose={() => setEditingModel(null)}
         onSaved={fetchModels}
+        providerOptions={providerOptions}
       />
 
       <AddModelSheet
         open={addOpen}
-        providerOptions={providerOptions}
         onClose={() => setAddOpen(false)}
         onSaved={fetchModels}
         existingModelNames={models.map((model) => model.model_name)}
+        providerOptions={providerOptions}
       />
 
       <DeleteModelDialog
@@ -319,6 +329,14 @@ export function ModelsPage() {
         onClose={() => setDeletingModel(null)}
         onDeleted={fetchModels}
       />
+
+      {CatalogDialogComp && (
+        <CatalogDialogComp
+          open={catalogOpen}
+          onClose={() => setCatalogOpen(false)}
+          onModelAdded={fetchModels}
+        />
+      )}
     </div>
   )
 }
