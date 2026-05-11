@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
+import type { TFunction } from "i18next"
 import { useNavigate } from "@tanstack/react-router"
 
-import type { WorkflowInstance, WorkflowStepEvent } from "@/api/workflow"
+import type { Step, WorkflowInstance, WorkflowStepEvent } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
   getInstanceStatusColor,
+  getWorkflow,
   getWorkflowInstance,
 } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
@@ -24,6 +26,7 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [instance, setInstance] = useState<WorkflowInstance | null>(null)
+  const [steps, setSteps] = useState<Step[]>([])
   const [connected, setConnected] = useState(false)
   const esRef = useRef<EventSource | null>(null)
   const retryCountRef = useRef(0)
@@ -90,6 +93,14 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
       }
     }
   }, [workflowName, instanceId, closeSSE])
+
+  // 加载工作流定义（步骤层级结构，用于树形渲染）
+  useEffect(() => {
+    if (!workflowName) return
+    getWorkflow(workflowName)
+      .then((wf) => setSteps(wf.steps))
+      .catch(() => setSteps([]))
+  }, [workflowName])
 
   // 加载初始数据，仅运行中实例建立 SSE
   useEffect(() => {
@@ -222,51 +233,11 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
-                {Object.entries(instance.step_states)
-                  .sort(([, a], [, b]) => {
-                    if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
-                    if (a.started_at) return -1
-                    if (b.started_at) return 1
-                    return 0
-                  })
-                  .map(([stepID, state]) => (
-                  <div key={stepID} className="flex items-center gap-3">
-                    <StepStatusIcon status={state.status} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{state.name || `#${stepID}`}</span>
-                        {state.name && (
-                          <span className="text-muted-foreground text-xs font-mono">#{stepID}</span>
-                        )}
-                      </div>
-                      {state.error && (
-                        <p className="text-destructive text-xs mt-0.5">
-                          {state.error}
-                        </p>
-                      )}
-                      {instance.step_outputs?.[stepID] && (
-                        <div className="mt-1 rounded bg-muted/50 px-2 py-1 text-xs font-mono text-muted-foreground max-h-60 overflow-auto">
-                          {Object.entries(instance.step_outputs[stepID]).map(([key, val]) => (
-                            <div key={key} className="whitespace-pre-wrap break-all">
-                              <span className="text-foreground/70">{key}:</span>{" "}
-                              {typeof val === "string" ? val : JSON.stringify(val, null, 2)}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <Badge variant="outline" className={getInstanceStatusColor(state.status)}>
-                        {formatInstanceStatus(state.status, t)}
-                      </Badge>
-                      {state.attempts > 1 && (
-                        <p className="text-muted-foreground text-xs mt-0.5">
-                          {t("pages.workflows.attempts", "{{count}} attempts", { count: state.attempts })}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
+                {steps.length > 0 ? (
+                  <StepTree steps={steps} stepStates={instance.step_states} stepOutputs={instance.step_outputs} t={t} />
+                ) : (
+                  <FlatStepList instance={instance} t={t} />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -319,6 +290,57 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
   )
 }
 
+/** 扁平列表回退（无工作流定义时使用） */
+function FlatStepList({ instance, t }: { instance: WorkflowInstance; t: TFunction }) {
+  return (
+    <>
+      {Object.entries(instance.step_states)
+        .sort(([, a], [, b]) => {
+          if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
+          if (a.started_at) return -1
+          if (b.started_at) return 1
+          return 0
+        })
+        .map(([stepID, state]) => (
+        <div key={stepID} className="flex items-center gap-3">
+          <StepStatusIcon status={state.status} />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">{state.name || `#${stepID}`}</span>
+              {state.name && (
+                <span className="text-muted-foreground text-xs font-mono">#{stepID}</span>
+              )}
+            </div>
+            {state.error && (
+              <p className="text-destructive text-xs mt-0.5">{state.error}</p>
+            )}
+            {instance.step_outputs?.[stepID] && (
+              <div className="mt-1 rounded bg-muted/50 px-2 py-1 text-xs font-mono text-muted-foreground max-h-60 overflow-auto">
+                {Object.entries(instance.step_outputs[stepID]).map(([key, val]) => (
+                  <div key={key} className="whitespace-pre-wrap break-all">
+                    <span className="text-foreground/70">{key}:</span>{" "}
+                    {typeof val === "string" ? val : JSON.stringify(val, null, 2)}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="shrink-0 text-right">
+            <Badge variant="outline" className={getInstanceStatusColor(state.status)}>
+              {formatInstanceStatus(state.status, t)}
+            </Badge>
+            {state.attempts > 1 && (
+              <p className="text-muted-foreground text-xs mt-0.5">
+                {t("pages.workflows.attempts", { count: state.attempts })}
+              </p>
+            )}
+          </div>
+        </div>
+      ))}
+    </>
+  )
+}
+
 function StepStatusIcon({ status }: { status: string }) {
   switch (status) {
     case "completed":
@@ -332,4 +354,129 @@ function StepStatusIcon({ status }: { status: string }) {
     default:
       return <span className="text-muted-foreground">○</span>
   }
+}
+
+/** 树形步骤进度组件 */
+function StepTree({
+  steps,
+  stepStates,
+  stepOutputs,
+  t,
+}: {
+  steps: Step[]
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  stepOutputs: Record<string, Record<string, unknown>>
+  t: TFunction
+}) {
+  return (
+    <div className="space-y-2">
+      {steps.map((step) => (
+        <StepTreeNode key={step.id} step={step} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={0} />
+      ))}
+    </div>
+  )
+}
+
+/** 单个步骤节点（含子步骤递归） */
+function StepTreeNode({
+  step,
+  stepStates,
+  stepOutputs,
+  t,
+  depth,
+}: {
+  step: Step
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  stepOutputs: Record<string, Record<string, unknown>>
+  t: TFunction
+  depth: number
+}) {
+  const state = stepStates[step.id]
+  // 跳过不在 step_states 中的步骤（不应该出现，但防御性处理）
+  if (!state) return null
+
+  const isContainer = step.action === "parallel" || step.action === "if"
+  const childSteps = step.action === "parallel"
+    ? step.parallel || []
+    : step.action === "if"
+      ? [...(step.if_true || []), ...(step.if_false || [])]
+      : []
+
+  // 缩进：每层加 20px，容器步骤的子步骤额外缩进
+  const indent = depth * 20
+
+  return (
+    <div>
+      <div className="flex items-center gap-3" style={{ paddingLeft: indent }}>
+        <StepStatusIcon status={state.status} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">{state.name || `#${step.id}`}</span>
+            {state.name && (
+              <span className="text-muted-foreground text-xs font-mono">#{step.id}</span>
+            )}
+            {isContainer && (
+              <span className="text-muted-foreground text-xs">
+                {step.action === "parallel" ? "∥" : "↔"}
+              </span>
+            )}
+            {step.action === "tool_call" && step.tool && (
+              <span className="text-muted-foreground text-xs">{step.tool}</span>
+            )}
+          </div>
+          {state.error && (
+            <p className="text-destructive text-xs mt-0.5">{state.error}</p>
+          )}
+          {stepOutputs?.[step.id] && (
+            <div className="mt-1 rounded bg-muted/50 px-2 py-1 text-xs font-mono text-muted-foreground max-h-60 overflow-auto">
+              {Object.entries(stepOutputs[step.id]).map(([key, val]) => (
+                <div key={key} className="whitespace-pre-wrap break-all">
+                  <span className="text-foreground/70">{key}:</span>{" "}
+                  {typeof val === "string" ? val : JSON.stringify(val, null, 2)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="shrink-0 text-right">
+          <Badge variant="outline" className={getInstanceStatusColor(state.status)}>
+            {formatInstanceStatus(state.status, t)}
+          </Badge>
+          {state.attempts > 1 && (
+            <p className="text-muted-foreground text-xs mt-0.5">
+              {t("pages.workflows.attempts", { count: state.attempts })}
+            </p>
+          )}
+        </div>
+      </div>
+      {/* 递归渲染子步骤 */}
+      {childSteps.length > 0 && (
+        <div>
+          {step.action === "if" && step.if_true && step.if_true.length > 0 && (
+            <div>
+              <div className="text-muted-foreground text-xs font-medium mt-1" style={{ paddingLeft: indent + 20 }}>
+                ✓ true
+              </div>
+              {step.if_true.map((sub) => (
+                <StepTreeNode key={sub.id} step={sub} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={depth + 1} />
+              ))}
+            </div>
+          )}
+          {step.action === "if" && step.if_false && step.if_false.length > 0 && (
+            <div>
+              <div className="text-muted-foreground text-xs font-medium mt-1" style={{ paddingLeft: indent + 20 }}>
+                ✗ false
+              </div>
+              {step.if_false.map((sub) => (
+                <StepTreeNode key={sub.id} step={sub} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={depth + 1} />
+              ))}
+            </div>
+          )}
+          {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
+            <StepTreeNode key={sub.id} step={sub} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }

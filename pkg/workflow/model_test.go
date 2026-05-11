@@ -468,3 +468,195 @@ func TestIsValidStepID(t *testing.T) {
 		})
 	}
 }
+
+func TestValidateWithToolSchema(t *testing.T) {
+	// 模拟工具 Schema 查询：exec 工具需要 action 参数
+	provider := func(toolName string) (map[string]any, bool) {
+		schemas := map[string]map[string]any{
+			"exec": {
+				"type": "object",
+				"properties": map[string]any{
+					"action":  map[string]any{"type": "string"},
+					"command": map[string]any{"type": "string"},
+				},
+				"required": []string{"action"},
+			},
+			"search": {
+				"type": "object",
+				"properties": map[string]any{
+					"query": map[string]any{"type": "string"},
+				},
+				"required": []string{"query"},
+			},
+		}
+		schema, ok := schemas[toolName]
+		return schema, ok
+	}
+
+	tests := []struct {
+		name        string
+		wf          Workflow
+		wantErr     bool
+		errMsg      string
+		nilProvider bool
+	}{
+		{
+			name: "tool_call with all required params passes",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{
+						ID:     "s1",
+						Action: "tool_call",
+						Tool:   "exec",
+						Args:   map[string]any{"action": "run", "command": "ls"},
+					},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "tool_call missing required param fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{"command": "ls"}}},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "tool_call with unknown tool fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "nonexistent", Args: map[string]any{}}},
+			},
+			wantErr: true,
+			errMsg:  "不存在的工具 'nonexistent'",
+		},
+		{
+			name: "tool_call with no required params in schema passes",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "search", Args: map[string]any{"query": "hello"}}},
+			},
+			wantErr: false,
+		},
+		{
+			name: "tool_call missing required query param fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "search", Args: map[string]any{"other": "val"}}},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'search' 的必填参数 'query'",
+		},
+		{
+			name: "tool_call with empty args fails if required",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{}}},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "parallel sub-step missing required param fails",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "parallel", Parallel: []Step{
+						{ID: "p1", Action: "tool_call", Tool: "exec", Args: map[string]any{}},
+					}},
+				},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "if sub-step missing required param fails",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "if", When: "on_error", IfTrue: []Step{
+						{ID: "t1", Action: "tool_call", Tool: "exec", Args: map[string]any{}},
+					}},
+				},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "tool_call with empty string value fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{"action": ""}}},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "tool_call with nil value fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{"action": nil}}},
+			},
+			wantErr: true,
+			errMsg:  "缺少工具 'exec' 的必填参数 'action'",
+		},
+		{
+			name: "tool_call with template ref value passes",
+			wf: Workflow{
+				Name: "test",
+				Vars: map[string]string{"act": "run"},
+				Steps: []Step{
+					{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{"action": "{{.vars.act}}"}},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "nil provider skips tool validation",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{}}},
+			},
+			wantErr:     false,
+			errMsg:      "",
+			nilProvider: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := provider
+			if tt.nilProvider {
+				p = nil
+			}
+			err := tt.wf.ValidateWithToolSchema(p)
+			if tt.wantErr {
+				if err == nil {
+					t.Fatalf("expected error containing %q, got nil", tt.errMsg)
+				}
+				if !contains(err.Error(), tt.errMsg) {
+					t.Fatalf("expected error containing %q, got %q", tt.errMsg, err.Error())
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
+
+// TestValidate nil provider 测试 Validate() 兼容性
+func TestValidate_NoProvider(t *testing.T) {
+	wf := Workflow{
+		Name:  "test",
+		Steps: []Step{{ID: "s1", Action: "tool_call", Tool: "exec", Args: map[string]any{}}},
+	}
+	// Validate() 内部调用 ValidateWithToolSchema(nil)，不会校验工具参数
+	if err := wf.Validate(); err != nil {
+		t.Fatalf("expected no error with nil provider, got %v", err)
+	}
+}

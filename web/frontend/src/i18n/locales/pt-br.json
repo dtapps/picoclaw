@@ -1114,7 +1114,8 @@
       "invalid_var_ref": "Etapa '{{step}}' referencia variável indefinida {{.vars.{{key}}}}",
       "invalid_step_ref": "Etapa '{{step}}' referencia etapa indefinida {{.{{refId}}.*}}",
       "invalid_self_ref": "Etapa '{{step}}' referencia propriedade self não suportada {{.self.{{key}}}} (apenas id e name suportados)",
-      "invalid_output_key_ref": "Etapa '{{step}}' referencia chave de saída inexistente '{{refKey}}' na etapa '{{refId}}' (output_key é '{{actualKey}}')"
+      "invalid_output_key_ref": "Etapa '{{step}}' referencia chave de saída inexistente '{{refKey}}' na etapa '{{refId}}' (output_key é '{{actualKey}}')",
+      "missing_required_param": "Etapa '{{step}}' está sem o parâmetro obrigatório '{{param}}' da ferramenta '{{tool}}'"
     }
   },
   "tour": {

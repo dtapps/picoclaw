@@ -946,7 +946,7 @@ func setupWorkflowService(
 		}
 		msgBus.PublishOutbound(context.Background(), bus.OutboundMessage{
 			Context: bus.NewOutboundContext(inst.Channel, inst.ChatID, ""),
-			Content: fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", step.ID, actionDesc),
+			Content: fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc),
 		})
 	})
 
@@ -994,6 +994,18 @@ func setupWorkflowService(
 		WorkspaceDir: workspace,
 		MsgBus:       msgBus,
 		EventBus:     agentLoop.RuntimeEventBus(),
+		ToolSchema: func(toolName string) (map[string]any, bool) {
+			registry := agentLoop.GetRegistry()
+			defaultAgent := registry.GetDefaultAgent()
+			if defaultAgent == nil {
+				return nil, false
+			}
+			tool, ok := defaultAgent.Tools.Get(toolName)
+			if !ok {
+				return nil, false
+			}
+			return tool.Parameters(), true
+		},
 	}
 	service := workflow.NewService(store, engine, svcCfg)
 

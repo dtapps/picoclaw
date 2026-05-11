@@ -6,6 +6,8 @@ import { toast } from "sonner"
 
 import type { CreateWorkflowRequest, Step as WorkflowStep, UpdateWorkflowRequest, Workflow } from "@/api/workflow"
 import { getWorkflow } from "@/api/workflow"
+import { getTools } from "@/api/tools"
+import { getMCPConfig, getMCPServerDetails } from "@/api/mcp"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/page-header"
 
@@ -85,6 +87,30 @@ function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string
 	return ""
 }
 
+/** 递归校验 tool_call 步骤的必填参数，返回错误信息或空字符串 */
+function validateToolCallArgs(steps: WorkflowStep[], toolRequiredParams: Map<string, string[]>, t: (key: string, options?: Record<string, unknown>) => string): string {
+	for (const step of steps) {
+		if (step.action === "tool_call" && step.tool) {
+			const required = toolRequiredParams.get(step.tool)
+			if (!required) {
+				// 工具不在列表中（可能是 MCP 未连接或自定义），跳过校验
+				continue
+			}
+			const args = step.args || {}
+			for (const key of required) {
+				if (!(key in args) || args[key] === "" || args[key] === null || args[key] === undefined) {
+					return t("pages.workflows.missing_required_param", { step: step.name || step.id, tool: step.tool, param: key })
+				}
+			}
+		}
+		// 递归校验子步骤
+		const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+		const err = validateToolCallArgs(subs, toolRequiredParams, t)
+		if (err) return err
+	}
+	return ""
+}
+
 /** 前端校验工作流步骤，返回错误信息或空字符串 */
 function validateStep(step: WorkflowStep, index: number, t: (key: string, options?: Record<string, unknown>) => string, ids: Set<string>): string {
 	const label = stepLabel(step)
@@ -129,8 +155,57 @@ export function WorkflowEditorPage() {
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null)
   const [loading, setLoading] = useState(!!editName)
   const [submitting, setSubmitting] = useState(false)
+  const [toolRequiredParams, setToolRequiredParams] = useState<Map<string, string[]>>(new Map())
 
   const isEdit = !!editWorkflow
+
+  // 加载工具参数 Schema（内置 + MCP，用于保存时校验 tool_call 必填参数）
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadToolSchemas() {
+      const m = new Map<string, string[]>()
+
+      // 1. 内置工具
+      try {
+        const res = await getTools()
+        if (cancelled) return
+        for (const t of res.tools) {
+          if (t.status === "enabled" && t.parameters?.required) {
+            m.set(t.name, t.parameters.required)
+          }
+        }
+      } catch { /* 忽略 */ }
+
+      // 2. MCP 工具
+      try {
+        const mcpConfig = await getMCPConfig()
+        if (mcpConfig.enabled) {
+          const enabledServers = mcpConfig.servers.filter((s) => s.enabled)
+          const details = await Promise.allSettled(
+            enabledServers.map((s) => getMCPServerDetails(s.name))
+          )
+          if (cancelled) return
+          for (const result of details) {
+            if (result.status === "fulfilled" && result.value.connected) {
+              for (const tool of result.value.tools) {
+                const runtimeName = `mcp_${result.value.server_name.replace(/[^a-zA-Z0-9_]/g, "_")}_${tool.name.replace(/[^a-zA-Z0-9_]/g, "_")}`
+                const required = tool.parameters.filter((p) => p.required).map((p) => p.name)
+                if (required.length > 0) {
+                  m.set(runtimeName, required)
+                }
+              }
+            }
+          }
+        }
+      } catch { /* MCP 不可用时忽略 */ }
+
+      if (!cancelled) setToolRequiredParams(m)
+    }
+
+    loadToolSchemas()
+    return () => { cancelled = true }
+  }, [])
 
   // 编辑模式：加载工作流数据
   useEffect(() => {
@@ -176,6 +251,13 @@ export function WorkflowEditorPage() {
     const refErr = validateTemplateRefs(wfData.steps, wfData.vars, t)
     if (refErr) {
       toast.error(refErr)
+      return
+    }
+
+    // 前端校验：tool_call 必填参数
+    const toolErr = validateToolCallArgs(wfData.steps, toolRequiredParams, t)
+    if (toolErr) {
+      toast.error(toolErr)
       return
     }
 

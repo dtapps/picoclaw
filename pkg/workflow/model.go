@@ -156,9 +156,20 @@ type WorkflowListItem struct {
 	Vars        map[string]string `json:"vars,omitempty"` // 全局变量
 }
 
+// ToolSchemaProvider 根据工具名称返回该工具的参数 JSON Schema。
+// 返回 (nil, false) 表示工具不存在。
+// 由调用方（gateway）注入实际的工具注册表查询逻辑。
+type ToolSchemaProvider func(toolName string) (map[string]any, bool)
+
 // Validate 校验工作流定义是否合法。
 // 检查名称非空、至少一个步骤、步骤 ID 唯一、动作类型合法等。
 func (w *Workflow) Validate() error {
+	return w.ValidateWithToolSchema(nil)
+}
+
+// ValidateWithToolSchema 校验工作流定义是否合法。
+// 当 toolSchema 非空时，会额外校验 tool_call 步骤的必填参数。
+func (w *Workflow) ValidateWithToolSchema(toolSchema ToolSchemaProvider) error {
 	if w.Name == "" {
 		return validationError("工作流校验：名称不能为空")
 	}
@@ -180,6 +191,13 @@ func (w *Workflow) Validate() error {
 	// 校验模板引用：{{.vars.key}} 和 {{.step_id.key}}
 	if err := validateTemplateRefs(w, outputKeys); err != nil {
 		return err
+	}
+
+	// 校验 tool_call 步骤的必填参数
+	if toolSchema != nil {
+		if err := validateToolCallArgs(w, toolSchema); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -383,12 +401,101 @@ func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[
 	return nil
 }
 
-// stepLabel 返回步骤的可读标签，优先使用 Name。
+// StepLabel 返回步骤的可读标签，优先使用 Name，为空时回退到 #ID。
+func StepLabel(step Step) string {
+	if step.Name != "" {
+		return step.Name
+	}
+	return "#" + step.ID
+}
+
+// stepLabel 是 StepLabel 的内部别名，供同包使用（校验错误等，保持原有格式）。
 func stepLabel(step Step) string {
 	if step.Name != "" {
 		return step.Name
 	}
 	return step.ID
+}
+
+// validateToolCallArgs 校验 tool_call 步骤的必填参数是否已提供。
+// 通过 ToolSchemaProvider 查询工具的 JSON Schema，检查 required 字段是否在 args 中存在。
+func validateToolCallArgs(w *Workflow, provider ToolSchemaProvider) error {
+	for _, step := range w.Steps {
+		if err := validateStepToolCallArgs(step, provider); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateStepToolCallArgs 递归校验步骤中 tool_call 的必填参数。
+func validateStepToolCallArgs(step Step, provider ToolSchemaProvider) error {
+	if step.Action == "tool_call" && step.Tool != "" {
+		schema, ok := provider(step.Tool)
+		if !ok {
+			// 工具不存在时不阻止保存（可能在运行时才注册），但给出提示
+			return validationError(fmt.Sprintf(
+				"工作流校验：步骤「%s」引用了不存在的工具 '%s'",
+				stepLabel(step), step.Tool))
+		}
+		if err := checkRequiredArgs(step, schema); err != nil {
+			return err
+		}
+	}
+	// 递归校验子步骤
+	for _, sub := range step.Parallel {
+		if err := validateStepToolCallArgs(sub, provider); err != nil {
+			return err
+		}
+	}
+	for _, sub := range step.IfTrue {
+		if err := validateStepToolCallArgs(sub, provider); err != nil {
+			return err
+		}
+	}
+	for _, sub := range step.IfFalse {
+		if err := validateStepToolCallArgs(sub, provider); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// checkRequiredArgs 检查步骤的 args 是否包含工具 Schema 中声明的所有必填参数，且值不为空。
+func checkRequiredArgs(step Step, schema map[string]any) error {
+	required, _ := schema["required"].([]string)
+	if len(required) == 0 {
+		return nil
+	}
+	label := stepLabel(step)
+	for _, key := range required {
+		val, exists := step.Args[key]
+		if !exists || isEmptyValue(val) {
+			return validationError(fmt.Sprintf(
+				"工作流校验：步骤「%s」缺少工具 '%s' 的必填参数 '%s'",
+				label, step.Tool, key))
+		}
+	}
+	return nil
+}
+
+// isEmptyValue 判断参数值是否为空（nil、空字符串、零值）。
+func isEmptyValue(v any) bool {
+	if v == nil {
+		return true
+	}
+	switch val := v.(type) {
+	case string:
+		return val == ""
+	case float64:
+		return val == 0
+	case int:
+		return val == 0
+	case bool:
+		return false // bool 类型不算空值
+	default:
+		return false
+	}
 }
 
 func (e validationError) Error() string { return string(e) }

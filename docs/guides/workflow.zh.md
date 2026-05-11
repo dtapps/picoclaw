@@ -241,7 +241,7 @@ steps:
 | 动作类型 | 说明 | 关键参数 |
 |---------|------|---------|
 | `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板） |
-| `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数） |
+| `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数，必填参数不能为空） |
 | `parallel` | 并行执行多个子步骤 | `parallel`（子步骤列表） |
 | `if` | 条件判断，执行 true 或 false 分支 | `when`（条件表达式）、`if_true`/`if_false`（分支步骤） |
 
@@ -329,6 +329,13 @@ steps:
 > - `{{.step_id.key}}` 中的 step_id 必须是已定义 `output_key` 的步骤，且 key 必须等于该步骤的 `output_key` 值
 > - `{{.self.key}}` 中的 key 仅支持 `id` 和 `name`
 > - 引用不存在的变量、步骤或输出键将报错，防止运行时静默保留原文
+
+> **工具参数校验**：保存工作流时会自动校验 `tool_call` 步骤的必填参数，包括：
+> - 通过工具注册表查询工具的参数 Schema（内置工具和 MCP 工具均支持）
+> - 缺少必填参数（`required` 字段声明的参数）将报错
+> - 参数值为空（空字符串、null）等同于缺少该参数，也会报错
+> - 引用了不存在的工具名将报错（MCP 工具仅在服务器连接时才参与校验，未连接时跳过）
+> - 前端和后端均会执行此校验，双重保障
 
 ### 实例状态机
 
@@ -437,7 +444,7 @@ steps:
     action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if
     prompt: "..."          # agent_prompt 必填，提示词模板，支持 {{.step_id.key}} 引用
     tool: tool_name        # tool_call 必填，已注册的工具名称
-    args:                  # tool_call 可选，工具参数，值支持模板引用
+    args:                  # tool_call 可选，工具参数，值支持模板引用；必填参数的值不能为空
       key: value
     parallel:              # parallel 必填，子步骤列表
       - id: sub1
@@ -500,7 +507,7 @@ steps:
 - 点击步骤在右侧面板编辑属性（ID 字段仅允许输入字母、数字和下划线，名称字段支持任意字符；重试配置仅对 agent_prompt 和 tool_call 步骤显示）
 - 步骤类型拖出后固定（Agent 提示 / 工具调用 / 并行 / If 条件）
 - 从工具箱拖拽步骤时自动按类型分配 ID（如 `prompt_1`、`tool_1`、`prompt_2`、`if_1`）
-- 保存前前端校验，支持 i18n 错误提示（递归校验子步骤、嵌套 ID 唯一性检查）
+- 保存前前端校验，支持 i18n 错误提示（递归校验子步骤、嵌套 ID 唯一性检查、模板引用校验、tool_call 必填参数校验）
 - 编辑变量时 key 重复警告
 - 并行步骤以分支形式并排显示，支持动态增删分支
 - if 步骤显示为菱形，带 true/false 分支线

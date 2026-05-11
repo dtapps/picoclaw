@@ -241,7 +241,7 @@ A step is the basic execution unit, supporting four action types:
 | Action Type | Description | Key Parameters |
 |-------------|-------------|----------------|
 | `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template) |
-| `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters) |
+| `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters; required params must not be empty) |
 | `parallel` | Execute sub-steps concurrently | `parallel` (sub-step list) |
 | `if` | Conditional branch — execute true or false branch | `when` (condition), `if_true`/`if_false` (branch steps) |
 
@@ -329,6 +329,13 @@ steps:
 > - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
 > - `{{.self.key}}` — the key only supports `id` and `name`
 > - Referencing non-existent variables, steps, or output keys will raise an error, preventing silent template passthrough at runtime
+
+> **Tool parameter validation**: Required parameters for `tool_call` steps are validated when saving a workflow:
+> - The tool's parameter schema is queried from the tool registry (supports both built-in and MCP tools)
+> - Missing required parameters (declared in the `required` field) will raise an error
+> - Empty parameter values (empty string, null) are treated as missing and will also raise an error
+> - Referencing a non-existent tool name will raise an error (MCP tools only participate in validation when their server is connected; otherwise skipped)
+> - Both frontend and backend perform this validation for double protection
 
 ### Instance State Machine
 
@@ -439,7 +446,7 @@ steps:
     action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
     tool: tool_name        # Required for tool_call, registered tool name
-    args:                  # Optional for tool_call, tool parameters (values support template references)
+    args:                  # Optional for tool_call, tool parameters (values support template references; required param values must not be empty)
       key: value
     parallel:              # Required for parallel, sub-step list
       - id: sub1
@@ -502,7 +509,7 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 - Click a step to edit its properties in the right panel (ID field accepts only alphanumeric characters and underscores; Name field accepts any characters; retry configuration is shown only for agent_prompt and tool_call steps)
 - Step types are fixed after dragging (Agent Prompt / Tool Call / Parallel / If)
 - Auto-assigned step IDs by type when dragging from toolbox (e.g., `prompt_1`, `tool_1`, `prompt_2`, `if_1`)
-- Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check)
+- Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check, template reference validation, tool_call required parameter validation)
 - Variable key duplicate warning when editing vars
 - Parallel steps display branches side by side; branches can be added or removed dynamically
 - if steps render as diamonds with true/false branch lines
