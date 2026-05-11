@@ -7,6 +7,7 @@ import {
   DM_SCOPE_OPTIONS,
   type LauncherForm,
 } from "@/components/config/form-model"
+import type { TracingForm } from "@/components/config/form-model"
 import { Field, SwitchCardField } from "@/components/shared-form"
 import { Button } from "@/components/ui/button"
 import {
@@ -767,6 +768,72 @@ export function EmptyResponseRetrySection({
                 onFieldChange("emptyResponseRetryPatternsText", e.target.value)
               }
             />
+          </Field>
+        </>
+      )}
+    </ConfigSectionCard>
+  )
+}
+
+// TracingSection 请求追踪配置区域
+// 将上下文字段映射为自定义 HTTP 请求头，发给 LLM 时自动携带
+interface TracingSectionProps {
+  form: TracingForm
+  onFieldChange: <K extends keyof TracingForm>(
+    key: K,
+    value: TracingForm[K],
+  ) => void
+}
+
+export function TracingSection({ form, onFieldChange }: TracingSectionProps) {
+  const { t } = useTranslation()
+
+  return (
+    <ConfigSectionCard
+      title={t("pages.config.sections.tracing")}
+      description={t("pages.config.tracing_description")}
+    >
+      <SwitchCardField
+        label={t("pages.config.tracing_enabled")}
+        hint={t("pages.config.tracing_enabled_hint")}
+        layout="setting-row"
+        checked={form.enabled}
+        onCheckedChange={(checked) => onFieldChange("enabled", checked)}
+      />
+
+      {form.enabled && (
+        <>
+          <Field
+            label={t("pages.config.tracing_headers")}
+            hint={t("pages.config.tracing_headers_hint")}
+            layout="setting-row"
+            controlClassName="md:max-w-md"
+          >
+            <Textarea
+              value={form.headersText}
+              placeholder={t("pages.config.tracing_headers_placeholder")}
+              className="min-h-[88px] font-mono text-sm"
+              onChange={(e) => onFieldChange("headersText", e.target.value)}
+            />
+          </Field>
+          <Field
+            label={t("pages.config.tracing_available_fields")}
+            hint={t("pages.config.tracing_available_fields_hint")}
+            layout="setting-row"
+            controlClassName="md:max-w-md"
+          >
+            <div className="text-muted-foreground grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+              <span><code className="bg-muted rounded px-1">session_key</code> — {t("pages.config.tracing_field_session_key")}</span>
+              <span><code className="bg-muted rounded px-1">turn_id</code> — {t("pages.config.tracing_field_turn_id")}</span>
+              <span><code className="bg-muted rounded px-1">agent_id</code> — {t("pages.config.tracing_field_agent_id")}</span>
+              <span><code className="bg-muted rounded px-1">agent_name</code> — {t("pages.config.tracing_field_agent_name")}</span>
+              <span><code className="bg-muted rounded px-1">channel</code> — {t("pages.config.tracing_field_channel")}</span>
+              <span><code className="bg-muted rounded px-1">chat_id</code> — {t("pages.config.tracing_field_chat_id")}</span>
+              <span><code className="bg-muted rounded px-1">parent_turn_id</code> — {t("pages.config.tracing_field_parent_turn_id")}</span>
+              <span><code className="bg-muted rounded px-1">sender_id</code> — {t("pages.config.tracing_field_sender_id")}</span>
+              <span><code className="bg-muted rounded px-1">message_id</code> — {t("pages.config.tracing_field_message_id")}</span>
+              <span><code className="bg-muted rounded px-1">model</code> — {t("pages.config.tracing_field_model")}</span>
+            </div>
           </Field>
         </>
       )}

@@ -17,6 +17,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/providers/common"
 	"github.com/sipeed/picoclaw/pkg/providers/messageutil"
 	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
+	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 type (
@@ -204,6 +205,15 @@ func (p *Provider) applyCustomHeaders(req *http.Request) {
 	}
 }
 
+// applyTracingHeaders 从 context 中读取追踪信息并注入到 HTTP 请求头。
+// 根据配置的 headers 映射，将上下文字段（如 session_key、turn_id）写入对应的请求头。
+func (p *Provider) applyTracingHeaders(ctx context.Context, req *http.Request) {
+	headers := tracing.HeadersFromContext(ctx)
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+}
+
 func (p *Provider) SetProviderName(providerName string) {
 	p.providerName = strings.ToLower(strings.TrimSpace(providerName))
 }
@@ -344,6 +354,8 @@ func (p *Provider) Chat(
 		req.Header.Set("Authorization", "Bearer "+p.apiKey)
 	}
 	p.applyCustomHeaders(req)
+	// 注入追踪请求头（根据配置将上下文字段映射为自定义 HTTP 请求头）
+	p.applyTracingHeaders(ctx, req)
 
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
@@ -394,6 +406,8 @@ func (p *Provider) ChatStream(
 		req.Header.Set("Authorization", "Bearer "+p.apiKey)
 	}
 	p.applyCustomHeaders(req)
+	// 注入追踪请求头（根据配置将上下文字段映射为自定义 HTTP 请求头）
+	p.applyTracingHeaders(ctx, req)
 
 	// Use a client without Timeout for streaming — the http.Client.Timeout covers
 	// the entire request lifecycle including body reads, which would kill long streams.

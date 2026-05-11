@@ -25,16 +25,21 @@ import {
   InlineToolCallsSection,
   LauncherSection,
   RuntimeSection,
+  TracingSection,
 } from "@/components/config/config-sections"
 import {
   type CoreConfigForm,
   EMPTY_FORM,
   EMPTY_LAUNCHER_FORM,
+  EMPTY_TRACING_FORM,
   type LauncherForm,
+  type TracingForm,
   buildFormFromConfig,
+  buildTracingFormFromConfig,
   parseCIDRText,
   parseIntField,
   parseMultilineList,
+  parseTracingHeaders,
 } from "@/components/config/form-model"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
@@ -51,6 +56,10 @@ export function ConfigPage() {
     useState<LauncherForm>(EMPTY_LAUNCHER_FORM)
   const [launcherBaseline, setLauncherBaseline] =
     useState<LauncherForm>(EMPTY_LAUNCHER_FORM)
+  const [tracingForm, setTracingForm] =
+    useState<TracingForm>(EMPTY_TRACING_FORM)
+  const [tracingBaseline, setTracingBaseline] =
+    useState<TracingForm>(EMPTY_TRACING_FORM)
   const [autoStartEnabled, setAutoStartEnabled] = useState(false)
   const [autoStartBaseline, setAutoStartBaseline] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -91,6 +100,9 @@ export function ConfigPage() {
     const parsed = buildFormFromConfig(data)
     setForm(parsed)
     setBaseline(parsed)
+    const parsedTracing = buildTracingFormFromConfig(data)
+    setTracingForm(parsedTracing)
+    setTracingBaseline(parsedTracing)
   }, [data])
 
   useEffect(() => {
@@ -122,7 +134,8 @@ export function ConfigPage() {
     launcherForm.dashboardPasswordConfirm.trim() !== ""
   const launcherDirty = launcherSettingsDirty || launcherPasswordDirty
   const autoStartDirty = autoStartEnabled !== autoStartBaseline
-  const isDirty = configDirty || launcherDirty || autoStartDirty
+  const tracingDirty = tracingForm.enabled !== tracingBaseline.enabled || tracingForm.headersText !== tracingBaseline.headersText
+  const isDirty = configDirty || launcherDirty || autoStartDirty || tracingDirty
 
   const autoStartSupported = autoStartStatus?.supported !== false
   const autoStartHint = autoStartError
@@ -145,9 +158,17 @@ export function ConfigPage() {
     setLauncherForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const updateTracingField = <K extends keyof TracingForm>(
+    key: K,
+    value: TracingForm[K],
+  ) => {
+    setTracingForm((prev) => ({ ...prev, [key]: value }))
+  }
+
   const handleReset = () => {
     setForm(baseline)
     setLauncherForm(launcherBaseline)
+    setTracingForm(tracingBaseline)
     setAutoStartEnabled(autoStartBaseline)
     toast.info(t("pages.config.reset_success"))
   }
@@ -169,7 +190,7 @@ export function ConfigPage() {
         }
       }
 
-      if (configDirty) {
+      if (configDirty || tracingDirty) {
         const workspace = form.workspace.trim()
         const dmScope = form.dmScope.trim()
 
@@ -295,9 +316,14 @@ export function ConfigPage() {
             enabled: form.devicesEnabled,
             monitor_usb: form.monitorUSB,
           },
+          tracing: {
+            enabled: tracingForm.enabled,
+            headers: parseTracingHeaders(tracingForm.enabled, tracingForm.headersText),
+          },
         })
 
         setBaseline(form)
+        setTracingBaseline(tracingForm)
         queryClient.invalidateQueries({ queryKey: ["config"] })
       }
 
@@ -462,6 +488,11 @@ export function ConfigPage() {
               <InlineToolCallsSection
                 form={form}
                 onFieldChange={updateField}
+              />
+
+              <TracingSection
+                form={tracingForm}
+                onFieldChange={updateTracingField}
               />
 
               {!isDirty && actionButtons}
