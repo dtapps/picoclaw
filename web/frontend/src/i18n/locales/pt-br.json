@@ -1091,7 +1091,11 @@
       "step_no_tool": "Etapa '{{label}}' requer inserir o nome da ferramenta",
       "step_no_parallel": "Etapa '{{label}}' requer pelo menos uma sub-etapa",
       "step_no_when": "Etapa '{{label}}' requer uma condição when",
-      "step_no_branch": "Etapa '{{label}}' requer pelo menos uma etapa de ramificação"
+      "step_no_branch": "Etapa '{{label}}' requer pelo menos uma etapa de ramificação",
+      "invalid_var_ref": "Etapa '{{step}}' referencia variável indefinida {{.vars.{{key}}}}",
+      "invalid_step_ref": "Etapa '{{step}}' referencia etapa indefinida {{.{{refId}}.*}}",
+      "invalid_self_ref": "Etapa '{{step}}' referencia propriedade self não suportada {{.self.{{key}}}} (apenas id e name suportados)",
+      "invalid_output_key_ref": "Etapa '{{step}}' referencia chave de saída inexistente '{{refKey}}' na etapa '{{refId}}' (output_key é '{{actualKey}}')"
     }
   },
   "tour": {

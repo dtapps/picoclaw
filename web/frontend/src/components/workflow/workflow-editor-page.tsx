@@ -34,6 +34,57 @@ function stepLabel(step: WorkflowStep): string {
 	return step.name || step.id || step.action
 }
 
+/** 从步骤的 prompt、args、when 中提取所有 {{.xxx.yyy}} 模板引用 */
+function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: string }[] {
+	const refs: { refId: string; refKey: string }[] = []
+	const re = /\{\{\.([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}\}/g
+	const check = (text: string) => { let m; while ((m = re.exec(text)) !== null) refs.push({ refId: m[1], refKey: m[2] }) }
+	if (step.prompt) check(step.prompt)
+	if (step.when) check(step.when)
+	if (step.args) {
+		for (const v of Object.values(step.args)) {
+			if (typeof v === "string") check(v)
+		}
+	}
+	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	for (const sub of subs) refs.push(...extractTemplateRefs(sub))
+	return refs
+}
+
+/** 递归收集步骤 ID 和对应的 output_key */
+function collectStepOutputKeys(step: WorkflowStep, map: Map<string, string>) {
+	if (step.output_key) map.set(step.id, step.output_key)
+	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	for (const sub of subs) collectStepOutputKeys(sub, map)
+}
+
+/** 前端校验模板引用，返回错误信息或空字符串 */
+function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string> | undefined, t: (key: string, options?: Record<string, unknown>) => string): string {
+	const outputKeys = new Map<string, string>()
+	for (const step of steps) collectStepOutputKeys(step, outputKeys)
+	const varsKeys = new Set(Object.keys(vars || {}))
+
+	for (const step of steps) {
+		const refs = extractTemplateRefs(step)
+		for (const { refId, refKey } of refs) {
+			if (refId === "vars") {
+				if (!varsKeys.has(refKey))
+					return t("pages.workflows.invalid_var_ref", { step: step.name || step.id, key: refKey })
+			} else if (refId === "self") {
+				if (refKey !== "id" && refKey !== "name")
+					return t("pages.workflows.invalid_self_ref", { step: step.name || step.id, key: refKey })
+			} else {
+				const actualKey = outputKeys.get(refId)
+				if (!actualKey)
+					return t("pages.workflows.invalid_step_ref", { step: step.name || step.id, refId })
+				if (refKey !== actualKey)
+					return t("pages.workflows.invalid_output_key_ref", { step: step.name || step.id, refId, refKey, actualKey })
+			}
+		}
+	}
+	return ""
+}
+
 /** 前端校验工作流步骤，返回错误信息或空字符串 */
 function validateStep(step: WorkflowStep, index: number, t: (key: string, options?: Record<string, unknown>) => string, ids: Set<string>): string {
 	const label = stepLabel(step)
@@ -119,6 +170,13 @@ export function WorkflowEditorPage() {
         toast.error(err)
         return
       }
+    }
+
+    // 前端校验：模板引用
+    const refErr = validateTemplateRefs(wfData.steps, wfData.vars, t)
+    if (refErr) {
+      toast.error(refErr)
+      return
     }
 
     setSubmitting(true)

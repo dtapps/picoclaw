@@ -16,6 +16,7 @@ package workflow
 
 import (
 	"fmt"
+	"regexp"
 	"sync"
 	"time"
 )
@@ -168,10 +169,17 @@ func (w *Workflow) Validate() error {
 		return validationError("工作流校验：至少需要一个步骤")
 	}
 	ids := make(map[string]bool)
+	outputKeys := make(map[string]string) // stepID -> OutputKey
 	for _, step := range w.Steps {
 		if err := validateStep(step, ids); err != nil {
 			return err
 		}
+		collectOutputKeys(step, outputKeys)
+	}
+
+	// 校验模板引用：{{.vars.key}} 和 {{.step_id.key}}
+	if err := validateTemplateRefs(w, outputKeys); err != nil {
+		return err
 	}
 
 	return nil
@@ -273,5 +281,114 @@ func isValidWorkflowName(name string) bool {
 
 // validationError 表示工作流校验错误。
 type validationError string
+
+// templateRefRe 匹配 {{.xxx.yyy}} 模板引用。
+var templateRefRe = regexp.MustCompile(`\{\{\.([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}\}`)
+
+// collectOutputKeys 递归收集步骤及其子步骤的 OutputKey 映射。
+func collectOutputKeys(step Step, m map[string]string) {
+	if step.OutputKey != "" {
+		m[step.ID] = step.OutputKey
+	}
+	for _, sub := range step.Parallel {
+		collectOutputKeys(sub, m)
+	}
+	for _, sub := range step.IfTrue {
+		collectOutputKeys(sub, m)
+	}
+	for _, sub := range step.IfFalse {
+		collectOutputKeys(sub, m)
+	}
+}
+
+// validateTemplateRefs 校验步骤中的模板引用是否合法。
+// 检查 {{.vars.key}} 引用的 key 是否在 Vars 中定义，
+// 以及 {{.step_id.key}} 引用的 step_id 是否存在。
+func validateTemplateRefs(w *Workflow, outputKeys map[string]string) error {
+	for _, step := range w.Steps {
+		if err := validateStepTemplateRefs(step, w.Vars, outputKeys); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// validateStepTemplateRefs 递归校验步骤中的模板引用。
+func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[string]string) error {
+	label := stepLabel(step)
+	check := func(text, field string) error {
+		matches := templateRefRe.FindAllStringSubmatch(text, -1)
+		for _, m := range matches {
+			refID, refKey := m[1], m[2]
+			switch refID {
+			case "vars":
+				if _, ok := vars[refKey]; !ok {
+					return validationError(fmt.Sprintf(
+						"工作流校验：步骤「%s」%s 引用了不存在的变量 {{.vars.%s}}",
+						label, field, refKey))
+				}
+			case "self":
+				// self 是步骤自身属性引用，支持 id 和 name
+				if refKey != "id" && refKey != "name" {
+					return validationError(fmt.Sprintf(
+						"工作流校验：步骤「%s」%s 引用了不存在的自身属性 {{.self.%s}}（仅支持 id 和 name）",
+						label, field, refKey))
+				}
+			default:
+				actualKey, ok := outputKeys[refID]
+				if !ok {
+					return validationError(fmt.Sprintf(
+						"工作流校验：步骤「%s」%s 引用了不存在的步骤 {{.%s.%s}}",
+						label, field, refID, refKey))
+				}
+				if refKey != actualKey {
+					return validationError(fmt.Sprintf(
+						"工作流校验：步骤「%s」%s 引用了步骤 '%s' 不存在的输出键 '{{.%s.%s}}'（该步骤的 output_key 为 '%s'）",
+						label, field, refID, refID, refKey, actualKey))
+				}
+			}
+		}
+		return nil
+	}
+
+	if err := check(step.Prompt, "prompt"); err != nil {
+		return err
+	}
+	if err := check(step.When, "when"); err != nil {
+		return err
+	}
+	for k, v := range step.Args {
+		if s, ok := v.(string); ok {
+			if err := check(s, fmt.Sprintf("args[%s]", k)); err != nil {
+				return err
+			}
+		}
+	}
+
+	for _, sub := range step.Parallel {
+		if err := validateStepTemplateRefs(sub, vars, outputKeys); err != nil {
+			return err
+		}
+	}
+	for _, sub := range step.IfTrue {
+		if err := validateStepTemplateRefs(sub, vars, outputKeys); err != nil {
+			return err
+		}
+	}
+	for _, sub := range step.IfFalse {
+		if err := validateStepTemplateRefs(sub, vars, outputKeys); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// stepLabel 返回步骤的可读标签，优先使用 Name。
+func stepLabel(step Step) string {
+	if step.Name != "" {
+		return step.Name
+	}
+	return step.ID
+}
 
 func (e validationError) Error() string { return string(e) }
