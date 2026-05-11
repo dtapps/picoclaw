@@ -249,7 +249,7 @@ Each step supports the following configuration:
 
 - **id**: Unique step identifier, restricted to `a-zA-Z0-9_` only, used for template references `{{.step_id.key}}` and condition evaluation
 - **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set. Can be referenced via `{{.self.name}}` in templates to avoid hardcoding the name in `args`
-- **when**: Condition expression; step executes only when satisfied
+- **when**: Pre-execution condition expression; step executes only when satisfied (empty condition is equivalent to `on_success`)
 - **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
 - **retry**: Retry configuration in structured format (default: no retry)
   - `max_attempts`: Maximum retry count
@@ -279,7 +279,7 @@ Event trigger behavior:
 
 ### Condition Expressions
 
-The `when` field supports:
+The `when` field is a **pre-execution condition** — evaluated before the step runs; if not satisfied, the step is skipped.
 
 | Expression | Meaning | Example |
 |------------|---------|---------|
@@ -452,7 +452,7 @@ steps:
       - id: sub1
         action: agent_prompt
         prompt: "..."
-    when: "on_error"       # Required for if / optional for others, condition expression
+    when: "on_error"       # Required for if / optional for others, pre-execution condition expression
     delay: 5s              # Optional, wait duration before step execution (e.g. 5s, 1m30s)
     if_true:               # Optional for if, steps to execute when condition is true
       - id: handle_success
@@ -510,6 +510,8 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 - Step types are fixed after dragging (Agent Prompt / Tool Call / Parallel / If)
 - Auto-assigned step IDs by type when dragging from toolbox (e.g., `prompt_1`, `tool_1`, `prompt_2`, `if_1`)
 - Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check, template reference validation, tool_call required parameter validation)
+- Required parameters marked with red border and `*` prefix in value placeholder
+- Condition options are localized via i18n ("Run when previous step succeeded"/"Run when previous step failed"/"Custom Condition")
 - Variable key duplicate warning when editing vars
 - Parallel steps display branches side by side; branches can be added or removed dynamically
 - if steps render as diamonds with true/false branch lines
