@@ -310,8 +310,19 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		default:
 		}
 
-		// if 步骤：评估条件后执行对应分支（if 步骤始终执行，不跳过）
+		// if 步骤：评估条件后执行对应分支
 		if step.Action == "if" {
+			// enabled 检查：禁用时跳过
+			if step.Enabled != nil && !*step.Enabled {
+				inst.mu.Lock()
+				inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusSkipped}
+				_ = e.store.SaveInstance(inst)
+				inst.mu.Unlock()
+				inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 已禁用，跳过", step.ID))
+				prevStepState = inst.StepStates[step.ID]
+				continue
+			}
+
 			// 步骤开始回调
 			if e.onStepStart != nil {
 				e.onStepStart(step, inst, "", nil)
@@ -471,6 +482,16 @@ func initStepStatesRecursive(steps []Step, states map[string]*StepState) {
 // parallel 步骤在引擎层直接编排：为每个子步骤启动 goroutine 调用 executeStepWithState，
 // 确保子步骤也有完整的 state tracking、日志和回调。
 func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
+	// enabled 检查：禁用时跳过（与主循环行为一致）
+	if step.Enabled != nil && !*step.Enabled {
+		inst.mu.Lock()
+		inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusSkipped}
+		_ = e.store.SaveInstance(inst)
+		inst.mu.Unlock()
+		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 已禁用，跳过", step.ID))
+		return StepResult{}
+	}
+
 	// 执行前延迟
 	if step.Delay != "" {
 		if d, err := time.ParseDuration(step.Delay); err == nil && d > 0 {
