@@ -42,17 +42,17 @@ func withChannelCtx(ctx context.Context, channel, chatID string) context.Context
 // 负责按步骤顺序驱动工作流执行，管理状态机、条件判断、
 // 数据传递和错误处理。支持异步执行和取消。
 type Engine struct {
-	store          *PersistStore                                              // 持久化存储
-	executor       *StepExecutor                                              // 步骤执行器
-	eventBus       runtimeevents.Bus                                          // 事件总线（可选，为 nil 时不发布事件）
-	onStart        func(inst *WorkflowInstance) <-chan struct{}               // 执行开始回调（用于频道通知等），返回确认信号通道
-	onStepStart    func(step Step, inst *WorkflowInstance)                    // 步骤开始回调
-	onStepComplete func(step Step, inst *WorkflowInstance, result StepResult) // 步骤完成回调
-	onComplete     func(inst *WorkflowInstance) <-chan struct{}               // 执行完成回调（用于频道通知等），返回确认信号通道
-	mu             sync.RWMutex                                               // 保护 running 和 cancelFuncs
-	running        map[string]*WorkflowInstance                               // 当前运行中的实例（按实例 ID 索引）
-	cancelFuncs    map[string]context.CancelFunc                              // 取消函数（按实例 ID 索引）
-	doneChs        map[string]chan struct{}                                   // 实例完成信号（用于等待异步 goroutine 退出）
+	store          *PersistStore                                                                               // 持久化存储
+	executor       *StepExecutor                                                                               // 步骤执行器
+	eventBus       runtimeevents.Bus                                                                           // 事件总线（可选，为 nil 时不发布事件）
+	onStart        func(inst *WorkflowInstance) <-chan struct{}                                                // 执行开始回调（用于频道通知等），返回确认信号通道
+	onStepStart    func(step Step, inst *WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any) // 步骤开始回调（resolvedPrompt/Args 为展开后的值）
+	onStepComplete func(step Step, inst *WorkflowInstance, result StepResult)                                  // 步骤完成回调
+	onComplete     func(inst *WorkflowInstance) <-chan struct{}                                                // 执行完成回调（用于频道通知等），返回确认信号通道
+	mu             sync.RWMutex                                                                                // 保护 running 和 cancelFuncs
+	running        map[string]*WorkflowInstance                                                                // 当前运行中的实例（按实例 ID 索引）
+	cancelFuncs    map[string]context.CancelFunc                                                               // 取消函数（按实例 ID 索引）
+	doneChs        map[string]chan struct{}                                                                    // 实例完成信号（用于等待异步 goroutine 退出）
 }
 
 // NewEngine 创建新的工作流引擎。
@@ -84,7 +84,11 @@ func (e *Engine) SetOnStart(fn func(inst *WorkflowInstance) <-chan struct{}) {
 
 // SetOnStepStart 设置步骤开始回调。
 // 回调在每个步骤开始执行时调用，可用于通知频道即将执行的步骤。
-func (e *Engine) SetOnStepStart(fn func(step Step, inst *WorkflowInstance)) {
+// resolvedPrompt 为展开后的提示词（仅对 agent_prompt 步骤有意义）。
+// resolvedArgs 为展开后的参数（仅对 tool_call 步骤有意义）。
+func (e *Engine) SetOnStepStart(
+	fn func(step Step, inst *WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any),
+) {
 	e.onStepStart = fn
 }
 
@@ -310,7 +314,7 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 		if step.Action == "if" {
 			// 步骤开始回调
 			if e.onStepStart != nil {
-				e.onStepStart(step, inst)
+				e.onStepStart(step, inst, "", nil)
 			}
 			condResult := EvaluateCondition(step.When, prevStepState, inst.StepOutputs)
 			var branchSteps []Step
@@ -490,9 +494,29 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 		"step_id": step.ID, "action": step.Action,
 	})
 
+	// 计算展开后的提示词和参数（用于步骤开始通知）
+	var resolvedPrompt string
+	var resolvedArgs map[string]any
+	if step.Action == "tool_call" || step.Action == "agent_prompt" {
+		inst.mu.Lock()
+		outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs)+1)
+		for k, v := range inst.StepOutputs {
+			outputsSnapshot[k] = v
+		}
+		inst.mu.Unlock()
+		// 添加 self 变量
+		selfOutput := map[string]any{"id": step.ID}
+		if step.Name != "" {
+			selfOutput["name"] = step.Name
+		}
+		outputsSnapshot["self"] = selfOutput
+		resolvedPrompt = ResolveStepTemplates(step.Prompt, outputsSnapshot)
+		resolvedArgs = resolveArgsTemplates(step.Args, outputsSnapshot)
+	}
+
 	// 步骤开始回调（通知频道即将执行的步骤）
 	if e.onStepStart != nil {
-		e.onStepStart(step, inst)
+		e.onStepStart(step, inst, resolvedPrompt, resolvedArgs)
 	}
 
 	// 执行步骤

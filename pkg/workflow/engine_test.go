@@ -363,7 +363,7 @@ func TestRunWorkflow_Callbacks(t *testing.T) {
 		mu.Unlock()
 		return nil
 	})
-	engine.SetOnStepStart(func(step Step, inst *WorkflowInstance) {
+	engine.SetOnStepStart(func(step Step, inst *WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any) {
 		mu.Lock()
 		stepStartCalled = true
 		mu.Unlock()
