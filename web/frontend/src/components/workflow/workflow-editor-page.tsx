@@ -55,7 +55,9 @@ function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: strin
 
 /** 递归收集步骤 ID 和对应的 output_key */
 function collectStepOutputKeys(step: WorkflowStep, map: Map<string, string>) {
-	if (step.output_key) map.set(step.id, step.output_key)
+	if (step.action === "agent_prompt" || step.action === "tool_call") {
+		map.set(step.id, step.output_key || "result")
+	}
 	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
 	for (const sub of subs) collectStepOutputKeys(sub, map)
 }
@@ -318,7 +320,7 @@ export function WorkflowEditorPage() {
             <div className="bg-card h-48 w-full animate-pulse rounded-lg border" />
           </div>
         ) : (
-          <WorkflowVisualEditor value={definition} onChange={setDefinition} />
+          <WorkflowVisualEditor value={definition} onChange={setDefinition} isEdit={isEdit} />
         )}
       </div>
     </div>

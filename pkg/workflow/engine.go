@@ -45,10 +45,10 @@ type Engine struct {
 	store          *PersistStore                                              // 持久化存储
 	executor       *StepExecutor                                              // 步骤执行器
 	eventBus       runtimeevents.Bus                                          // 事件总线（可选，为 nil 时不发布事件）
-	onStart        func(inst *WorkflowInstance)                               // 执行开始回调（用于频道通知等）
+	onStart        func(inst *WorkflowInstance) <-chan struct{}               // 执行开始回调（用于频道通知等），返回确认信号通道
 	onStepStart    func(step Step, inst *WorkflowInstance)                    // 步骤开始回调
 	onStepComplete func(step Step, inst *WorkflowInstance, result StepResult) // 步骤完成回调
-	onComplete     func(inst *WorkflowInstance)                               // 执行完成回调（用于频道通知等）
+	onComplete     func(inst *WorkflowInstance) <-chan struct{}               // 执行完成回调（用于频道通知等），返回确认信号通道
 	mu             sync.RWMutex                                               // 保护 running 和 cancelFuncs
 	running        map[string]*WorkflowInstance                               // 当前运行中的实例（按实例 ID 索引）
 	cancelFuncs    map[string]context.CancelFunc                              // 取消函数（按实例 ID 索引）
@@ -68,13 +68,17 @@ func NewEngine(store *PersistStore, executor *StepExecutor) *Engine {
 
 // SetOnComplete 设置执行完成回调。
 // 回调在工作流执行结束（成功/失败/取消）后调用，可用于频道通知等场景。
-func (e *Engine) SetOnComplete(fn func(inst *WorkflowInstance)) {
+// 回调应同步发布通知消息，返回 nil 即可；若返回确认信号通道，
+// 引擎会等待该通道关闭后再继续。
+func (e *Engine) SetOnComplete(fn func(inst *WorkflowInstance) <-chan struct{}) {
 	e.onComplete = fn
 }
 
 // SetOnStart 设置执行开始回调。
 // 回调在工作流开始执行时调用，可用于发送开始通知等场景。
-func (e *Engine) SetOnStart(fn func(inst *WorkflowInstance)) {
+// 回调应同步发布通知消息，返回 nil 即可；若返回确认信号通道，
+// 引擎会等待该通道关闭后再启动异步执行，确保开始通知已进入消息管线。
+func (e *Engine) SetOnStart(fn func(inst *WorkflowInstance) <-chan struct{}) {
 	e.onStart = fn
 }
 
@@ -144,9 +148,18 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 		logger.ErrorCF("workflow", "持久化初始实例状态失败", map[string]any{"error": err.Error()})
 	}
 
-	// 在启动 goroutine 前同步执行开始回调，确保"工作流开始"通知早于步骤通知
+	// 在启动 goroutine 前同步执行开始回调，确保开始通知已进入消息管线，
+	// 避免步骤通知先于开始通知到达客户端。
+	// onStart 回调应同步发布通知消息，返回 nil 即可；
+	// 若返回确认信号通道，引擎会等待该通道关闭后再继续。
 	if e.onStart != nil {
-		e.onStart(inst)
+		if ackCh := e.onStart(inst); ackCh != nil {
+			select {
+			case <-ackCh:
+			case <-time.After(5 * time.Second):
+				logger.WarnCF("workflow", "等待 onStart 确认信号超时，继续执行", map[string]any{"workflow": wf.Name})
+			}
+		}
 	}
 	e.publishEvent(runtimeevents.KindWorkflowInstanceStart, inst, map[string]any{
 		"workflow": inst.WorkflowName, "trigger": inst.TriggerType,
@@ -219,6 +232,10 @@ func (e *Engine) IsRunning(workflowName string) bool {
 // executeWorkflow 按顺序执行工作流的所有步骤。
 // 执行完成后清理运行状态并调用完成回调。
 func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *WorkflowInstance) {
+	// 当工作流绑定了通知频道时，通知通过 SendMessage 同步发送
+	// （标记 workflow_notification 绕过 preSend 的 streamActive/placeholder 检查），
+	// 消息在回调返回时已到达远程 API，无需额外延迟。
+
 	// 将频道信息注入上下文，供步骤执行器回调时读取
 	if inst.Channel != "" {
 		ctx = withChannelCtx(ctx, inst.Channel, inst.ChatID)
@@ -250,9 +267,19 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			"workflow": inst.WorkflowName, "status": inst.Status, "error": inst.Error,
 		})
 
-		// 执行完成回调（频道通知等）
+		// 执行完成回调（频道通知等），等待确认信号确保通知已进入消息管线
 		if e.onComplete != nil {
-			e.onComplete(inst)
+			if ackCh := e.onComplete(inst); ackCh != nil {
+				select {
+				case <-ackCh:
+				case <-time.After(5 * time.Second):
+					logger.WarnCF(
+						"workflow",
+						"等待 onComplete 确认信号超时，继续执行",
+						map[string]any{"workflow": inst.WorkflowName},
+					)
+				}
+			}
 		}
 	}()
 
@@ -500,21 +527,26 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	} else {
 		state.Status = StatusCompleted
 		// 存储步骤输出，供后续步骤引用
-		if step.OutputKey != "" {
-			if inst.StepOutputs[step.ID] == nil {
-				inst.StepOutputs[step.ID] = make(map[string]any)
-			}
-			inst.StepOutputs[step.ID][step.OutputKey] = result.Output
+		if inst.StepOutputs[step.ID] == nil {
+			inst.StepOutputs[step.ID] = make(map[string]any)
 		}
+		// 使用配置的 output_key，如果没有设置则使用默认键名 "result"
+		key := step.OutputKey
+		if key == "" {
+			key = "result"
+		}
+		inst.StepOutputs[step.ID][key] = result.Output
 	}
 	inst.mu.Unlock()
 
 	if result.Error != nil {
 		inst.appendLog(step.ID, "error", fmt.Sprintf("步骤 '%s' 执行失败: %s", step.ID, result.Error.Error()))
-	} else if step.OutputKey != "" {
-		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成，输出键 '%s'", step.ID, step.OutputKey))
 	} else {
-		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成", step.ID))
+		key := step.OutputKey
+		if key == "" {
+			key = "result"
+		}
+		inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 完成，输出键 '%s'", step.ID, key))
 	}
 
 	inst.mu.Lock()
@@ -639,9 +671,11 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 		if r.result.Error != nil {
 			errs = append(errs, fmt.Errorf("步骤[%d]: %w", r.index, r.result.Error))
 		}
-		if subSteps[r.index].OutputKey != "" {
-			outputs[subSteps[r.index].OutputKey] = r.result.Output
+		key := subSteps[r.index].OutputKey
+		if key == "" {
+			key = "result"
 		}
+		outputs[key] = r.result.Output
 	}
 
 	if len(errs) > 0 {
@@ -658,10 +692,12 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 	// 合并输出
 	var combined string
 	for _, subStep := range subSteps {
-		if subStep.OutputKey != "" {
-			if v, ok := outputs[subStep.OutputKey]; ok {
-				combined += fmt.Sprintf("[%s] %s\n", subStep.OutputKey, valueToString(v))
-			}
+		key := subStep.OutputKey
+		if key == "" {
+			key = "result"
+		}
+		if v, ok := outputs[key]; ok {
+			combined += fmt.Sprintf("[%s] %s\n", key, valueToString(v))
 		}
 	}
 

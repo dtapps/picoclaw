@@ -154,12 +154,31 @@ func (s *Service) StopInstance(instanceID string) error {
 	return s.engine.StopInstance(instanceID)
 }
 
-// GetWorkflow 获取已加载的工作流定义。
+// GetWorkflow 获取工作流定义。
+// 优先从内存缓存读取，若未命中则尝试从磁盘加载（覆盖 Web UI 等外部创建的场景）。
 func (s *Service) GetWorkflow(name string) (*Workflow, bool) {
 	s.mu.RLock()
-	defer s.mu.RUnlock()
 	wf, ok := s.workflows[name]
-	return wf, ok
+	s.mu.RUnlock()
+	if ok {
+		return wf, true
+	}
+
+	if !s.store.WorkflowExists(name) {
+		return nil, false
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if wf, ok := s.workflows[name]; ok {
+		return wf, true
+	}
+	freshWf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
+		return nil, false
+	}
+	s.workflows[name] = freshWf
+	return freshWf, true
 }
 
 // ListWorkflows 返回所有已加载的工作流定义。
@@ -247,10 +266,16 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 	defer s.mu.Unlock()
 
 	if _, ok := s.workflows[name]; !ok {
-		return errNotFound(name)
+		if !s.store.WorkflowExists(name) {
+			return errNotFound(name)
+		}
+		freshWf, err := s.store.LoadSingleWorkflow(name)
+		if err != nil {
+			return err
+		}
+		s.workflows[name] = freshWf
 	}
 
-	// 从磁盘重新读取最新数据，避免用过期内存状态覆写外部修改（如 Web UI 编辑）
 	freshWf, err := s.store.LoadSingleWorkflow(name)
 	if err != nil {
 		return err
@@ -264,7 +289,6 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 		return err
 	}
 
-	// 同步更新内存状态
 	s.workflows[name] = freshWf
 	return nil
 }
@@ -275,10 +299,16 @@ func (s *Service) UnbindChannel(name string) error {
 	defer s.mu.Unlock()
 
 	if _, ok := s.workflows[name]; !ok {
-		return errNotFound(name)
+		if !s.store.WorkflowExists(name) {
+			return errNotFound(name)
+		}
+		freshWf, err := s.store.LoadSingleWorkflow(name)
+		if err != nil {
+			return err
+		}
+		s.workflows[name] = freshWf
 	}
 
-	// 从磁盘重新读取最新数据，避免用过期内存状态覆写外部修改
 	freshWf, err := s.store.LoadSingleWorkflow(name)
 	if err != nil {
 		return err
@@ -302,14 +332,20 @@ func (s *Service) SetEnabled(name string, enabled bool) error {
 	defer s.mu.Unlock()
 
 	if _, ok := s.workflows[name]; !ok {
-		return errNotFound(name)
+		if !s.store.WorkflowExists(name) {
+			return errNotFound(name)
+		}
+		freshWf, err := s.store.LoadSingleWorkflow(name)
+		if err != nil {
+			return err
+		}
+		s.workflows[name] = freshWf
 	}
 
 	if err := s.store.SetEnabled(name, enabled); err != nil {
 		return err
 	}
 
-	// 从磁盘重新读取以同步内存状态（包括 Enabled 和可能被外部修改的其他字段）
 	freshWf, err := s.store.LoadSingleWorkflow(name)
 	if err != nil {
 		return err
@@ -339,10 +375,7 @@ func (s *Service) ListWorkflowsForCommand() []commands.WorkflowInfo {
 
 // ShowWorkflow 返回用于 /workflow show 命令的工作流详情。
 func (s *Service) ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	wf, ok := s.workflows[name]
+	wf, ok := s.GetWorkflow(name)
 	if !ok {
 		return nil, nil, errNotFound(name)
 	}

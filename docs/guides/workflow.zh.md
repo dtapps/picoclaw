@@ -673,6 +673,13 @@ Agent：→ workflow action=bind name=morning-briefing
 
 通知通过 Engine 的四个回调实现（`onStart`、`onStepStart`、`onStepComplete`、`onComplete`），在 Gateway 的 `setupWorkflowService()` 中注册，通过 `msgBus.PublishOutbound` 发送到绑定的频道。
 
+**通知顺序保证**：
+
+为确保通知按正确顺序到达客户端，引擎采用以下机制：
+1. 所有通知通过 `msgBus.PublishOutbound` 发送，进入消息总线的 worker queue，保证 FIFO 顺序
+2. 通知消息标记 `message_kind=workflow_notification`，绕过 `preSend` 中的 `streamActive` 和 `placeholder` 检查，确保始终作为新消息发送
+3. `onStart` 回调在启动异步执行前同步发送开始通知，确保"工作流开始"通知先于步骤通知进入消息管线
+
 **通知目标优先级**：
 
 引擎按以下优先级确定每次执行的通知频道：
