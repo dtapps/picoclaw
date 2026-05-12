@@ -952,38 +952,53 @@ func setupWorkflowService(
 	})
 
 	// 设置步骤开始回调：通知频道即将执行的步骤
-	engine.SetOnStepStart(func(step workflow.Step, inst *workflow.WorkflowInstance) {
-		if inst.Channel == "" || inst.ChatID == "" {
-			return
-		}
+	engine.SetOnStepStart(
+		func(step workflow.Step, inst *workflow.WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any) {
+			if inst.Channel == "" || inst.ChatID == "" {
+				return
+			}
 
-		var content string
-		switch step.Action {
-		case "agent_prompt":
-			actionDesc := fmt.Sprintf("Agent 提示: %s", step.Prompt)
-			if len(actionDesc) > 80 {
-				actionDesc = actionDesc[:77] + "..."
+			var content string
+			switch step.Action {
+			case "agent_prompt":
+				promptToShow := resolvedPrompt
+				if promptToShow == "" {
+					promptToShow = step.Prompt
+				}
+				actionDesc := fmt.Sprintf("Agent 提示: %s", promptToShow)
+				if len(actionDesc) > 80 {
+					actionDesc = actionDesc[:77] + "..."
+				}
+				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
+			case "parallel":
+				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（并行执行）", workflow.StepLabel(step))
+			case "if":
+				actionDesc := fmt.Sprintf("条件判断: %s", step.When)
+				if len(actionDesc) > 80 {
+					actionDesc = actionDesc[:77] + "..."
+				}
+				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
+			case "tool_call":
+				toolFeedbackMaxLen := cfg.Agents.Defaults.GetToolFeedbackMaxArgsLength()
+				var argsPreview string
+				if resolvedArgs != nil {
+					argsPreview = utils.FormatArgsJSON(resolvedArgs, true, false)
+				} else {
+					argsPreview = utils.FormatArgsJSON(step.Args, true, false)
+				}
+				argsPreview = utils.Truncate(argsPreview, toolFeedbackMaxLen)
+				stepLabel := workflow.StepLabel(step)
+				content = utils.FormatToolFeedbackMessage(
+					step.Tool,
+					fmt.Sprintf("▶️ 步骤 '%s' 开始执行", stepLabel),
+					argsPreview,
+				)
+			default:
+				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), step.Action)
 			}
-			content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
-		case "parallel":
-			content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（并行执行）", workflow.StepLabel(step))
-		case "if":
-			actionDesc := fmt.Sprintf("条件判断: %s", step.When)
-			if len(actionDesc) > 80 {
-				actionDesc = actionDesc[:77] + "..."
-			}
-			content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
-		case "tool_call":
-			toolFeedbackMaxLen := cfg.Agents.Defaults.GetToolFeedbackMaxArgsLength()
-			argsPreview := utils.FormatArgsJSON(step.Args, true, false)
-			argsPreview = utils.Truncate(argsPreview, toolFeedbackMaxLen)
-			stepLabel := workflow.StepLabel(step)
-			content = utils.FormatToolFeedbackMessage(step.Tool, fmt.Sprintf("▶️ 步骤 '%s' 开始执行", stepLabel), argsPreview)
-		default:
-			content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), step.Action)
-		}
-		sendNotification(inst.Channel, inst.ChatID, content)
-	})
+			sendNotification(inst.Channel, inst.ChatID, content)
+		},
+	)
 
 	// 设置步骤完成回调：将结果实时推送到绑定频道
 	engine.SetOnStepComplete(func(step workflow.Step, inst *workflow.WorkflowInstance, result workflow.StepResult) {
