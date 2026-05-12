@@ -23,6 +23,7 @@ export interface Step {
   retry?: { max_attempts: number; delay: string }
   timeout?: string
   output_key?: string
+  enabled?: boolean
 }
 
 export interface WorkflowConfig {

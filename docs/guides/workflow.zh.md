@@ -249,12 +249,13 @@ steps:
 
 - **id**：步骤唯一标识，仅允许英文字母、数字和下划线（`a-zA-Z0-9_`），用于模板引用 `{{.step_id.key}}` 和条件判断
 - **name**：步骤显示名称（可选），支持中文等任意字符，用于 UI 展示和通知，不填写时显示 id。可在模板中通过 `{{.self.name}}` 引用自身名称，避免在 `args` 中重复硬编码
+- **enabled**：是否启用（可选），默认启用。设为 `false` 时跳过该步骤（状态标记为 skipped）
 - **when**：执行前条件表达式，满足时才执行该步骤（空条件等同于 `on_success`）
 - **delay**：步骤执行前的等待时间，如 `"5s"`、`"1m"`，等待期间支持取消
 - **retry**：重试配置，结构化格式（默认不重试）
   - `max_attempts`：最大重试次数
   - `delay`：重试间隔，如 `"10s"`
-- **timeout**：超时时间（秒）
+- **timeout**：超时时间（可选），如 `"30s"`、`"5m"`。**默认 30 分钟**，不设置或为空时使用默认值；最小值 1 秒
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
 
 > **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
@@ -442,6 +443,7 @@ steps:
   - id: step_id           # 必填，步骤唯一标识，仅允许 a-zA-Z0-9_，用于条件引用和数据传递
     name: 步骤名称        # 可选，步骤显示名称，支持中文等任意字符，不填时显示 id
     action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if
+    enabled: true          # 可选，是否启用（默认 true），false 时跳过该步骤
     prompt: "..."          # agent_prompt 必填，提示词模板，支持 {{.step_id.key}} 引用
     tool: tool_name        # tool_call 必填，已注册的工具名称
     args:                  # tool_call 可选，工具参数，值支持模板引用；必填参数的值不能为空
@@ -452,6 +454,7 @@ steps:
         prompt: "..."
     when: "on_error"       # if 必填/其他可选，执行前条件表达式
     delay: 5s              # 可选，步骤执行前的等待时间（如 5s、1m30s）
+    timeout: 30m           # 可选，超时时间（默认 30m），如 60s、5m
     if_true:               # if 可选，条件为 true 时执行的步骤
       - id: handle_success
         action: agent_prompt
@@ -464,7 +467,6 @@ steps:
     retry:                 # 可选，重试配置
       max_attempts: 3
       delay: 10s
-    timeout: 60s           # 可选，超时时间
 ```
 
 ### if 条件步骤
@@ -641,11 +643,11 @@ Agent：→ workflow action=bind name=morning-briefing
 |------|------|
 | `workspace/workflows/{name}.yml` | 工作流定义文件（YAML 格式，所有平台区分大小写） |
 | `workspace/workflows/{name}.disabled` | 禁用标记（文件存在即表示禁用） |
-| `workspace/workflows/.state/{name}_{instanceID}.json` | 实例状态文件（JSON 格式，原子写入） |
+| `workspace/state/workflows/{name}_{instanceID}.json` | 实例状态文件（JSON 格式，原子写入） |
 
 持久化机制（`persist.go`）：
 - 定义文件使用 YAML 格式，便于人工阅读和编辑
-- 实例状态文件存储在 `.state/` 子目录中，通过 `fileutil.WriteFileAtomic` 原子写入，防止写入中断导致数据损坏
+- 实例状态文件存储在 `state/workflows/` 目录中，通过 `fileutil.WriteFileAtomic` 原子写入，防止写入中断导致数据损坏
 - `enabled` 字段是运行时状态（`yaml:"-"` 标签），不会序列化到 YAML 文件中；禁用功能通过创建/删除 `.disabled` 后缀文件来持久化状态
 - 文件名保留大小写；`MyWorkflow` 和 `myworkflow` 视为不同工作流
 - 文件名使用 `sanitizeName()` 处理，确保安全

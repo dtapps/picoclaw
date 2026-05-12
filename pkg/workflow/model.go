@@ -46,6 +46,10 @@ type Trigger struct {
 	TZ    string `yaml:"tz,omitempty"    json:"tz,omitempty"`    // 时区，如 "Asia/Shanghai"
 }
 
+// DefaultStepTimeout 是步骤的默认超时时间。
+// 当步骤未设置 timeout 字段时使用此值。
+const DefaultStepTimeout = "30m"
+
 // Step 表示工作流中的一个执行步骤。
 // 步骤是工作流的核心执行单元，支持四种动作类型：
 //   - agent_prompt: 让 LLM agent 执行一段提示词
@@ -65,8 +69,9 @@ type Step struct {
 	When      string         `yaml:"when,omitempty"       json:"when,omitempty"`       // 执行条件：on_error | on_success | 模板比较
 	Delay     string         `yaml:"delay,omitempty"      json:"delay,omitempty"`      // 执行前等待时间，如 "5s"、"1m"
 	Retry     *RetryConfig   `yaml:"retry,omitempty"      json:"retry,omitempty"`      // 重试配置
-	Timeout   string         `yaml:"timeout,omitempty"    json:"timeout,omitempty"`    // 超时时间，如 "30s"、"5m"
+	Timeout   string         `yaml:"timeout,omitempty"    json:"timeout,omitempty"`    // 超时时间，如 "30s"、"5m"，默认 30m
 	OutputKey string         `yaml:"output_key,omitempty" json:"output_key,omitempty"` // 输出键名，用于步骤间数据传递
+	Enabled   *bool          `yaml:"enabled,omitempty"    json:"enabled,omitempty"`    // 是否启用，nil/false 为禁用
 }
 
 // RetryConfig 定义步骤的重试策略。
@@ -246,10 +251,17 @@ func validateStep(step Step, ids map[string]bool) error {
 		}
 	}
 	if step.Timeout != "" {
-		if _, err := time.ParseDuration(step.Timeout); err != nil {
+		d, err := time.ParseDuration(step.Timeout)
+		if err != nil {
 			return validationError(fmt.Sprintf("工作流校验：步骤「%s」timeout '%s' 格式无效（如 30s、1m）", label, step.Timeout))
 		}
+		if d < time.Second {
+			return validationError(fmt.Sprintf("工作流校验：步骤「%s」timeout '%s' 过小，最小允许 1s", label, step.Timeout))
+		}
 	}
+
+	// enabled 为 *bool，yaml 反序列化只接受 bool/nil，无需额外格式校验
+
 	if step.Retry != nil && step.Retry.Delay != "" {
 		if _, err := time.ParseDuration(step.Retry.Delay); err != nil {
 			return validationError(fmt.Sprintf("工作流校验：步骤「%s」retry delay '%s' 格式无效（如 10s）", label, step.Retry.Delay))

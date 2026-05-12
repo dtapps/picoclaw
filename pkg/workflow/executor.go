@@ -33,6 +33,11 @@ type StepResult struct {
 func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[string]map[string]any) StepResult {
 	// 注意：delay 已由 Engine.executeStepWithState 处理，此处不再重复
 
+	// 检查步骤是否启用
+	if step.Enabled != nil && !*step.Enabled {
+		return StepResult{Output: "step disabled"}
+	}
+
 	// 构建包含 self 属性的模板输出映射（不修改共享的 stepOutputs，避免并行步骤数据竞争）
 	localOutputs := make(map[string]map[string]any, len(stepOutputs)+1)
 	for k, v := range stepOutputs {
@@ -48,10 +53,14 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 	prompt := ResolveStepTemplates(step.Prompt, localOutputs)
 	args := resolveArgsTemplates(step.Args, localOutputs)
 
-	// 应用步骤级超时
-	if step.Timeout != "" {
+	// 应用步骤级超时：未设置时使用默认值 30m
+	timeoutStr := step.Timeout
+	if timeoutStr == "" {
+		timeoutStr = DefaultStepTimeout
+	}
+	if timeoutStr != "" {
 		var cancel context.CancelFunc
-		timeout, err := time.ParseDuration(step.Timeout)
+		timeout, err := time.ParseDuration(timeoutStr)
 		if err == nil {
 			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
@@ -59,7 +68,7 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 			logger.WarnCF(
 				"workflow",
 				"步骤 timeout 格式无效，跳过超时设置",
-				map[string]any{"step": step.ID, "timeout": step.Timeout},
+				map[string]any{"step": step.ID, "timeout": timeoutStr},
 			)
 		}
 	}

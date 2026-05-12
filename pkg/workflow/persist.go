@@ -9,33 +9,86 @@ import (
 	"sync"
 
 	"github.com/sipeed/picoclaw/pkg/fileutil"
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // PersistStore 管理工作流定义和运行实例状态的磁盘持久化。
 // 工作流定义以 YAML 文件存储在 workspace/workflows/ 目录，
-// 运行实例状态以 JSON 文件存储在 workspace/workflows/.state/ 目录。
+// 运行实例状态以 JSON 文件存储在 workspace/state/workflows/ 目录。
 // 所有写操作使用 fileutil.WriteFileAtomic 保证原子性。
 type PersistStore struct {
 	workflowsDir string // 工作流定义目录（workspace/workflows/）
-	stateDir     string // 实例状态目录（workspace/workflows/.state/）
+	stateDir     string // 实例状态目录（workspace/state/workflows/）
 	mu           sync.RWMutex
 }
+
+// legacyStateDir 是旧版状态目录路径，用于数据迁移。
+const legacyStateDir = "workflows" + string(filepath.Separator) + ".state"
 
 // NewPersistStore 创建持久化存储实例。
 func NewPersistStore(workspaceDir string) *PersistStore {
 	return &PersistStore{
 		workflowsDir: filepath.Join(workspaceDir, "workflows"),
-		stateDir:     filepath.Join(workspaceDir, "workflows", ".state"),
+		stateDir:     filepath.Join(workspaceDir, "state", "workflows"),
 	}
 }
 
-// Init 创建目录结构（如果不存在）。
+// Init 创建目录结构（如果不存在），并迁移旧版状态数据。
 func (ps *PersistStore) Init() error {
 	for _, dir := range []string{ps.workflowsDir, ps.stateDir} {
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return err
 		}
 	}
+
+	// 迁移旧版 workflows/.state → stateworkflows
+	return ps.migrateLegacyState()
+}
+
+// migrateLegacyState 将旧版 workflows/.state 目录中的文件迁移到 stateworkflows。
+// 迁移完成后删除空目录，失败不影响启动。
+func (ps *PersistStore) migrateLegacyState() error {
+	// 旧版状态目录在 workflows/.state，用 workflowsDir 推导
+	legacyDir := filepath.Join(filepath.Dir(ps.workflowsDir), legacyStateDir)
+	if _, err := os.Stat(legacyDir); os.IsNotExist(err) {
+		return nil // 旧目录不存在，无需迁移
+	}
+
+	entries, err := os.ReadDir(legacyDir)
+	if err != nil {
+		// 无法读取则跳过，不阻塞启动
+		return err
+	}
+	if len(entries) == 0 {
+		os.Remove(legacyDir) // 空目录直接删除
+		return nil
+	}
+
+	moved := 0
+	for _, entry := range entries {
+		src := filepath.Join(legacyDir, entry.Name())
+		dst := filepath.Join(ps.stateDir, entry.Name())
+
+		// 目标已存在则跳过（避免覆盖新数据）
+		if _, err2 := os.Stat(dst); err2 == nil {
+			continue
+		}
+
+		if err2 := os.Rename(src, dst); err2 != nil {
+			continue // 单个文件失败继续处理下一个
+		}
+		moved++
+	}
+
+	if moved > 0 {
+		logger.InfoCF("workflow", "工作流状态目录迁移完成", map[string]any{
+			"from":     legacyDir,
+			"to":       ps.stateDir,
+			"migrated": moved,
+		})
+	}
+
+	_ = os.Remove(legacyDir) // 尝试清理空目录
 	return nil
 }
 
