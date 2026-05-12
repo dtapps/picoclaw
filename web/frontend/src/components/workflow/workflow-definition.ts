@@ -69,6 +69,7 @@ function stepToSwd(s: WorkflowStep): Step {
         when: s.when || "",
         delay: s.delay || "",
         timeout: s.timeout || "",
+        enabled: s.enabled ?? true,
       },
       branches: {
         true: (s.if_true || []).map(stepToSwd),
@@ -96,6 +97,7 @@ function stepToSwd(s: WorkflowStep): Step {
         delay: s.delay || "",
         output_key: s.output_key || "",
         timeout: s.timeout || "",
+        enabled: s.enabled ?? true,
       },
       branches,
     } as BranchedStep
