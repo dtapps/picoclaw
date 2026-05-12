@@ -267,10 +267,13 @@ func (c *WeiboChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]str
 		return nil, channels.ErrNotRunning
 	}
 
+	// 清理消息内容，确保只包含有效的 UTF-8 字符
+	content := strings.ToValidUTF8(msg.Content, "")
+
 	// 分片发送消息
 	messageIDs, err := c.weiboClient.SendMessageChunked(&weiboTypes.OutboundMessage{
 		ToUserID: msg.ChatID,
-		Text:     msg.Content,
+		Text:     content,
 	}, 2000)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", channels.ErrTemporary, err)

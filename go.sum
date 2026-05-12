@@ -104,8 +104,8 @@ github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSs
 github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f/go.mod h1:cuUVRXasLTGF7a8hSLbxyZXjz+1KgoB3wDUb6vlszIc=
 github.com/dnaeon/go-vcr v1.2.0 h1:zHCHvJYTMh1N7xnV7zf1m1GPBF9Ad0Jk/whtQ1663qI=
 github.com/dnaeon/go-vcr v1.2.0/go.mod h1:R4UdLID7HZT3taECzJs4YgbbH6PIGXB6W/sc5OLb6RQ=
-github.com/dtapps/weibo-go v1.0.7 h1:szWNeH5cAV7HaOos/DTCEITIbiunInH1lLOuvRuuEWs=
-github.com/dtapps/weibo-go v1.0.7/go.mod h1:u1jqIotzpKGVoIkzZvhX6jZcc2z0q5xjEJZ+n0LCEpI=
+github.com/dtapps/weibo-go v1.0.8 h1:TNnhNkmS9+MblO/E6GTra3gzL32l1dKpl62N6ND0nnM=
+github.com/dtapps/weibo-go v1.0.8/go.mod h1:ZYJJzKvbvK7c7VLZgkfaTkVq8FkO88ZVvvDNdKDiVfc=
 github.com/dtapps/yuanbao-go v1.0.8 h1:Y13NnrOM6MjmHa9L/NCHewRBTIzLS6yAA7Zhc0e7UZs=
 github.com/dtapps/yuanbao-go v1.0.8/go.mod h1:kz8vQrluMrc3ABLfkl70rQw9DcnwRi6zncrzuDcpPL8=
 github.com/dtapps/yuanbao-go v1.0.9 h1:PXwXvpDsayQI60zm5NWqp7JfUK7ocmu98Prr3Ecn3Q8=
