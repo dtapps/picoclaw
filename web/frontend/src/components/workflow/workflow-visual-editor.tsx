@@ -690,10 +690,8 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
   const stepId = (properties.stepId as string) || ""
 
   const handleStepIdChange = (value: string) => {
-    // 只允许 a-zA-Z0-9_
     const sanitized = value.replace(/[^a-zA-Z0-9_]/g, "")
     setProperty("stepId", sanitized)
-    // 如果显示名称和旧 ID 相同，同步更新显示名称
     if (name === stepId) {
       setName(sanitized)
     }
@@ -777,14 +775,6 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
             </button>
           </div>
           <div className="sqd-editor-grid">
-            <div className="sqd-editor-field">
-              <label>{labels.outputKey}</label>
-              <input
-                value={(properties.output_key as string) || ""}
-                onChange={(e) => setProperty("output_key", e.target.value)}
-                placeholder="result"
-              />
-            </div>
             <div className="sqd-editor-field">
               <label>{labels.delay}</label>
               <input
@@ -880,7 +870,7 @@ interface RootEditorLabels {
   varsRemove: string
 }
 
-function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
+function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?: boolean }) {
   const { t } = useTranslation()
   const { properties, setProperty } = useRootEditor()
 
@@ -952,6 +942,7 @@ function RootEditorPanel({ labels }: { labels: RootEditorLabels }) {
           value={(properties.name as string) || ""}
           onChange={(e) => setProperty("name", e.target.value.replace(/[^a-zA-Z0-9_-]/g, ""))}
           placeholder="daily-report"
+          disabled={isEdit}
         />
       </div>
       <div className="sqd-editor-field">
@@ -1086,7 +1077,7 @@ function createTaskStep(action: string) {
       retry: "",
       when: "",
       delay: "",
-      output_key: "",
+      output_key: "result",
       timeout: "",
     },
   }
@@ -1138,9 +1129,10 @@ function createParallelStep(): BranchedStep {
 interface WorkflowVisualEditorProps {
   value: WrappedDefinition<Definition>
   onChange: (def: WrappedDefinition<Definition>) => void
+  isEdit?: boolean
 }
 
-export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorProps) {
+export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisualEditorProps) {
   const { t } = useTranslation()
   const { theme } = useTheme()
 
@@ -1444,7 +1436,7 @@ export function WorkflowVisualEditor({ value, onChange }: WorkflowVisualEditorPr
         onIsToolboxCollapsedChanged={setIsToolboxCollapsed}
         isEditorCollapsed={isEditorCollapsed}
         onIsEditorCollapsedChanged={setIsEditorCollapsed}
-        rootEditor={<RootEditorPanel labels={rootEditorLabels} />}
+        rootEditor={<RootEditorPanel labels={rootEditorLabels} isEdit={isEdit} />}
         stepEditor={<StepEditorPanel labels={stepEditorLabels} definition={value.value} />}
       />
     </div>

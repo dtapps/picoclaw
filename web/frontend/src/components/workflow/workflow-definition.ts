@@ -194,7 +194,6 @@ function swdToStep(s: Step): WorkflowStep {
       action: "parallel",
       when: (s.properties.when as string) || undefined,
       delay: (s.properties.delay as string) || undefined,
-      output_key: (s.properties.output_key as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
       parallel: parallelSteps,
     }

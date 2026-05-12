@@ -675,6 +675,13 @@ Workflows support four-phase automatic channel notification:
 
 Notifications are implemented via four Engine callbacks (`onStart`, `onStepStart`, `onStepComplete`, `onComplete`) registered in Gateway's `setupWorkflowService()`, sent via `msgBus.PublishOutbound`.
 
+**Notification ordering guarantee**:
+
+To ensure notifications arrive in the correct order, the engine uses the following mechanism:
+1. All notifications are sent via `msgBus.PublishOutbound`, entering the message bus worker queue to guarantee FIFO order
+2. Notification messages are tagged with `message_kind=workflow_notification`, bypassing `streamActive` and `placeholder` checks in `preSend`, ensuring they are always sent as new messages
+3. The `onStart` callback synchronously sends the start notification before launching async execution, ensuring the "workflow started" notification enters the message pipeline before step notifications
+
 **Notification target priority**:
 
 The engine determines the notification channel for each execution using this priority:

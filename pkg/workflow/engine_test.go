@@ -37,10 +37,12 @@ func TestRunWorkflow_BasicExecution(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, err := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -89,10 +91,12 @@ func TestRunWorkflow_WithVars(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	_, err := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -124,10 +128,12 @@ func TestRunWorkflow_ConditionalSkip(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -171,10 +177,12 @@ func TestRunWorkflow_OnErrorHandler(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -220,10 +228,12 @@ func TestRunWorkflow_FailureStrategyContinue(t *testing.T) {
 
 	var completed bool
 	var mu2 sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu2.Lock()
 		completed = true
 		mu2.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -275,10 +285,12 @@ func TestRunWorkflow_IfStep(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -345,10 +357,11 @@ func TestRunWorkflow_Callbacks(t *testing.T) {
 	var startCalled, stepStartCalled, stepCompleteCalled, completeCalled bool
 	var mu sync.Mutex
 
-	engine.SetOnStart(func(inst *WorkflowInstance) {
+	engine.SetOnStart(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		startCalled = true
 		mu.Unlock()
+		return nil
 	})
 	engine.SetOnStepStart(func(step Step, inst *WorkflowInstance) {
 		mu.Lock()
@@ -360,10 +373,12 @@ func TestRunWorkflow_Callbacks(t *testing.T) {
 		stepCompleteCalled = true
 		mu.Unlock()
 	})
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completeCalled = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	wf := &Workflow{
@@ -416,10 +431,12 @@ func TestRunWorkflow_ChannelFromConfig(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -461,10 +478,12 @@ func TestRunWorkflow_DataPassingBetweenSteps(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -517,10 +536,12 @@ func TestRunWorkflow_IfStepOnSuccess(t *testing.T) {
 
 	var completed bool
 	var mu2 sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu2.Lock()
 		completed = true
 		mu2.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -586,10 +607,12 @@ func TestRunWorkflow_ParallelStep(t *testing.T) {
 
 	var completed bool
 	var mu2 sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu2.Lock()
 		completed = true
 		mu2.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -638,10 +661,12 @@ func TestRunWorkflow_ParallelSubStepStateTracking(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -690,10 +715,12 @@ func TestRunWorkflow_VarsAndStepOutputCombined(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	_, err := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -735,10 +762,12 @@ func TestRunWorkflow_IfBranchSkippedState(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -781,10 +810,12 @@ func TestRunWorkflow_StepTimeout(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -837,10 +868,12 @@ func TestRunWorkflow_IfStepOnError(t *testing.T) {
 
 	var completed bool
 	var mu2 sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu2.Lock()
 		completed = true
 		mu2.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -876,10 +909,12 @@ func TestRunWorkflow_OnErrorHandlerFails(t *testing.T) {
 
 	var completed bool
 	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		mu.Unlock()
+
+		return nil
 	})
 
 	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
@@ -961,11 +996,13 @@ func TestStepStateNamePreserved(t *testing.T) {
 	var completed bool
 	var mu sync.Mutex
 	var finalInst *WorkflowInstance
-	engine.SetOnComplete(func(inst *WorkflowInstance) {
+	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
 		mu.Lock()
 		completed = true
 		finalInst = inst
 		mu.Unlock()
+
+		return nil
 	})
 
 	_, err := engine.RunWorkflow(context.Background(), wf, "manual", "", "")

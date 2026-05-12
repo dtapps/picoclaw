@@ -295,12 +295,15 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 		return nil, channels.ErrNotRunning
 	}
 
+	// 清理消息内容，确保只包含有效的 UTF-8 字符
+	content := strings.ToValidUTF8(msg.Content, "")
+
 	messageIDs := []string{}
 	chatKind := c.getChatKind(msg.ChatID)
 	if chatKind == "direct" {
 		messageID, err := c.yuanbaoClient.SendMessage(&yuanbaoTypes.OutboundC2CMessage{
 			ToUserID: msg.ChatID,
-			Text:     msg.Content,
+			Text:     content,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", channels.ErrTemporary, err)
@@ -309,7 +312,7 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 	} else if chatKind == "group" {
 		messageID, err := c.yuanbaoClient.SendGroupMessage(&yuanbaoTypes.OutboundGroupMessage{
 			ToGroupID: msg.ChatID,
-			Text:      msg.Content,
+			Text:      content,
 		})
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", channels.ErrTemporary, err)
