@@ -20,6 +20,7 @@ import {
   AgentDefaultsSection,
   CronSection,
   DevicesSection,
+  EvolutionSection,
   EmptyResponseRetrySection,
   ExecSection,
   InlineToolCallsSection,
@@ -39,6 +40,7 @@ import {
   buildFormFromConfig,
   buildTracingFormFromConfig,
   parseCIDRText,
+  parseFloatField,
   parseIntField,
   parseJSONObjectField,
   parseMultilineList,
@@ -304,6 +306,16 @@ export function ConfigPage() {
           "Cron exec timeout",
           { min: 0 },
         )
+        const evolutionMinTaskCount = parseIntField(
+          form.evolutionMinTaskCount,
+          "Evolution minimum task count",
+          { min: 1 },
+        )
+        const evolutionMinSuccessRatio = parseFloatField(
+          form.evolutionMinSuccessRatio,
+          "Evolution minimum success ratio",
+          { min: 0.01, max: 1 },
+        )
         const mcpDiscoveryValidationEnabled =
           form.mcpEnabled && form.mcpDiscoveryEnabled
         const mcpDiscoveryPatch: Record<string, unknown> = {
@@ -543,6 +555,20 @@ export function ConfigPage() {
           session: {
             dm_scope: dmScope,
           },
+          evolution: {
+            enabled: form.evolutionEnabled,
+            mode: form.evolutionMode,
+            state_dir:
+              form.evolutionStateDir.trim() === ""
+                ? null
+                : form.evolutionStateDir.trim(),
+            min_task_count: evolutionMinTaskCount,
+            min_success_ratio: evolutionMinSuccessRatio,
+            cold_path_trigger: form.evolutionColdPathTrigger,
+            cold_path_times: parseMultilineList(
+              form.evolutionColdPathTimesText,
+            ),
+          },
           tools: {
             cron: {
               allow_command: form.allowCommand,
@@ -708,6 +734,8 @@ export function ConfigPage() {
               <AgentDefaultsSection form={form} onFieldChange={updateField} />
 
               <RuntimeSection form={form} onFieldChange={updateField} />
+
+              <EvolutionSection form={form} onFieldChange={updateField} />
 
               <MCPSection
                 form={form}
