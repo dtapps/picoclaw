@@ -680,6 +680,9 @@ interface StepEditorLabels {
   condOutputKey: string
   condOperator: string
   condValue: string
+  enabled: string
+  enabledYes: string
+  enabledNo: string
 }
 
 function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; definition: Definition }) {
@@ -734,6 +737,17 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
         <label>{labels.name}</label>
         <input value={name === stepId ? "" : name} onChange={(e) => handleNameChange(e.target.value)} placeholder={stepId} />
       </div>
+      <div className="sqd-editor-field sqd-step-toggle">
+        <label className="sqd-step-toggle__label">{labels.enabled}</label>
+        <div className="sqd-step-toggle__control">
+          <span>{(properties.enabled as boolean) === false ? labels.enabledNo : labels.enabledYes}</span>
+          <button
+            type="button"
+            onClick={() => setProperty("enabled", (properties.enabled as boolean) === false)}
+            className={`sqd-step-toggle__switch${(properties.enabled as boolean) === false ? "" : " sqd-step-toggle__switch--on"}`}
+          />
+        </div>
+      </div>
           {isIfStep ? (
         <>
           <IfStepEditor labels={labels} />
@@ -751,7 +765,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               <input
                 value={(properties.timeout as string) || ""}
                 onChange={(e) => setProperty("timeout", e.target.value)}
-                placeholder="30s"
+                placeholder="30m"
               />
             </div>
           </div>
@@ -788,7 +802,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               <input
                 value={(properties.timeout as string) || ""}
                 onChange={(e) => setProperty("timeout", e.target.value)}
-                placeholder="30s"
+                placeholder="30m"
               />
             </div>
           </div>
@@ -840,8 +854,11 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               <input
                 value={(properties.timeout as string) || ""}
                 onChange={(e) => setProperty("timeout", e.target.value)}
-                placeholder="30s"
+                placeholder="30m"
               />
+              {(properties.timeout as string) === "" && (
+                <span style={{ fontSize: "0.7rem", color: "var(--muted-foreground)" }}>Default: 30m</span>
+              )}
             </div>
           </div>
           <RetryEditor labels={labels} />
@@ -1079,6 +1096,7 @@ function createTaskStep(action: string) {
       delay: "",
       output_key: "result",
       timeout: "",
+      enabled: true,
     },
   }
 }
@@ -1094,6 +1112,7 @@ function createIfStep() {
       when: "",
       delay: "",
       timeout: "",
+      enabled: true,
     },
     branches: {
       true: [] as Step[],
@@ -1115,6 +1134,7 @@ function createParallelStep(): BranchedStep {
       delay: "",
       output_key: "",
       timeout: "",
+      enabled: true,
     },
     branches: {
       step_0: [],
@@ -1277,6 +1297,9 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     condOutputKey: t("pages.workflows.cond_output_key", "Output Key"),
     condOperator: t("pages.workflows.cond_operator", "Operator"),
     condValue: t("pages.workflows.cond_value", "Value"),
+    enabled: t("pages.workflows.enabled", "Enabled"),
+    enabledYes: t("pages.workflows.enabled_yes", "On"),
+    enabledNo: t("pages.workflows.enabled_no", "Off"),
   }), [t])
 
   const rootEditorLabels: RootEditorLabels = useMemo(() => ({

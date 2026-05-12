@@ -249,12 +249,13 @@ Each step supports the following configuration:
 
 - **id**: Unique step identifier, restricted to `a-zA-Z0-9_` only, used for template references `{{.step_id.key}}` and condition evaluation
 - **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set. Can be referenced via `{{.self.name}}` in templates to avoid hardcoding the name in `args`
+- **enabled**: Whether the step is enabled (optional; defaults to `true`). When set to `false`, the step is skipped (status marked as `skipped`)
 - **when**: Pre-execution condition expression; step executes only when satisfied (empty condition is equivalent to `on_success`)
 - **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
 - **retry**: Retry configuration in structured format (default: no retry)
   - `max_attempts`: Maximum retry count
   - `delay`: Retry interval, e.g., `"10s"`
-- **timeout**: Timeout in seconds
+- **timeout**: Timeout duration (optional), e.g., `"30s"`, `"5m"`. **Defaults to 30 minutes** when omitted or empty; minimum value is 1 second
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
 
 > **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
@@ -444,6 +445,7 @@ steps:
   - id: step_id           # Required, unique step identifier (a-zA-Z0-9_ only), for condition references and data passing
     name: Display Name    # Optional, display name supporting any characters; shown in UI and notifications, falls back to id
     action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
+    enabled: true          # Optional, whether enabled (default true); false skips this step (status = skipped)
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
     tool: tool_name        # Required for tool_call, registered tool name
     args:                  # Optional for tool_call, tool parameters (values support template references; required param values must not be empty)
@@ -454,6 +456,7 @@ steps:
         prompt: "..."
     when: "on_error"       # Required for if / optional for others, pre-execution condition expression
     delay: 5s              # Optional, wait duration before step execution (e.g. 5s, 1m30s)
+    timeout: 30m           # Optional, timeout duration (default 30m), e.g. 60s, 5m
     if_true:               # Optional for if, steps to execute when condition is true
       - id: handle_success
         action: agent_prompt
@@ -466,7 +469,6 @@ steps:
     retry:                 # Optional, retry configuration
       max_attempts: 3
       delay: 10s
-    timeout: 60s           # Optional, timeout duration
 ```
 
 ### if Conditional Step
@@ -643,11 +645,11 @@ Usage example:
 |------|-------------|
 | `workspace/workflows/{name}.yml` | Workflow definition file (YAML, case-sensitive on all platforms) |
 | `workspace/workflows/{name}.disabled` | Disable marker (presence = disabled) |
-| `workspace/workflows/.state/{name}_{instanceID}.json` | Instance state file (JSON, atomic writes) |
+| `workspace/state/workflows/{name}_{instanceID}.json` | Instance state file (JSON, atomic writes) |
 
 Persistence mechanism (`persist.go`):
 - Definition files use YAML format for human readability and editing
-- Instance state files are stored in `.state/` subdirectory, written atomically via `fileutil.WriteFileAtomic` to prevent corruption from interrupted writes
+- Instance state files are stored in `state/workflows/` directory, written atomically via `fileutil.WriteFileAtomic` to prevent corruption from interrupted writes
 - The `enabled` field is a runtime state (`yaml:"-"` tag) not serialized to the YAML file; disable feature uses create/delete of `.disabled` suffix file to persist the state
 - File names preserve case sensitivity; `MyWorkflow` and `myworkflow` are treated as different workflows
 - File names processed through `sanitizeName()` for safety

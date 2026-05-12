@@ -23,8 +23,8 @@ func TestNewPersistStore(t *testing.T) {
 	if store.workflowsDir != "/tmp/test-workspace/workflows" {
 		t.Fatalf("workflowsDir = %q, want %q", store.workflowsDir, "/tmp/test-workspace/workflows")
 	}
-	if store.stateDir != "/tmp/test-workspace/workflows/.state" {
-		t.Fatalf("stateDir = %q, want %q", store.stateDir, "/tmp/test-workspace/workflows/.state")
+	if store.stateDir != "/tmp/test-workspace/state/workflows" {
+		t.Fatalf("stateDir = %q, want %q", store.stateDir, "/tmp/test-workspace/state/workflows")
 	}
 }
 

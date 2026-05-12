@@ -117,6 +117,7 @@ function stepToSwd(s: WorkflowStep): Step {
       delay: s.delay || "",
       output_key: s.output_key || "",
       timeout: s.timeout || "",
+      enabled: s.enabled ?? true,
     },
   }
 }
@@ -177,6 +178,7 @@ function swdToStep(s: Step): WorkflowStep {
       when: (s.properties.when as string) || undefined,
       delay: (s.properties.delay as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
+      enabled: s.properties.enabled === false ? false : undefined,
       if_true: (branched.branches.true || []).map(swdToStep),
       if_false: (branched.branches.false || []).map(swdToStep),
     }
@@ -195,6 +197,7 @@ function swdToStep(s: Step): WorkflowStep {
       when: (s.properties.when as string) || undefined,
       delay: (s.properties.delay as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
+      enabled: s.properties.enabled === false ? false : undefined,
       parallel: parallelSteps,
     }
   }
@@ -241,6 +244,7 @@ function swdToStep(s: Step): WorkflowStep {
     delay: (sp.delay as string) || undefined,
     output_key: (sp.output_key as string) || undefined,
     timeout: (sp.timeout as string) || undefined,
+    enabled: sp.enabled === false ? false : undefined,
   }
 }
 

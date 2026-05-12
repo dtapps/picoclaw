@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import { useNavigate } from "@tanstack/react-router"
@@ -231,7 +231,7 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                 {steps.length > 0 ? (
                   <StepTree steps={steps} stepStates={instance.step_states} stepOutputs={instance.step_outputs} t={t} />
                 ) : (
-                  <FlatStepList instance={instance} t={t} />
+                  <FlatStepList instance={instance} steps={steps} t={t} />
                 )}
               </div>
             </CardContent>
@@ -283,7 +283,15 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
   )
 }
 
-function FlatStepList({ instance, t }: { instance: WorkflowInstance; t: TFunction }) {
+/** 扁平列表回退（无工作流定义时使用） */
+function FlatStepList({ instance, steps, t }: { instance: WorkflowInstance; steps: Step[]; t: TFunction }) {
+  const stepMap = useMemo(() => {
+    const map = new Map<string, Step>()
+    function collect(s: Step[]) { for (const st of s) { map.set(st.id, st); if (st.parallel) collect(st.parallel); if (st.if_true) collect(st.if_true); if (st.if_false) collect(st.if_false); } }
+    collect(steps)
+    return map
+  }, [steps])
+
   return (
     <>
       {Object.entries(instance.step_states)
@@ -293,16 +301,21 @@ function FlatStepList({ instance, t }: { instance: WorkflowInstance; t: TFunctio
           if (b.started_at) return 1
           return 0
         })
-        .map(([stepID, state]) => (
-        <StepCard
-          key={stepID}
-          stepId={stepID}
-          stepName={state.name}
-          state={state}
-          output={instance.step_outputs?.[stepID]}
-          t={t}
-        />
-      ))}
+        .map(([stepID, state]) => {
+          const def = stepMap.get(stepID)
+          return (
+            <StepCard
+              key={stepID}
+              stepId={stepID}
+              stepName={state.name}
+              state={state}
+              output={instance.step_outputs?.[stepID]}
+              disabled={def?.enabled === false}
+              timeout={def?.timeout}
+              t={t}
+            />
+          )
+        })}
     </>
   )
 }
@@ -312,12 +325,16 @@ function StepCard({
   stepName,
   state,
   output,
+  disabled,
+  timeout,
   t,
 }: {
   stepId: string
   stepName?: string
   state: { status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }
   output?: Record<string, unknown>
+  disabled?: boolean
+  timeout?: string
   t: TFunction
 }) {
   const stepDuration = () => {
@@ -348,6 +365,14 @@ function StepCard({
             )}
             {state.attempts > 1 && (
               <span className="text-muted-foreground text-xs">×{state.attempts}</span>
+            )}
+            {disabled && (
+              <Badge variant="outline" className="text-muted-foreground text-xs px-1.5 py-0">
+                {t("pages.workflows.disabled", "Disabled")}
+              </Badge>
+            )}
+            {timeout && (
+              <span className="text-muted-foreground text-xs">⏱ {timeout}</span>
             )}
           </div>
           {state.error && (
@@ -479,6 +504,14 @@ function StepTreeNode({
               )}
               {state.attempts > 1 && (
                 <span className="text-muted-foreground text-xs">×{state.attempts}</span>
+              )}
+              {step.enabled === false && (
+                <Badge variant="outline" className="text-muted-foreground text-xs px-1.5 py-0">
+                  {t("pages.workflows.disabled", "Disabled")}
+                </Badge>
+              )}
+              {step.timeout && (
+                <span className="text-muted-foreground text-xs">⏱ {step.timeout}</span>
               )}
             </div>
 

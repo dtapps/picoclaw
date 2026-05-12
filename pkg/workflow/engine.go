@@ -386,12 +386,25 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 			continue
 		}
 
-		// 非 if 步骤：评估 when 条件，不满足则跳过
+		// 非 if 步骤：评估 when 条件和 enabled，不满足则跳过
 		if !EvaluateCondition(step.When, prevStepState, inst.StepOutputs) {
 			inst.mu.Lock()
 			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusSkipped}
 			inst.mu.Unlock()
 			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 条件不满足，跳过", step.ID))
+			inst.mu.Lock()
+			_ = e.store.SaveInstance(inst)
+			inst.mu.Unlock()
+			prevStepState = inst.StepStates[step.ID]
+			continue
+		}
+
+		// 检查步骤是否启用
+		if step.Enabled != nil && !*step.Enabled {
+			inst.mu.Lock()
+			inst.StepStates[step.ID] = &StepState{Name: step.Name, Status: StatusSkipped}
+			inst.mu.Unlock()
+			inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 已禁用，跳过", step.ID))
 			inst.mu.Lock()
 			_ = e.store.SaveInstance(inst)
 			inst.mu.Unlock()
