@@ -108,6 +108,8 @@ github.com/dtapps/weibo-go v1.0.7 h1:szWNeH5cAV7HaOos/DTCEITIbiunInH1lLOuvRuuEWs
 github.com/dtapps/weibo-go v1.0.7/go.mod h1:u1jqIotzpKGVoIkzZvhX6jZcc2z0q5xjEJZ+n0LCEpI=
 github.com/dtapps/yuanbao-go v1.0.8 h1:Y13NnrOM6MjmHa9L/NCHewRBTIzLS6yAA7Zhc0e7UZs=
 github.com/dtapps/yuanbao-go v1.0.8/go.mod h1:kz8vQrluMrc3ABLfkl70rQw9DcnwRi6zncrzuDcpPL8=
+github.com/dtapps/yuanbao-go v1.0.9 h1:PXwXvpDsayQI60zm5NWqp7JfUK7ocmu98Prr3Ecn3Q8=
+github.com/dtapps/yuanbao-go v1.0.9/go.mod h1:bol8+/ciRi7pZ2VGv2lVN3NY68U4EUSSi9tXkq+ogC4=
 github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkpeCY=
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/eclipse/paho.mqtt.golang v1.5.1 h1:/VSOv3oDLlpqR2Epjn1Q7b2bSTplJIeV2ISgCl2W7nE=
