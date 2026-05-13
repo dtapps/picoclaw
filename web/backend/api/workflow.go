@@ -109,6 +109,26 @@ func (h *Handler) triggerGatewayReload() {
 	resp.Body.Close()
 }
 
+// triggerClearWorkflowCache 通知网关进程清除工作流缓存。
+// Web 修改工作流后调用，确保触发器使用最新定义。
+func (h *Handler) triggerClearWorkflowCache() {
+	target := h.gatewayProxyURL()
+	url := target.Scheme + "://" + target.Host + "/internal/workflow/clear_cache"
+
+	req, err := http.NewRequest(http.MethodPost, url, nil)
+	if err != nil {
+		return
+	}
+
+	// 3 秒超时，避免阻塞
+	client := &http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return
+	}
+	resp.Body.Close()
+}
+
 // handleListWorkflows 获取所有工作流列表。
 func (h *Handler) handleListWorkflows(w http.ResponseWriter, r *http.Request) {
 	store, err := h.getWorkflowStore()
@@ -218,8 +238,9 @@ func (h *Handler) handleCreateWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 通知网关进程重新加载工作流定义
+	// 通知网关进程重新加载工作流定义并清除缓存
 	go h.triggerGatewayReload()
+	go h.triggerClearWorkflowCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -274,6 +295,7 @@ func (h *Handler) handleImportWorkflow(w http.ResponseWriter, r *http.Request) {
 	}
 
 	go h.triggerGatewayReload()
+	go h.triggerClearWorkflowCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -335,8 +357,9 @@ func (h *Handler) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 通知网关进程重新加载工作流定义
+	// 通知网关进程重新加载工作流定义并清除缓存
 	go h.triggerGatewayReload()
+	go h.triggerClearWorkflowCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(makeDetailResponse(wf))
@@ -356,8 +379,9 @@ func (h *Handler) handleDeleteWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 通知网关进程重新加载工作流定义
+	// 通知网关进程重新加载工作流定义并清除缓存
 	go h.triggerGatewayReload()
+	go h.triggerClearWorkflowCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
@@ -420,8 +444,9 @@ func (h *Handler) handleToggleWorkflow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 通知网关进程重新加载工作流定义
+	// 通知网关进程重新加载工作流定义并清除缓存
 	go h.triggerGatewayReload()
+	go h.triggerClearWorkflowCache()
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]bool{"enabled": req.Enabled})
