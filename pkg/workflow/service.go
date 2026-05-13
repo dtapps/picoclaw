@@ -356,12 +356,16 @@ func (s *Service) SetEnabled(name string, enabled bool) error {
 }
 
 // ListWorkflowsForCommand 返回用于 /workflow 命令的工作流摘要列表。
+// 从磁盘读取最新定义，确保显示 Web 修改后的数据。
 func (s *Service) ListWorkflowsForCommand() []commands.WorkflowInfo {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// 从磁盘加载所有工作流，获取最新定义
+	workflows, err := s.store.LoadAllWorkflows()
+	if err != nil {
+		return nil
+	}
 
-	result := make([]commands.WorkflowInfo, 0, len(s.workflows))
-	for _, wf := range s.workflows {
+	result := make([]commands.WorkflowInfo, 0, len(workflows))
+	for _, wf := range workflows {
 		result = append(result, commands.WorkflowInfo{
 			Name:        wf.Name,
 			Description: wf.Description,
@@ -375,9 +379,11 @@ func (s *Service) ListWorkflowsForCommand() []commands.WorkflowInfo {
 }
 
 // ShowWorkflow 返回用于 /workflow show 命令的工作流详情。
+// 从磁盘读取最新定义，确保显示 Web 修改后的数据。
 func (s *Service) ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error) {
-	wf, ok := s.GetWorkflow(name)
-	if !ok {
+	// 先从磁盘读取最新定义
+	wf, err := s.store.LoadSingleWorkflow(name)
+	if err != nil {
 		return nil, nil, errNotFound(name)
 	}
 
@@ -429,13 +435,17 @@ func (s *Service) InstancesForCommand(name string) ([]commands.WorkflowInstanceI
 }
 
 // CronListForCommand 返回所有待执行的 Cron 任务列表。
+// 从磁盘读取最新定义，确保显示 Web 修改后的数据。
 func (s *Service) CronListForCommand() []commands.CronTaskInfo {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// 从磁盘加载所有工作流，获取最新定义
+	workflows, err := s.store.LoadAllWorkflows()
+	if err != nil {
+		return nil
+	}
 
 	var result []commands.CronTaskInfo
 
-	for _, wf := range s.workflows {
+	for _, wf := range workflows {
 		if !wf.Enabled {
 			continue
 		}

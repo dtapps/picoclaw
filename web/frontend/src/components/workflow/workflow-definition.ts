@@ -145,7 +145,8 @@ export function definitionToWorkflow(def: Definition): {
   const triggerConfigs = (props.triggers as TriggerConfig[]) || []
   for (const t of triggerConfigs) {
     if (t.type === "cron" && t.cron) {
-      triggers.push({ cron: t.cron, tz: t.tz || undefined })
+      // 始终包含 tz 字段，即使为空字符串
+      triggers.push({ cron: t.cron, tz: t.tz })
     } else if (t.type === "event" && t.event) {
       triggers.push({ event: t.event })
     }
