@@ -99,8 +99,8 @@ type Runtime struct {
 
 // CronTaskInfo 表示一个待执行的 Cron 任务。
 type CronTaskInfo struct {
-	WorkflowName string
-	CronExpr     string
-	Timezone     string
-	NextRun      string
+	WorkflowName string `json:"workflow_name"`
+	CronExpr     string `json:"cron_expr"`
+	Timezone     string `json:"timezone"`
+	NextRun      string `json:"next_run"`
 }
