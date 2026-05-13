@@ -75,6 +75,7 @@ type WorkflowServiceProvider interface {
 	SetEnabled(name string, enabled bool) error
 	InstancesForCommand(name string) ([]commands.WorkflowInstanceInfo, error)
 	StopInstance(instanceID string) error
+	CronListForCommand() []commands.CronTaskInfo
 }
 
 func (al *AgentLoop) SetWorkflowService(svc WorkflowServiceProvider) {
