@@ -559,11 +559,16 @@ func (s *Service) runLoop() {
 }
 
 // checkCronTriggers 评估所有 cron 触发器，触发到期的工作流。
+// 从磁盘读取最新定义，确保使用修改后的 cron 表达式。
 func (s *Service) checkCronTriggers() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// 从磁盘加载所有工作流，获取最新 cron 定义
+	workflows, err := s.store.LoadAllWorkflows()
+	if err != nil {
+		logger.ErrorCF("workflow", "加载工作流失败", map[string]any{"error": err.Error()})
+		return
+	}
 
-	for _, wf := range s.workflows {
+	for _, wf := range workflows {
 		if !wf.Enabled {
 			continue
 		}
@@ -593,14 +598,8 @@ func (s *Service) checkCronTriggers() {
 			}
 
 			logger.InfoCF("workflow", "cron 触发器触发工作流", map[string]any{"workflow": wf.Name})
-			// 从磁盘读取最新定义，避免用过期步骤执行
-			freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
-			if err != nil {
-				logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
-				continue
-			}
 			ctx := context.Background()
-			if _, err := s.engine.RunWorkflow(ctx, freshWf, "cron", "", ""); err != nil {
+			if _, err := s.engine.RunWorkflow(ctx, wf, "cron", "", ""); err != nil {
 				logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 			}
 		}
@@ -608,11 +607,16 @@ func (s *Service) checkCronTriggers() {
 }
 
 // checkEventTriggers 评估事件触发器。
+// 从磁盘读取最新定义，确保使用修改后的事件配置。
 func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// 从磁盘加载所有工作流，获取最新事件定义
+	workflows, err := s.store.LoadAllWorkflows()
+	if err != nil {
+		logger.ErrorCF("workflow", "加载工作流失败", map[string]any{"error": err.Error()})
+		return
+	}
 
-	for _, wf := range s.workflows {
+	for _, wf := range workflows {
 		if !wf.Enabled {
 			continue
 		}
@@ -628,14 +632,8 @@ func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
 				}
 
 				logger.InfoCF("workflow", "事件触发器触发工作流", map[string]any{"event": trigger.Event, "workflow": wf.Name})
-				// 从磁盘读取最新定义，避免用过期步骤执行
-				freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
-				if err != nil {
-					logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
-					continue
-				}
 				ctx := context.Background()
-				if _, err := s.engine.RunWorkflow(ctx, freshWf, "event", "", ""); err != nil {
+				if _, err := s.engine.RunWorkflow(ctx, wf, "event", "", ""); err != nil {
 					logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 				}
 			}
