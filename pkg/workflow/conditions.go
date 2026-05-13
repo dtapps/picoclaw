@@ -2,7 +2,10 @@ package workflow
 
 import (
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
+	"time"
 )
 
 // EvaluateCondition 根据 when 子句判断步骤是否应该执行。
@@ -49,17 +52,21 @@ func evaluateComparison(expr string, outputs map[string]map[string]any) bool {
 	return resolved == right
 }
 
-// resolveTemplate 解析单个 {{.step_id.key}} 或 {{.vars.key}} 模板引用。
-// 从 stepOutputs 中查找对应步骤的输出值；"vars" 是工作流全局变量的特殊键。
+// resolveTemplate 解析单个 {{.step_id.key}}、{{.vars.key}} 或 {{.fn.xxx}} 模板引用。
+// 从 stepOutputs 中查找对应步骤的输出值；"vars" 是工作流全局变量的特殊键；
+// "fn" 是内置模板函数（如 now、now_tz、date、date_tz、unix、env）。
 // 如果引用无法解析（步骤不存在、键不存在），返回原始模板字符串。
 func resolveTemplate(tmpl string, outputs map[string]map[string]any) string {
-	// 检查是否是模板格式 {{.xxx.yyy}}
 	if len(tmpl) < 5 || !strings.HasPrefix(tmpl, "{{.") || !strings.HasSuffix(tmpl, "}}") {
 		return tmpl
 	}
 
-	// 提取路径：{{.step_id.key}} -> step_id.key
 	inner := tmpl[3 : len(tmpl)-2]
+
+	if strings.HasPrefix(inner, "fn.") {
+		return resolveFuncTemplate(inner[3:], tmpl)
+	}
+
 	parts := strings.SplitN(inner, ".", 2)
 	if len(parts) != 2 {
 		return tmpl
@@ -79,6 +86,79 @@ func resolveTemplate(tmpl string, outputs map[string]map[string]any) string {
 	}
 
 	return valueToString(val)
+}
+
+// resolveFuncTemplate 解析内置模板函数调用。
+// 支持的函数：
+//   - now: 当前 UTC 时间，格式 "2006-01-02 15:04:05"
+//   - now_tz "timezone": 指定时区的当前时间
+//   - date: 当前 UTC 日期，格式 "2006-01-02"
+//   - date_tz "timezone": 指定时区的当前日期
+//   - unix: 当前 Unix 时间戳
+//   - env "key": 获取环境变量值
+func resolveFuncTemplate(funcExpr string, originalTmpl string) string {
+	now := time.Now().UTC()
+
+	if funcExpr == "now" {
+		return now.Format("2006-01-02 15:04:05")
+	}
+	if funcExpr == "date" {
+		return now.Format("2006-01-02")
+	}
+	if funcExpr == "unix" {
+		return fmt.Sprintf("%d", now.Unix())
+	}
+
+	if strings.HasPrefix(funcExpr, "now_tz") {
+		tz := extractQuotedArg(funcExpr[len("now_tz"):])
+		if tz == "" {
+			return now.Format("2006-01-02 15:04:05")
+		}
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return originalTmpl
+		}
+		return now.In(loc).Format("2006-01-02 15:04:05")
+	}
+
+	if strings.HasPrefix(funcExpr, "date_tz") {
+		tz := extractQuotedArg(funcExpr[len("date_tz"):])
+		if tz == "" {
+			return now.Format("2006-01-02")
+		}
+		loc, err := time.LoadLocation(tz)
+		if err != nil {
+			return originalTmpl
+		}
+		return now.In(loc).Format("2006-01-02")
+	}
+
+	if strings.HasPrefix(funcExpr, "env") {
+		key := extractQuotedArg(funcExpr[len("env"):])
+		if key == "" {
+			return originalTmpl
+		}
+		val, ok := os.LookupEnv(key)
+		if !ok {
+			return originalTmpl
+		}
+		return val
+	}
+
+	return originalTmpl
+}
+
+// extractQuotedArg 从函数参数表达式中提取引号内的字符串。
+// 例如：` "Asia/Shanghai"` → `Asia/Shanghai`
+func extractQuotedArg(s string) string {
+	s = strings.TrimSpace(s)
+	if len(s) < 2 {
+		return ""
+	}
+	if (s[0] == '"' && s[len(s)-1] == '"') || (s[0] == '\'' && s[len(s)-1] == '\'') {
+		return s[1 : len(s)-1]
+	}
+	return ""
 }
 
 // ResolveStepTemplates 替换字符串中所有 {{.step_id.key}} 和 {{.vars.key}} 模板引用。

@@ -1054,6 +1054,7 @@
       "failure_strategy": "Estratégia de Falha",
       "strategy_stop": "Parar ao falhar",
       "strategy_continue": "Continuar ao falhar",
+      "workdir": "Diretório de Trabalho",
       "vars": "Variáveis",
       "vars_key": "Chave",
       "vars_value": "Valor",
@@ -1137,7 +1138,22 @@
       "invalid_step_ref": "Etapa '{{step}}' referencia etapa indefinida {{.{{refId}}.*}}",
       "invalid_self_ref": "Etapa '{{step}}' referencia propriedade self não suportada {{.self.{{key}}}} (apenas id e name suportados)",
       "invalid_output_key_ref": "Etapa '{{step}}' referencia chave de saída inexistente '{{refKey}}' na etapa '{{refId}}' (output_key é '{{actualKey}}')",
-      "missing_required_param": "Etapa '{{step}}': parâmetro obrigatório '{{param}}' da ferramenta '{{tool}}' não pode estar vazio (verificado ao salvar; referências de template como {{.vars.x}} são permitidas)"
+      "missing_required_param": "Etapa '{{step}}': parâmetro obrigatório '{{param}}' da ferramenta '{{tool}}' não pode estar vazio (verificado ao salvar; referências de template como {{.vars.x}} são permitidas)",
+      "invalid_func_ref": "Etapa '{{step}}' referencia função de template indefinida {{.fn.{{funcName}}}}",
+      "input": "Entrada",
+      "output": "Saída",
+      "resolved": "Resolvido",
+      "raw": "Bruto",
+      "prompt": "Prompt",
+      "args": "Argumentos",
+      "template_func": "Funções de Template",
+      "template_func_desc": "Funções integradas disponíveis em referências de template (ex.: {{.fn.now}}, {{.fn.now_tz \"America/Sao_Paulo\"}})",
+      "fn_now": "Hora atual (UTC)",
+      "fn_now_tz": "Hora atual (fuso horário)",
+      "fn_date": "Data atual (UTC)",
+      "fn_date_tz": "Data atual (fuso horário)",
+      "fn_unix": "Timestamp Unix",
+      "fn_env": "Variável de ambiente"
     }
   },
   "tour": {

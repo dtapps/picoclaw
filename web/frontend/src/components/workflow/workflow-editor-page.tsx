@@ -53,6 +53,25 @@ function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: strin
 	return refs
 }
 
+const VALID_FUNC_NAMES = new Set(["now", "now_tz", "date", "date_tz", "unix", "env"])
+
+/** 从步骤的 prompt、args、when 中提取所有 {{.fn.xxx}} 模板函数引用 */
+function extractFuncRefs(step: WorkflowStep): string[] {
+	const refs: string[] = []
+	const re = /\{\{\.fn\.([a-zA-Z0-9_]+)[^}]*\}\}/g
+	const check = (text: string) => { let m; while ((m = re.exec(text)) !== null) refs.push(m[1]) }
+	if (step.prompt) check(step.prompt)
+	if (step.when) check(step.when)
+	if (step.args) {
+		for (const v of Object.values(step.args)) {
+			if (typeof v === "string") check(v)
+		}
+	}
+	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	for (const sub of subs) refs.push(...extractFuncRefs(sub))
+	return refs
+}
+
 /** 递归收集步骤 ID 和对应的 output_key */
 function collectStepOutputKeys(step: WorkflowStep, map: Map<string, string>) {
 	if (step.action === "agent_prompt" || step.action === "tool_call") {
@@ -77,6 +96,8 @@ function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string
 			} else if (refId === "self") {
 				if (refKey !== "id" && refKey !== "name")
 					return t("pages.workflows.invalid_self_ref", { step: step.name || step.id, key: refKey })
+			} else if (refId === "fn") {
+				// fn 引用由 extractFuncRefs 单独校验
 			} else {
 				const actualKey = outputKeys.get(refId)
 				if (!actualKey)
@@ -84,6 +105,12 @@ function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string
 				if (refKey !== actualKey)
 					return t("pages.workflows.invalid_output_key_ref", { step: step.name || step.id, refId, refKey, actualKey })
 			}
+		}
+
+		const funcRefs = extractFuncRefs(step)
+		for (const funcName of funcRefs) {
+			if (!VALID_FUNC_NAMES.has(funcName))
+				return t("pages.workflows.invalid_func_ref", { step: step.name || step.id, funcName })
 		}
 	}
 	return ""

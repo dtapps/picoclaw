@@ -45,6 +45,7 @@ export function workflowToDefinition(wf: Workflow): Definition {
       eventKind,
       triggerTZ,
       failureStrategy: wf.config?.failure_strategy || "stop",
+      workdir: wf.config?.workdir || "",
       vars: wf.vars || {},
     },
     sequence,
@@ -160,7 +161,10 @@ export function definitionToWorkflow(def: Definition): {
     triggers,
     vars,
     steps,
-    config: { failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop" },
+    config: {
+      failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop",
+      workdir: (props.workdir as string) || undefined,
+    },
   }
 }
 
@@ -261,6 +265,7 @@ export function createEmptyDefinition(): Definition {
       eventKind: "",
       triggerTZ: "",
       failureStrategy: "stop",
+      workdir: "",
       vars: {},
     },
     sequence: [],

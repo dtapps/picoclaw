@@ -880,6 +880,7 @@ interface RootEditorLabels {
   failureStrategy: string
   strategyStop: string
   strategyContinue: string
+  workdir: string
   vars: string
   varsKey: string
   varsValue: string
@@ -1020,6 +1021,15 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
           <option value="stop">{labels.strategyStop}</option>
           <option value="continue">{labels.strategyContinue}</option>
         </select>
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.workdir}</label>
+        <input
+          type="text"
+          value={(properties.workdir as string) || ""}
+          onChange={(e) => setProperty("workdir", e.target.value)}
+          placeholder="/path/to/project"
+        />
       </div>
       <div className="sqd-editor-field">
         <label>{labels.vars}</label>
@@ -1312,6 +1322,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     failureStrategy: t("pages.workflows.failure_strategy", "Failure Strategy"),
     strategyStop: t("pages.workflows.strategy_stop", "Stop on failure"),
     strategyContinue: t("pages.workflows.strategy_continue", "Continue on failure"),
+    workdir: t("pages.workflows.workdir", "Working Directory"),
     vars: t("pages.workflows.vars", "Variables"),
     varsKey: t("pages.workflows.vars_key", "Key"),
     varsValue: t("pages.workflows.vars_value", "Value"),

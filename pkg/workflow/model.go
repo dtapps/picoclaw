@@ -86,6 +86,7 @@ type WorkflowConfig struct {
 	FailureStrategy string `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
 	NotifyChannel   string `yaml:"notify_channel,omitempty"   json:"notify_channel,omitempty"`   // 完成通知频道，如 "telegram"
 	NotifyChatID    string `yaml:"notify_chat_id,omitempty"   json:"notify_chat_id,omitempty"`   // 完成通知聊天 ID，如 "chat-123"
+	Workdir         string `yaml:"workdir,omitempty"          json:"workdir,omitempty"`          // 工作目录，tool_call 步骤执行时的默认目录
 }
 
 // --- 运行时状态 ---
@@ -142,12 +143,20 @@ func (inst *WorkflowInstance) appendLog(stepID, level, message string) {
 
 // StepState 记录单个步骤的执行状态。
 type StepState struct {
-	Name       string     `json:"name,omitempty"`        // 步骤显示名称
-	Status     string     `json:"status"`                // 步骤状态
-	StartedAt  *time.Time `json:"started_at,omitempty"`  // 开始时间
-	FinishedAt *time.Time `json:"finished_at,omitempty"` // 结束时间
-	Error      string     `json:"error,omitempty"`       // 错误信息
-	Attempts   int        `json:"attempts"`              // 执行次数（含重试）
+	Name          string         `json:"name,omitempty"`           // 步骤显示名称
+	Status        string         `json:"status"`                   // 步骤状态
+	StartedAt     *time.Time     `json:"started_at,omitempty"`     // 开始时间
+	FinishedAt    *time.Time     `json:"finished_at,omitempty"`    // 结束时间
+	Error         string         `json:"error,omitempty"`          // 错误信息
+	Attempts      int            `json:"attempts"`                 // 执行次数（含重试）
+	ResolvedInput *ResolvedInput `json:"resolved_input,omitempty"` // 渲染后的输入参数
+}
+
+// ResolvedInput 存储步骤执行时的渲染后输入参数。
+// 用于在实例详情中展示实际执行的 prompt 和 args（模板变量已替换为实际值）。
+type ResolvedInput struct {
+	Prompt string         `json:"prompt,omitempty"` // 渲染后的提示词
+	Args   map[string]any `json:"args,omitempty"`   // 渲染后的工具参数
 }
 
 // WorkflowListItem 是列表 API 的摘要视图。
@@ -315,6 +324,19 @@ type validationError string
 // templateRefRe 匹配 {{.xxx.yyy}} 模板引用。
 var templateRefRe = regexp.MustCompile(`\{\{\.([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}\}`)
 
+// templateFuncRefRe 匹配 {{.fn.xxx}} 模板函数引用（可能包含参数，如 {{.fn.now_tz "Asia/Shanghai"}}）。
+var templateFuncRefRe = regexp.MustCompile(`\{\{\.fn\.([a-zA-Z0-9_]+)[^}]*\}\}`)
+
+// validFuncNames 是支持的模板函数名称列表。
+var validFuncNames = map[string]bool{
+	"now":     true,
+	"now_tz":  true,
+	"date":    true,
+	"date_tz": true,
+	"unix":    true,
+	"env":     true,
+}
+
 // collectOutputKeys 递归收集步骤及其子步骤的 OutputKey 映射。
 func collectOutputKeys(step Step, m map[string]string) {
 	if step.OutputKey != "" {
@@ -358,12 +380,13 @@ func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[
 						label, field, refKey))
 				}
 			case "self":
-				// self 是步骤自身属性引用，支持 id 和 name
 				if refKey != "id" && refKey != "name" {
 					return validationError(fmt.Sprintf(
 						"工作流校验：步骤「%s」%s 引用了不存在的自身属性 {{.self.%s}}（仅支持 id 和 name）",
 						label, field, refKey))
 				}
+			case "fn":
+				// fn 引用由 templateFuncRefRe 单独校验，此处跳过
 			default:
 				actualKey, ok := outputKeys[refID]
 				if !ok {
@@ -378,6 +401,17 @@ func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[
 				}
 			}
 		}
+
+		funcMatches := templateFuncRefRe.FindAllStringSubmatch(text, -1)
+		for _, m := range funcMatches {
+			funcName := m[1]
+			if !validFuncNames[funcName] {
+				return validationError(fmt.Sprintf(
+					"工作流校验：步骤「%s」%s 引用了不存在的模板函数 {{.fn.%s}}",
+					label, field, funcName))
+			}
+		}
+
 		return nil
 	}
 

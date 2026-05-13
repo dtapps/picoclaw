@@ -1183,6 +1183,7 @@
       "failure_strategy": "失败策略",
       "strategy_stop": "失败即停止",
       "strategy_continue": "失败后继续",
+      "workdir": "工作目录",
       "vars": "变量",
       "vars_key": "键名",
       "vars_value": "值",
@@ -1270,7 +1271,22 @@
       "invalid_step_ref": "步骤「{{step}}」引用了不存在的步骤 {{.{{refId}}.*}}",
       "invalid_self_ref": "步骤「{{step}}」引用了不支持的自身属性 {{.self.{{key}}}}（仅支持 id 和 name）",
       "invalid_output_key_ref": "步骤「{{step}}」引用了步骤 '{{refId}}' 不存在的输出键 '{{refKey}}'（该步骤的 output_key 为 '{{actualKey}}'）",
-      "missing_required_param": "步骤「{{step}}」的工具 '{{tool}}' 必填参数 '{{param}}' 不能为空（保存时校验，模板引用如 {{.vars.x}} 除外）"
+      "missing_required_param": "步骤「{{step}}」的工具 '{{tool}}' 必填参数 '{{param}}' 不能为空（保存时校验，模板引用如 {{.vars.x}} 除外）",
+      "invalid_func_ref": "步骤「{{step}}」引用了不存在的模板函数 {{.fn.{{funcName}}}}",
+      "input": "输入",
+      "output": "输出",
+      "resolved": "渲染后",
+      "raw": "原始",
+      "prompt": "提示词",
+      "args": "参数",
+      "template_func": "模板函数",
+      "template_func_desc": "模板引用中可使用的内置函数（如 {{.fn.now}}、{{.fn.now_tz \"Asia/Shanghai\"}}）",
+      "fn_now": "当前时间（UTC）",
+      "fn_now_tz": "当前时间（指定时区）",
+      "fn_date": "当前日期（UTC）",
+      "fn_date_tz": "当前日期（指定时区）",
+      "fn_unix": "Unix 时间戳",
+      "fn_env": "环境变量"
     }
   },
   "tour": {
