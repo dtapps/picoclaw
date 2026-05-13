@@ -149,6 +149,19 @@ func (ps *PersistStore) SaveWorkflow(wf *Workflow) error {
 	return fileutil.WriteFileAtomic(filepath.Join(ps.workflowsDir, filename), data, 0o644)
 }
 
+// GetWorkflowsDirModTime 返回工作流目录的最新修改时间。
+// 用于检查工作流文件是否有变化，避免不必要的重新加载。
+func (ps *PersistStore) GetWorkflowsDirModTime() (int64, error) {
+	ps.mu.RLock()
+	defer ps.mu.RUnlock()
+
+	info, err := os.Stat(ps.workflowsDir)
+	if err != nil {
+		return 0, err
+	}
+	return info.ModTime().Unix(), nil
+}
+
 // LoadSingleWorkflow 从磁盘读取指定名称的工作流定义。
 // 返回最新磁盘数据，用于避免用过期内存状态覆写外部修改。
 func (ps *PersistStore) LoadSingleWorkflow(name string) (*Workflow, error) {

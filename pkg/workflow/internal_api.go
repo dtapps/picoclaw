@@ -40,6 +40,7 @@ func (a *InternalAPI) RegisterOnMux(mux HandlerMux) {
 	mux.HandleFunc("/internal/workflow/instance", a.handleInstance)
 	mux.HandleFunc("/internal/workflow/delete_instance", a.handleDeleteInstance)
 	mux.HandleFunc("/internal/workflow/stream", a.handleStream)
+	mux.HandleFunc("/internal/workflow/clear_cache", a.handleClearCache)
 }
 
 // handleRun 手动触发工作流执行。
@@ -288,4 +289,18 @@ func (a *InternalAPI) handleStream(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
+}
+
+// handleClearCache 清除工作流触发器缓存。
+// Web 后端在工作流被修改后调用此端点，确保触发器使用最新定义。
+func (a *InternalAPI) handleClearCache(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	a.service.clearTriggerCache()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }

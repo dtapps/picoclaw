@@ -29,6 +29,11 @@ type Service struct {
 
 	workflows map[string]*Workflow // 已加载的工作流定义
 
+	// 触发器检查缓存，避免每分钟都从磁盘读取
+	triggerCacheModTime int64                // 上次加载时的工作流目录修改时间
+	triggerCacheData    map[string]*Workflow // 缓存的工作流数据
+	triggerCacheMu      sync.RWMutex         // 保护缓存
+
 	cron     *gronx.Gronx               // Cron 表达式解析器
 	eventCh  <-chan runtimeevents.Event // 事件总线订阅通道
 	eventSub runtimeevents.Subscription // 事件订阅（用于清理）
@@ -217,6 +222,7 @@ func (s *Service) CreateWorkflow(wf *Workflow) error {
 	}
 
 	s.workflows[wf.Name] = wf
+	s.clearTriggerCache()
 	return nil
 }
 
@@ -240,6 +246,7 @@ func (s *Service) UpdateWorkflow(wf *Workflow) error {
 	}
 
 	s.workflows[wf.Name] = wf
+	s.clearTriggerCache()
 	return nil
 }
 
@@ -257,6 +264,7 @@ func (s *Service) DeleteWorkflow(name string) error {
 	}
 
 	delete(s.workflows, name)
+	s.clearTriggerCache()
 	return nil
 }
 
@@ -558,12 +566,51 @@ func (s *Service) runLoop() {
 	}
 }
 
-// checkCronTriggers 评估所有 cron 触发器，触发到期的工作流。
-func (s *Service) checkCronTriggers() {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+// getWorkflowsForTriggerCheck 获取用于触发器检查的工作流列表。
+// 使用缓存机制：只有当工作流目录修改时间变化时才重新加载。
+func (s *Service) getWorkflowsForTriggerCheck() map[string]*Workflow {
+	s.triggerCacheMu.Lock()
+	defer s.triggerCacheMu.Unlock()
 
-	for _, wf := range s.workflows {
+	// 获取当前目录修改时间
+	currentModTime, err := s.store.GetWorkflowsDirModTime()
+	if err != nil {
+		// 如果无法获取修改时间，使用缓存数据（如果有）或从磁盘加载
+		if s.triggerCacheData != nil {
+			return s.triggerCacheData
+		}
+		workflows, _ := s.store.LoadAllWorkflows()
+		return workflows
+	}
+
+	// 如果修改时间没有变化，返回缓存数据
+	if currentModTime == s.triggerCacheModTime && s.triggerCacheData != nil {
+		return s.triggerCacheData
+	}
+
+	// 修改时间变化，重新加载
+	workflows, err := s.store.LoadAllWorkflows()
+	if err != nil {
+		// 加载失败，使用缓存数据（如果有）
+		if s.triggerCacheData != nil {
+			return s.triggerCacheData
+		}
+		return make(map[string]*Workflow)
+	}
+
+	// 更新缓存
+	s.triggerCacheModTime = currentModTime
+	s.triggerCacheData = workflows
+	return workflows
+}
+
+// checkCronTriggers 评估所有 cron 触发器，触发到期的工作流。
+// 使用缓存机制避免每分钟都从磁盘读取。
+func (s *Service) checkCronTriggers() {
+	// 获取工作流（使用缓存机制）
+	workflows := s.getWorkflowsForTriggerCheck()
+
+	for _, wf := range workflows {
 		if !wf.Enabled {
 			continue
 		}
@@ -593,14 +640,8 @@ func (s *Service) checkCronTriggers() {
 			}
 
 			logger.InfoCF("workflow", "cron 触发器触发工作流", map[string]any{"workflow": wf.Name})
-			// 从磁盘读取最新定义，避免用过期步骤执行
-			freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
-			if err != nil {
-				logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
-				continue
-			}
 			ctx := context.Background()
-			if _, err := s.engine.RunWorkflow(ctx, freshWf, "cron", "", ""); err != nil {
+			if _, err := s.engine.RunWorkflow(ctx, wf, "cron", "", ""); err != nil {
 				logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 			}
 		}
@@ -608,11 +649,12 @@ func (s *Service) checkCronTriggers() {
 }
 
 // checkEventTriggers 评估事件触发器。
+// 使用缓存机制避免每次都从磁盘读取。
 func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	// 获取工作流（使用缓存机制）
+	workflows := s.getWorkflowsForTriggerCheck()
 
-	for _, wf := range s.workflows {
+	for _, wf := range workflows {
 		if !wf.Enabled {
 			continue
 		}
@@ -628,14 +670,8 @@ func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
 				}
 
 				logger.InfoCF("workflow", "事件触发器触发工作流", map[string]any{"event": trigger.Event, "workflow": wf.Name})
-				// 从磁盘读取最新定义，避免用过期步骤执行
-				freshWf, err := s.store.LoadSingleWorkflow(wf.Name)
-				if err != nil {
-					logger.ErrorCF("workflow", "读取工作流定义失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
-					continue
-				}
 				ctx := context.Background()
-				if _, err := s.engine.RunWorkflow(ctx, freshWf, "event", "", ""); err != nil {
+				if _, err := s.engine.RunWorkflow(ctx, wf, "event", "", ""); err != nil {
 					logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
 				}
 			}
@@ -651,6 +687,15 @@ func (s *Service) reloadWorkflowsUnsafe() error {
 	}
 	s.workflows = workflows
 	return nil
+}
+
+// clearTriggerCache 清除触发器检查缓存。
+// 在工作流被修改后调用，确保下次触发器检查使用最新数据。
+func (s *Service) clearTriggerCache() {
+	s.triggerCacheMu.Lock()
+	defer s.triggerCacheMu.Unlock()
+	s.triggerCacheModTime = 0
+	s.triggerCacheData = nil
 }
 
 // --- 错误类型 ---
