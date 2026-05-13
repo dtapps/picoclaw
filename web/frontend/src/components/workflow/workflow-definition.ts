@@ -14,22 +14,29 @@ export const COMPONENT_SWITCH = "switch"
 
 // --- 模型转换：Workflow ↔ SWD Definition ---
 
+/** 触发器配置 */
+export interface TriggerConfig {
+  type: "manual" | "cron" | "event"
+  cron?: string
+  event?: string
+  tz?: string
+}
+
 /** 将我们的 Workflow 转换为 SWD Definition */
 export function workflowToDefinition(wf: Workflow): Definition {
-  let triggerType = "manual"
-  let cronExpr = ""
-  let eventKind = ""
-  let triggerTZ = ""
+  const triggers: TriggerConfig[] = []
 
   for (const t of wf.triggers || []) {
     if (t.cron) {
-      triggerType = "cron"
-      cronExpr = t.cron
-      triggerTZ = t.tz || ""
+      triggers.push({ type: "cron", cron: t.cron, tz: t.tz || "" })
     } else if (t.event) {
-      triggerType = "event"
-      eventKind = t.event
+      triggers.push({ type: "event", event: t.event })
     }
+  }
+
+  // 如果没有触发器，默认添加一个手动触发器
+  if (triggers.length === 0) {
+    triggers.push({ type: "manual" })
   }
 
   const sequence: Step[] = (wf.steps || []).map((s) =>
@@ -40,10 +47,7 @@ export function workflowToDefinition(wf: Workflow): Definition {
     properties: {
       name: wf.name,
       description: wf.description,
-      triggerType,
-      cronExpr,
-      eventKind,
-      triggerTZ,
+      triggers,
       failureStrategy: wf.config?.failure_strategy || "stop",
       workdir: wf.config?.workdir || "",
       vars: wf.vars || {},
@@ -136,11 +140,15 @@ export function definitionToWorkflow(def: Definition): {
 } {
   const props = def.properties
 
+  // 从 triggers 数组转换
   const triggers: Trigger[] = []
-  if (props.triggerType === "cron" && props.cronExpr) {
-    triggers.push({ cron: props.cronExpr as string, tz: (props.triggerTZ as string) || undefined })
-  } else if (props.triggerType === "event" && props.eventKind) {
-    triggers.push({ event: props.eventKind as string })
+  const triggerConfigs = (props.triggers as TriggerConfig[]) || []
+  for (const t of triggerConfigs) {
+    if (t.type === "cron" && t.cron) {
+      triggers.push({ cron: t.cron, tz: t.tz || undefined })
+    } else if (t.type === "event" && t.event) {
+      triggers.push({ event: t.event })
+    }
   }
 
   // Extract vars from properties, filter out placeholder/empty keys for saving
@@ -260,10 +268,7 @@ export function createEmptyDefinition(): Definition {
     properties: {
       name: "",
       description: "",
-      triggerType: "manual",
-      cronExpr: "",
-      eventKind: "",
-      triggerTZ: "",
+      triggers: [{ type: "manual" }],
       failureStrategy: "stop",
       workdir: "",
       vars: {},
