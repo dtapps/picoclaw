@@ -260,6 +260,40 @@ steps:
 
 > **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
 
+### 工作目录（Workdir）
+
+工作目录用于指定 `tool_call` 步骤执行命令时的默认目录，避免在每个步骤的 `args` 中重复设置 `cwd`。在 `config` 中设置后，引擎会自动将 workdir 注入到所有未显式设置 `cwd` 的 `tool_call` 步骤的参数中。
+
+```yaml
+config:
+  workdir: "/root/.picoclaw/workspace/my-project"
+```
+
+**优先级**：步骤 `args` 中显式设置的 `cwd` > 工作流 `config.workdir`。如果步骤的 `args` 中已设置了 `cwd`，则不会注入 workdir，尊重步骤的显式配置。
+
+**模板引用**：workdir 支持模板变量，可以使用 `{{.vars.key}}` 等模板语法：
+
+```yaml
+vars:
+  project_dir: "/root/.picoclaw/workspace/my-project"
+
+config:
+  workdir: "{{.vars.project_dir}}"
+```
+
+**特殊步骤**：如果某个 `tool_call` 步骤需要不同的工作目录，直接在 `args` 中设置 `cwd` 即可：
+
+```yaml
+steps:
+  - id: git_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "git status"
+      cwd: "/path/to/other-project"
+```
+
 ### 触发器（Trigger）
 
 触发器决定工作流何时自动执行：
@@ -306,8 +340,8 @@ Cron 触发器的工作方式：
 ```
 
 模板解析逻辑（`conditions.go`）：
-1. 正则匹配 `{{.step_id.key}}`、`{{.vars.key}}` 或 `{{.self.key}}` 模式
-2. 在已完成步骤的输出数据中查找对应值（`vars` 作为特殊步骤 ID，存储工作流变量；`self` 引用当前步骤自身属性）
+1. 正则匹配 `{{.step_id.key}}`、`{{.vars.key}}`、`{{.self.key}}` 或 `{{.fn.xxx}}` 模式
+2. 在已完成步骤的输出数据中查找对应值（`vars` 作为特殊步骤 ID，存储工作流变量；`self` 引用当前步骤自身属性；`fn` 调用内置模板函数）
 3. 替换模板为实际输出内容
 4. 同时应用于 `prompt`、`args`、`when` 字段
 
@@ -325,11 +359,40 @@ steps:
       query: "{{.self.name}} 新闻 {{.vars.date}}"
 ```
 
+**模板函数（`fn`）**：
+
+模板引用支持内置函数，通过 `{{.fn.函数名}}` 或 `{{.fn.函数名 "参数"}}` 的语法在步骤执行时动态获取值。适用于在 prompt 或 args 中插入当前时间、日期、环境变量等动态内容，无需额外步骤获取。
+
+| 函数 | 语法 | 说明 | 示例输出 |
+|------|------|---------|---------|
+| `{{.fn.now}}` | 当前 UTC 时间 | `2026-05-13 08:30:00` |
+| `{{.fn.now_tz "Asia/Shanghai"}}` | 指定时区的当前时间 | `2026-05-13 16:30:00` |
+| `{{.fn.date}}` | 当前 UTC 日期 | `2026-05-13` |
+| `{{.fn.date_tz "Asia/Shanghai"}}` | 指定时区的当前日期 | `2026-05-13` |
+| `{{.fn.unix}}` | 当前 Unix 时间戳 | `1747170600` |
+| `{{.fn.env "HOME"}}` | 获取环境变量值 | `/root` |
+
+模板函数在步骤执行时实时求值，适用于 `prompt`、`args` 和 `when` 字段。例如：
+
+```yaml
+vars:
+  tz: "Asia/Shanghai"
+
+steps:
+  - id: today
+    action: agent_prompt
+    prompt: "今天是 {{.fn.date_tz "Asia/Shanghai"}}，请生成今日简报"
+    output_key: result
+```
+
+> **模板函数 vs 工具调用**：模板函数直接在模板解析阶段求值，无需额外步骤，输出简洁（如 `2026-05-13`）。相比之下，通过 `tool_call` 调用 `get_current_time` 等工具会产生额外步骤，且输出包含前缀描述（如 `Current time (Asia/Shanghai): 2026-05-13`），需要额外处理才能提取日期部分。推荐在只需要日期/时间值时使用模板函数。
+
 > **模板引用校验**：保存工作流时会自动校验所有模板引用，包括：
 > - `{{.vars.key}}` 中的 key 必须在 `vars` 中定义
 > - `{{.step_id.key}}` 中的 step_id 必须是已定义 `output_key` 的步骤，且 key 必须等于该步骤的 `output_key` 值
 > - `{{.self.key}}` 中的 key 仅支持 `id` 和 `name`
-> - 引用不存在的变量、步骤或输出键将报错，防止运行时静默保留原文
+> - `{{.fn.xxx}}` 中的函数名必须是支持的模板函数（now、now_tz、date、date_tz、unix、env）
+> - 引用不存在的变量、步骤、输出键或函数名将报错，防止运行时静默保留原文
 
 > **工具参数校验**：保存工作流时会自动校验 `tool_call` 步骤的必填参数，包括：
 > - 通过工具注册表查询工具的参数 Schema（内置工具和 MCP 工具均支持）
@@ -374,6 +437,7 @@ steps:
 - **StartedAt** / **FinishedAt**：开始和结束时间
 - **Attempts**：执行尝试次数（首次执行为 1，重试后递增）
 - **Error**：失败时的错误信息
+- **ResolvedInput**：渲染后的输入参数（包含 Prompt 和 Args），用于在实例详情中展示模板变量替换后的实际值
 
 未执行的 if 分支子步骤自动标记为 `skipped`。
 
@@ -406,6 +470,7 @@ vars:
 
 config:
   failure_strategy: stop  # stop 或 continue
+  workdir: "/root/.picoclaw/workspace/news"  # 可选，tool_call 步骤的默认工作目录
   notify_channel: telegram  # 可选，默认通知频道
   notify_chat_id: "-100xxx" # 可选，默认通知聊天 ID
 

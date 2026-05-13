@@ -77,6 +77,14 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 	case "agent_prompt":
 		return se.executeAgentPrompt(ctx, prompt)
 	case "tool_call":
+		if _, hasCwd := args["cwd"]; !hasCwd {
+			if wd, ok := WorkdirFromCtx(ctx); ok && wd != "" {
+				if args == nil {
+					args = make(map[string]any)
+				}
+				args["cwd"] = ResolveStepTemplates(wd, localOutputs)
+			}
+		}
 		return se.executeToolCall(ctx, step.Tool, args)
 	case "parallel":
 		return se.executeParallel(ctx, step.Parallel, stepOutputs)

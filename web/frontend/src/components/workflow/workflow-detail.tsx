@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type { TFunction } from "i18next"
 import { useNavigate } from "@tanstack/react-router"
 
-import type { Step, WorkflowInstance, WorkflowStepEvent } from "@/api/workflow"
+import type { ResolvedInput, Step, WorkflowInstance, WorkflowStepEvent } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { IconArrowLeft, IconBrain, IconTool, IconGitBranch, IconStack2 } from "@tabler/icons-react"
+import { IconArrowLeft, IconBrain, IconTool, IconGitBranch, IconStack2, IconEye, IconEyeOff, IconArrowDown, IconArrowUp } from "@tabler/icons-react"
 
 interface WorkflowDetailProps {
   workflowName: string
@@ -123,6 +123,21 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
     }
   }, [workflowName, instanceId, connectSSE, closeSSE])
 
+  const instanceDuration = useMemo(() => {
+    if (!instance?.finished_at) return null
+    const ms = new Date(instance.finished_at).getTime() - new Date(instance.started_at).getTime()
+    return formatDuration(ms)
+  }, [instance?.finished_at, instance?.started_at])
+
+  const stepStats = useMemo(() => {
+    if (!instance) return { total: 0, completed: 0 }
+    const states = Object.values(instance.step_states)
+    return {
+      total: states.length,
+      completed: states.filter(s => s.status === "completed" || s.status === "skipped").length,
+    }
+  }, [instance])
+
   if (!instance) {
     return (
       <div className="bg-background flex h-full flex-col">
@@ -133,17 +148,6 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
       </div>
     )
   }
-
-  const duration = () => {
-    if (!instance.finished_at) return null
-    const ms = new Date(instance.finished_at).getTime() - new Date(instance.started_at).getTime()
-    if (ms < 1000) return `${ms}ms`
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-    return `${(ms / 60000).toFixed(1)}m`
-  }
-
-  const totalSteps = Object.keys(instance.step_states).length
-  const completedSteps = Object.values(instance.step_states).filter(s => s.status === "completed" || s.status === "skipped").length
 
   return (
     <div className="bg-background flex h-full flex-col">
@@ -158,8 +162,8 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
         </Button>
       </PageHeader>
 
-      <div className="flex-1 overflow-auto px-6 py-4">
-        <div className="mx-auto w-full max-w-4xl space-y-4">
+      <div className="flex-1 overflow-auto px-4 py-3 sm:px-6 sm:py-4">
+        <div className="mx-auto w-full max-w-4xl space-y-3">
 
           <Card>
             <CardContent className="pt-4 space-y-3">
@@ -185,30 +189,30 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                       : t("pages.workflows.trigger_manual", "Manual")}
                 </span>
               </div>
-              <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2 lg:grid-cols-3 text-sm">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 text-sm">
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-xs">{t("pages.workflows.instance_id", "Instance ID")}</p>
                   <p className="font-mono text-xs truncate">{instance.id.slice(0, 16)}</p>
                 </div>
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-xs">{t("pages.workflows.started_at", "Started")}</p>
-                  <p className="truncate">{new Date(instance.started_at).toLocaleString()}</p>
+                  <p className="truncate text-xs sm:text-sm">{new Date(instance.started_at).toLocaleString()}</p>
                 </div>
                 {instance.finished_at && (
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-xs">{t("pages.workflows.finished_at", "Finished")}</p>
-                    <p className="truncate">{new Date(instance.finished_at).toLocaleString()}</p>
+                    <p className="truncate text-xs sm:text-sm">{new Date(instance.finished_at).toLocaleString()}</p>
                   </div>
                 )}
-                {duration() && (
+                {instanceDuration && (
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-xs">{t("pages.workflows.duration", "Duration")}</p>
-                    <p>{duration()}</p>
+                    <p>{instanceDuration}</p>
                   </div>
                 )}
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-xs">{t("pages.workflows.step_progress", "Step Progress")}</p>
-                  <p>{completedSteps}/{totalSteps}</p>
+                  <p>{stepStats.completed}/{stepStats.total}</p>
                 </div>
                 {instance.channel && (
                   <div className="min-w-0">
@@ -269,7 +273,7 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                           [{instance.step_states?.[log.step_id]?.name || `#${log.step_id}`}]
                         </span>
                       )}
-                      <span>{log.message}</span>
+                      <span className="break-all">{log.message}</span>
                     </div>
                   ))}
                 </div>
@@ -283,8 +287,13 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
   )
 }
 
-/** 扁平列表回退（无工作流定义时使用） */
-function FlatStepList({ instance, steps, t }: { instance: WorkflowInstance; steps: Step[]; t: TFunction }) {
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
+  return `${(ms / 60000).toFixed(1)}m`
+}
+
+const FlatStepList = memo(function FlatStepList({ instance, steps, t }: { instance: WorkflowInstance; steps: Step[]; t: TFunction }) {
   const stepMap = useMemo(() => {
     const map = new Map<string, Step>()
     function collect(s: Step[]) { for (const st of s) { map.set(st.id, st); if (st.parallel) collect(st.parallel); if (st.if_true) collect(st.if_true); if (st.if_false) collect(st.if_false); } }
@@ -318,9 +327,9 @@ function FlatStepList({ instance, steps, t }: { instance: WorkflowInstance; step
         })}
     </>
   )
-}
+})
 
-function StepCard({
+const StepCard = memo(function StepCard({
   stepId,
   stepName,
   state,
@@ -331,19 +340,34 @@ function StepCard({
 }: {
   stepId: string
   stepName?: string
-  state: { status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }
+  state: { status: string; started_at?: string; finished_at?: string; error?: string; attempts: number; resolved_input?: ResolvedInput }
   output?: Record<string, unknown>
   disabled?: boolean
   timeout?: string
   t: TFunction
 }) {
-  const stepDuration = () => {
+  const [showResolved, setShowResolved] = useState(true)
+
+  const duration = useMemo(() => {
     if (!state.started_at || !state.finished_at) return null
-    const ms = new Date(state.finished_at).getTime() - new Date(state.started_at).getTime()
-    if (ms < 1000) return `${ms}ms`
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-    return `${(ms / 60000).toFixed(1)}m`
-  }
+    return formatDuration(new Date(state.finished_at).getTime() - new Date(state.started_at).getTime())
+  }, [state.started_at, state.finished_at])
+
+  const hasResolvedInput = !!(state.resolved_input?.prompt || (state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0))
+  const hasOutput = output && Object.keys(output).length > 0
+
+  const displayPrompt = showResolved && state.resolved_input?.prompt
+    ? state.resolved_input.prompt
+    : undefined
+
+  const displayArgs = showResolved && state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0
+    ? state.resolved_input.args
+    : undefined
+
+  const canToggle = hasResolvedInput && (
+    displayPrompt !== state.resolved_input?.prompt ||
+    displayArgs !== state.resolved_input?.args
+  )
 
   return (
     <div className="border rounded-lg p-3 bg-card">
@@ -360,8 +384,8 @@ function StepCard({
             <Badge variant="outline" className={`text-xs ${getInstanceStatusColor(state.status)}`}>
               {formatInstanceStatus(state.status, t)}
             </Badge>
-            {stepDuration() && (
-              <span className="text-muted-foreground text-xs">{stepDuration()}</span>
+            {duration && (
+              <span className="text-muted-foreground text-xs">{duration}</span>
             )}
             {state.attempts > 1 && (
               <span className="text-muted-foreground text-xs">×{state.attempts}</span>
@@ -378,10 +402,45 @@ function StepCard({
           {state.error && (
             <p className="text-destructive text-xs bg-destructive/10 rounded px-2 py-1">{state.error}</p>
           )}
-          {output && Object.keys(output).length > 0 && (
-            <div className="mt-2">
-              <p className="text-muted-foreground text-xs mb-1">{t("pages.workflows.output", "Output")}:</p>
-              <div className="rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto">
+          {hasResolvedInput && (
+            <details className="mt-1" open={!hasOutput}>
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground inline-flex items-center gap-1.5">
+                <IconArrowDown className="h-3 w-3 text-purple-500" />
+                {t("pages.workflows.input", "Input")}
+                {canToggle && (
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] bg-muted hover:bg-muted/80 transition-colors"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowResolved(!showResolved) }}
+                  >
+                    {showResolved ? <IconEye className="h-3 w-3" /> : <IconEyeOff className="h-3 w-3" />}
+                    {showResolved ? t("pages.workflows.resolved", "Resolved") : t("pages.workflows.raw", "Raw")}
+                  </button>
+                )}
+              </summary>
+              <div className="mt-1 rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto space-y-1">
+                {displayPrompt && (
+                  <div>
+                    <span className="text-purple-600">{t("pages.workflows.prompt", "Prompt")}</span>:{" "}
+                    <span className="text-foreground/80 whitespace-pre-wrap break-all">{displayPrompt}</span>
+                  </div>
+                )}
+                {displayArgs && Object.keys(displayArgs).length > 0 && (
+                  <div>
+                    <span className="text-orange-600">{t("pages.workflows.args", "Args")}</span>:{" "}
+                    <span className="text-foreground/80 break-all">{JSON.stringify(displayArgs, null, 2)}</span>
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
+          {hasOutput && (
+            <details className="mt-1" open>
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground inline-flex items-center gap-1.5">
+                <IconArrowUp className="h-3 w-3 text-blue-500" />
+                {t("pages.workflows.output", "Output")}
+              </summary>
+              <div className="mt-1 rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto">
                 {Object.entries(output).map(([key, val]) => (
                   <div key={key} className="whitespace-pre-wrap break-all">
                     <span className="text-blue-600">{key}</span>:{" "}
@@ -389,15 +448,15 @@ function StepCard({
                   </div>
                 ))}
               </div>
-            </div>
+            </details>
           )}
         </div>
       </div>
     </div>
   )
-}
+})
 
-function StepStatusIcon({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
+const StepStatusIcon = memo(function StepStatusIcon({ status, size = "sm" }: { status: string; size?: "sm" | "md" }) {
   const sizeClass = size === "md" ? "text-lg" : "text-base"
   switch (status) {
     case "completed":
@@ -411,9 +470,9 @@ function StepStatusIcon({ status, size = "sm" }: { status: string; size?: "sm" |
     default:
       return <span className={`text-muted-foreground ${sizeClass}`}>○</span>
   }
-}
+})
 
-function StepActionIcon({ action }: { action: string }) {
+const StepActionIcon = memo(function StepActionIcon({ action }: { action: string }) {
   const iconClass = "h-4 w-4"
   switch (action) {
     case "agent_prompt":
@@ -427,16 +486,16 @@ function StepActionIcon({ action }: { action: string }) {
     default:
       return null
   }
-}
+})
 
-function StepTree({
+const StepTree = memo(function StepTree({
   steps,
   stepStates,
   stepOutputs,
   t,
 }: {
   steps: Step[]
-  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number; resolved_input?: ResolvedInput }>
   stepOutputs: Record<string, Record<string, unknown>>
   t: TFunction
 }) {
@@ -447,9 +506,9 @@ function StepTree({
       ))}
     </div>
   )
-}
+})
 
-function StepTreeNode({
+const StepTreeNode = memo(function StepTreeNode({
   step,
   stepStates,
   stepOutputs,
@@ -457,7 +516,7 @@ function StepTreeNode({
   depth,
 }: {
   step: Step
-  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number; resolved_input?: ResolvedInput }>
   stepOutputs: Record<string, Record<string, unknown>>
   t: TFunction
   depth: number
@@ -465,33 +524,47 @@ function StepTreeNode({
   const state = stepStates[step.id]
   if (!state) return null
 
+  const [showResolved, setShowResolved] = useState(true)
+
   const childSteps = step.action === "parallel"
     ? step.parallel || []
     : step.action === "if"
       ? [...(step.if_true || []), ...(step.if_false || [])]
       : []
 
-  const stepDuration = () => {
+  const duration = useMemo(() => {
     if (!state.started_at || !state.finished_at) return null
-    const ms = new Date(state.finished_at).getTime() - new Date(state.started_at).getTime()
-    if (ms < 1000) return `${ms}ms`
-    if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`
-    return `${(ms / 60000).toFixed(1)}m`
-  }
+    return formatDuration(new Date(state.finished_at).getTime() - new Date(state.started_at).getTime())
+  }, [state.started_at, state.finished_at])
 
-  const hasInput = step.prompt || (step.args && Object.keys(step.args).length > 0)
+  const hasRawInput = !!(step.prompt || (step.args && Object.keys(step.args).length > 0))
+  const hasResolvedInput = !!(state.resolved_input?.prompt || (state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0))
+  const hasInput = hasRawInput || hasResolvedInput
   const hasOutput = stepOutputs?.[step.id] && Object.keys(stepOutputs[step.id]).length > 0
 
+  const displayPrompt = showResolved && state.resolved_input?.prompt
+    ? state.resolved_input.prompt
+    : step.prompt
+
+  const displayArgs = showResolved && state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0
+    ? state.resolved_input.args
+    : step.args
+
+  const canToggle = hasRawInput && hasResolvedInput && (
+    step.prompt !== state.resolved_input?.prompt ||
+    JSON.stringify(step.args) !== JSON.stringify(state.resolved_input?.args)
+  )
+
   return (
-    <div className={`${depth > 0 ? "ml-4 border-l-2 border-muted pl-3" : ""}`}>
-      <div className={`border rounded-lg p-3 bg-card ${state.status === "running" ? "ring-2 ring-blue-500/30" : ""}`}>
-        <div className="flex items-start gap-3">
+    <div className={`${depth > 0 ? "ml-3 sm:ml-4 border-l-2 border-muted pl-3" : ""}`}>
+      <div className={`border rounded-lg p-2.5 sm:p-3 bg-card ${state.status === "running" ? "ring-2 ring-blue-500/30" : ""}`}>
+        <div className="flex items-start gap-2 sm:gap-3">
           <div className="mt-0.5 flex items-center gap-1">
             <StepStatusIcon status={state.status} size="md" />
             <StepActionIcon action={step.action} />
           </div>
           <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
               <span className="font-medium text-sm">{state.name || step.name || `#${step.id}`}</span>
               {(state.name || step.name) && (
                 <span className="text-muted-foreground text-xs font-mono">#{step.id}</span>
@@ -499,8 +572,8 @@ function StepTreeNode({
               <Badge variant="outline" className={`text-xs ${getInstanceStatusColor(state.status)}`}>
                 {formatInstanceStatus(state.status, t)}
               </Badge>
-              {stepDuration() && (
-                <span className="text-muted-foreground text-xs">{stepDuration()}</span>
+              {duration && (
+                <span className="text-muted-foreground text-xs">{duration}</span>
               )}
               {state.attempts > 1 && (
                 <span className="text-muted-foreground text-xs">×{state.attempts}</span>
@@ -531,21 +604,32 @@ function StepTreeNode({
             )}
 
             {hasInput && (
-              <details className="mt-1">
-                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+              <details className="mt-1" open={hasResolvedInput && !hasOutput}>
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground inline-flex items-center gap-1.5">
+                  <IconArrowDown className="h-3 w-3 text-purple-500" />
                   {t("pages.workflows.input", "Input")}
+                  {canToggle && (
+                    <button
+                      type="button"
+                      className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[10px] bg-muted hover:bg-muted/80 transition-colors"
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setShowResolved(!showResolved) }}
+                    >
+                      {showResolved ? <IconEye className="h-3 w-3" /> : <IconEyeOff className="h-3 w-3" />}
+                      {showResolved ? t("pages.workflows.resolved", "Resolved") : t("pages.workflows.raw", "Raw")}
+                    </button>
+                  )}
                 </summary>
                 <div className="mt-1 rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto space-y-1">
-                  {step.prompt && (
+                  {displayPrompt && (
                     <div>
-                      <span className="text-purple-600">prompt</span>:{" "}
-                      <span className="text-foreground/80 whitespace-pre-wrap">{step.prompt}</span>
+                      <span className="text-purple-600">{t("pages.workflows.prompt", "Prompt")}</span>:{" "}
+                      <span className="text-foreground/80 whitespace-pre-wrap break-all">{displayPrompt}</span>
                     </div>
                   )}
-                  {step.args && Object.keys(step.args).length > 0 && (
+                  {displayArgs && Object.keys(displayArgs).length > 0 && (
                     <div>
-                      <span className="text-orange-600">args</span>:{" "}
-                      <span className="text-foreground/80">{JSON.stringify(step.args, null, 2)}</span>
+                      <span className="text-orange-600">{t("pages.workflows.args", "Args")}</span>:{" "}
+                      <span className="text-foreground/80 break-all">{JSON.stringify(displayArgs, null, 2)}</span>
                     </div>
                   )}
                 </div>
@@ -558,7 +642,8 @@ function StepTreeNode({
 
             {hasOutput && (
               <details className="mt-1" open>
-                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground inline-flex items-center gap-1.5">
+                  <IconArrowUp className="h-3 w-3 text-blue-500" />
                   {t("pages.workflows.output", "Output")}
                 </summary>
                 <div className="mt-1 rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto">
@@ -604,4 +689,4 @@ function StepTreeNode({
       )}
     </div>
   )
-}
+})

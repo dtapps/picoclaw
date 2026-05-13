@@ -1,6 +1,11 @@
 package workflow
 
-import "testing"
+import (
+	"os"
+	"strings"
+	"testing"
+	"time"
+)
 
 func TestEvaluateCondition(t *testing.T) {
 	tests := []struct {
@@ -231,6 +236,154 @@ func TestValueToString(t *testing.T) {
 			got := valueToString(tt.input)
 			if got != tt.want {
 				t.Fatalf("valueToString(%v) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestResolveFuncTemplate(t *testing.T) {
+	now := time.Now().UTC()
+	dateStr := now.Format("2006-01-02")
+	timeStr := now.Format("2006-01-02")
+
+	tests := []struct {
+		name  string
+		tmpl  string
+		check func(t *testing.T, got string)
+	}{
+		{
+			name: "fn.now returns UTC datetime",
+			tmpl: "{{.fn.now}}",
+			check: func(t *testing.T, got string) {
+				if !strings.HasPrefix(got, dateStr) {
+					t.Fatalf("fn.now = %q, expected to start with %q", got, dateStr)
+				}
+			},
+		},
+		{
+			name: "fn.date returns UTC date",
+			tmpl: "{{.fn.date}}",
+			check: func(t *testing.T, got string) {
+				if got != dateStr {
+					t.Fatalf("fn.date = %q, want %q", got, dateStr)
+				}
+			},
+		},
+		{
+			name: "fn.unix returns timestamp",
+			tmpl: "{{.fn.unix}}",
+			check: func(t *testing.T, got string) {
+				if len(got) < 10 {
+					t.Fatalf("fn.unix = %q, expected numeric timestamp", got)
+				}
+			},
+		},
+		{
+			name: "fn.now_tz with timezone",
+			tmpl: `{{.fn.now_tz "Asia/Shanghai"}}`,
+			check: func(t *testing.T, got string) {
+				shanghaiTime := now.In(time.FixedZone("CST", 8*3600))
+				expected := shanghaiTime.Format("2006-01-02")
+				if !strings.HasPrefix(got, expected) {
+					t.Fatalf("fn.now_tz = %q, expected to start with %q", got, expected)
+				}
+			},
+		},
+		{
+			name: "fn.date_tz with timezone",
+			tmpl: `{{.fn.date_tz "Asia/Shanghai"}}`,
+			check: func(t *testing.T, got string) {
+				shanghaiTime := now.In(time.FixedZone("CST", 8*3600))
+				expected := shanghaiTime.Format("2006-01-02")
+				if got != expected {
+					t.Fatalf("fn.date_tz = %q, want %q", got, expected)
+				}
+			},
+		},
+		{
+			name: "fn.env with existing var",
+			tmpl: "{{.fn.env \"HOME\"}}",
+			check: func(t *testing.T, got string) {
+				home := os.Getenv("HOME")
+				if got != home {
+					t.Fatalf("fn.env HOME = %q, want %q", got, home)
+				}
+			},
+		},
+		{
+			name: "fn.env with non-existing var returns original",
+			tmpl: `{{.fn.env "NONEXISTENT_VAR_XYZ_123"}}`,
+			check: func(t *testing.T, got string) {
+				if got != `{{.fn.env "NONEXISTENT_VAR_XYZ_123"}}` {
+					t.Fatalf("fn.env non-existent = %q, want original template", got)
+				}
+			},
+		},
+		{
+			name: "fn.now_tz without arg returns UTC",
+			tmpl: "{{.fn.now_tz}}",
+			check: func(t *testing.T, got string) {
+				if !strings.HasPrefix(got, timeStr) {
+					t.Fatalf("fn.now_tz (no arg) = %q, expected to start with %q", got, timeStr)
+				}
+			},
+		},
+		{
+			name: "fn with invalid timezone returns original",
+			tmpl: `{{.fn.now_tz "Invalid/Zone"}}`,
+			check: func(t *testing.T, got string) {
+				if got != `{{.fn.now_tz "Invalid/Zone"}}` {
+					t.Fatalf("fn.now_tz invalid = %q, want original template", got)
+				}
+			},
+		},
+		{
+			name: "fn with unknown function returns original",
+			tmpl: "{{.fn.unknown_func}}",
+			check: func(t *testing.T, got string) {
+				if got != "{{.fn.unknown_func}}" {
+					t.Fatalf("fn.unknown = %q, want original template", got)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveStepTemplates(tt.tmpl, nil)
+			tt.check(t, got)
+		})
+	}
+}
+
+func TestResolveStepTemplatesWithFuncs(t *testing.T) {
+	outputs := map[string]map[string]any{
+		"fetch": {"weather": "sunny"},
+		"vars":  {"dir": "/tmp"},
+	}
+
+	tests := []struct {
+		name  string
+		input string
+		want  string
+	}{
+		{
+			name:  "fn mixed with step ref",
+			input: "Weather: {{.fetch.weather}}, Date: {{.fn.date}}",
+			want:  "Weather: sunny, Date: " + time.Now().UTC().Format("2006-01-02"),
+		},
+		{
+			name:  "fn only",
+			input: "Today is {{.fn.date}}",
+			want:  "Today is " + time.Now().UTC().Format("2006-01-02"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveStepTemplates(tt.input, outputs)
+			if got != tt.want {
+				t.Fatalf("ResolveStepTemplates(%q) = %q, want %q", tt.input, got, tt.want)
 			}
 		})
 	}

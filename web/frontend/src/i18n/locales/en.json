@@ -1188,6 +1188,7 @@
       "failure_strategy": "Failure Strategy",
       "strategy_stop": "Stop on failure",
       "strategy_continue": "Continue on failure",
+      "workdir": "Working Directory",
       "vars": "Variables",
       "vars_key": "Key",
       "vars_value": "Value",
@@ -1275,7 +1276,22 @@
       "invalid_step_ref": "Step '{{step}}' references undefined step {{.{{refId}}.*}}",
       "invalid_self_ref": "Step '{{step}}' references unsupported self-property {{.self.{{key}}}} (only id and name supported)",
       "invalid_output_key_ref": "Step '{{step}}' references non-existent output key '{{refKey}}' on step '{{refId}}' (output_key is '{{actualKey}}')",
-      "missing_required_param": "Step '{{step}}': required parameter '{{param}}' for tool '{{tool}}' must not be empty (checked at save time; template references like {{.vars.x}} are allowed)"
+      "missing_required_param": "Step '{{step}}': required parameter '{{param}}' for tool '{{tool}}' must not be empty (checked at save time; template references like {{.vars.x}} are allowed)",
+      "invalid_func_ref": "Step '{{step}}' references undefined template function {{.fn.{{funcName}}}}",
+      "input": "Input",
+      "output": "Output",
+      "resolved": "Resolved",
+      "raw": "Raw",
+      "prompt": "Prompt",
+      "args": "Args",
+      "template_func": "Template Functions",
+      "template_func_desc": "Built-in functions available in template references (e.g., {{.fn.now}}, {{.fn.now_tz \"Asia/Shanghai\"}})",
+      "fn_now": "Current time (UTC)",
+      "fn_now_tz": "Current time (timezone)",
+      "fn_date": "Current date (UTC)",
+      "fn_date_tz": "Current date (timezone)",
+      "fn_unix": "Unix timestamp",
+      "fn_env": "Environment variable"
     }
   },
   "tour": {

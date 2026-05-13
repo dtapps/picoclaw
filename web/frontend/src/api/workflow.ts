@@ -23,6 +23,7 @@ export interface Step {
   retry?: { max_attempts: number; delay: string }
   timeout?: string
   output_key?: string
+  workdir?: string
   enabled?: boolean
 }
 
@@ -30,6 +31,7 @@ export interface WorkflowConfig {
   failure_strategy?: string
   notify_channel?: string
   notify_chat_id?: string
+  workdir?: string
 }
 
 export interface Workflow {
@@ -54,6 +56,11 @@ export interface WorkflowListItem {
   vars?: Record<string, string>
 }
 
+export interface ResolvedInput {
+  prompt?: string
+  args?: Record<string, unknown>
+}
+
 export interface StepState {
   name?: string
   status: string
@@ -61,6 +68,7 @@ export interface StepState {
   finished_at?: string
   error?: string
   attempts: number
+  resolved_input?: ResolvedInput
 }
 
 export interface LogEntry {

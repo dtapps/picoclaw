@@ -17,6 +17,7 @@ type contextKey string
 const (
 	channelCtxKey contextKey = "workflow_channel"
 	chatIDCtxKey  contextKey = "workflow_chat_id"
+	workdirCtxKey contextKey = "workflow_workdir"
 )
 
 // ChannelFromCtx 从上下文中提取工作流绑定的频道名称。
@@ -36,6 +37,17 @@ func withChannelCtx(ctx context.Context, channel, chatID string) context.Context
 	ctx = context.WithValue(ctx, channelCtxKey, channel)
 	ctx = context.WithValue(ctx, chatIDCtxKey, chatID)
 	return ctx
+}
+
+// WorkdirFromCtx 从上下文中提取工作流的工作目录。
+func WorkdirFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(workdirCtxKey).(string)
+	return v, ok
+}
+
+// withWorkdirCtx 将工作目录注入上下文。
+func withWorkdirCtx(ctx context.Context, workdir string) context.Context {
+	return context.WithValue(ctx, workdirCtxKey, workdir)
 }
 
 // Engine 是工作流的核心编排引擎。
@@ -243,6 +255,11 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 将频道信息注入上下文，供步骤执行器回调时读取
 	if inst.Channel != "" {
 		ctx = withChannelCtx(ctx, inst.Channel, inst.ChatID)
+	}
+
+	// 将工作目录注入上下文，供 tool_call 步骤自动注入 cwd
+	if wf.Config.Workdir != "" {
+		ctx = withWorkdirCtx(ctx, wf.Config.Workdir)
 	}
 
 	// 将工作流变量注入 stepOutputs，使 {{.vars.key}} 可在步骤中引用
@@ -528,7 +545,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 		"step_id": step.ID, "action": step.Action,
 	})
 
-	// 计算展开后的提示词和参数（用于步骤开始通知）
+	// 计算展开后的提示词和参数（用于步骤开始通知和 ResolvedInput）
 	var resolvedPrompt string
 	var resolvedArgs map[string]any
 	if step.Action == "tool_call" || step.Action == "agent_prompt" {
@@ -546,6 +563,40 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 		outputsSnapshot["self"] = selfOutput
 		resolvedPrompt = ResolveStepTemplates(step.Prompt, outputsSnapshot)
 		resolvedArgs = resolveArgsTemplates(step.Args, outputsSnapshot)
+	}
+
+	// 为 tool_call 步骤自动注入 workdir 到 resolvedArgs 的 cwd
+	if step.Action == "tool_call" {
+		if _, hasCwd := resolvedArgs["cwd"]; !hasCwd {
+			if wd, ok := WorkdirFromCtx(ctx); ok && wd != "" {
+				inst.mu.Lock()
+				snapshot := make(map[string]map[string]any, len(inst.StepOutputs)+1)
+				for k, v := range inst.StepOutputs {
+					snapshot[k] = v
+				}
+				inst.mu.Unlock()
+				selfOutput := map[string]any{"id": step.ID}
+				if step.Name != "" {
+					selfOutput["name"] = step.Name
+				}
+				snapshot["self"] = selfOutput
+				resolvedWorkdir := ResolveStepTemplates(wd, snapshot)
+				if resolvedArgs == nil {
+					resolvedArgs = make(map[string]any)
+				}
+				resolvedArgs["cwd"] = resolvedWorkdir
+			}
+		}
+	}
+
+	// 存储渲染后的输入参数到 StepState
+	if resolvedPrompt != "" || len(resolvedArgs) > 0 {
+		inst.mu.Lock()
+		state.ResolvedInput = &ResolvedInput{
+			Prompt: resolvedPrompt,
+			Args:   resolvedArgs,
+		}
+		inst.mu.Unlock()
 	}
 
 	// 步骤开始回调（通知频道即将执行的步骤）

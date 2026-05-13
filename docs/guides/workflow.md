@@ -260,6 +260,40 @@ Each step supports the following configuration:
 
 > **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
 
+### Working Directory (Workdir)
+
+The working directory specifies the default directory for command execution in `tool_call` steps, avoiding the need to set `cwd` in each step's `args`. When set in `config`, the engine automatically injects workdir into the arguments of all `tool_call` steps that don't explicitly set `cwd`.
+
+```yaml
+config:
+  workdir: "/root/.picoclaw/workspace/my-project"
+```
+
+**Priority**: Explicit `cwd` in step `args` > Workflow `config.workdir`. If `cwd` is already set in a step's `args`, workdir will not be injected, respecting the step's explicit configuration.
+
+**Template References**: workdir supports template variables — you can use template syntax like `{{.vars.key}}`:
+
+```yaml
+vars:
+  project_dir: "/root/.picoclaw/workspace/my-project"
+
+config:
+  workdir: "{{.vars.project_dir}}"
+```
+
+**Per-step override**: If a specific `tool_call` step needs a different working directory, simply set `cwd` in its `args`:
+
+```yaml
+steps:
+  - id: git_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "git status"
+      cwd: "/path/to/other-project"
+```
+
 ### Trigger
 
 Triggers determine when a workflow auto-executes:
@@ -306,8 +340,8 @@ Step A (fetch_weather)                  Step B (summarize)
 ```
 
 Template resolution logic (`conditions.go`):
-1. Regex match `{{.step_id.key}}`, `{{.vars.key}}`, or `{{.self.key}}` pattern
-2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables; `self` references the current step's own properties)
+1. Regex match `{{.step_id.key}}`, `{{.vars.key}}`, `{{.self.key}}`, or `{{.fn.xxx}}` pattern
+2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables; `self` references the current step's own properties; `fn` invokes built-in template functions)
 3. Replace template with actual output content
 4. Applied to `prompt`, `args`, and `when` fields
 
@@ -325,11 +359,40 @@ steps:
       query: "{{.self.name}} news {{.vars.date}}"
 ```
 
+**Template Functions (`fn`)**:
+
+Template references support built-in functions via `{{.fn.function_name}}` or `{{.fn.function_name "argument"}}` syntax. These are evaluated at step execution time to dynamically insert values such as the current time, date, or environment variables — without requiring an extra step.
+
+| Function | Syntax | Description | Example Output |
+|----------|--------|-------------|----------------|
+| `{{.fn.now}}` | Current UTC time | `2026-05-13 08:30:00` |
+| `{{.fn.now_tz "Asia/Shanghai"}}` | Current time in specified timezone | `2026-05-13 16:30:00` |
+| `{{.fn.date}}` | Current UTC date | `2026-05-13` |
+| `{{.fn.date_tz "Asia/Shanghai"}}` | Current date in specified timezone | `2026-05-13` |
+| `{{.fn.unix}}` | Current Unix timestamp | `1747170600` |
+| `{{.fn.env "HOME"}}` | Get environment variable value | `/root` |
+
+Template functions are evaluated in real time at step execution and can be used in `prompt`, `args`, and `when` fields. For example:
+
+```yaml
+vars:
+  tz: "Asia/Shanghai"
+
+steps:
+  - id: today
+    action: agent_prompt
+    prompt: "Today is {{.fn.date_tz "Asia/Shanghai"}}, please generate a daily briefing"
+    output_key: result
+```
+
+> **Template Functions vs Tool Calls**: Template functions are evaluated directly during template resolution — no extra step needed, and the output is concise (e.g., `2026-05-13`). In contrast, calling tools like `get_current_time` via `tool_call` creates an additional step and produces verbose output with prefixes (e.g., `Current time (Asia/Shanghai): 2026-05-13`), requiring extra processing to extract the date. Use template functions when you only need the date/time value.
+
 > **Template reference validation**: All template references are validated when saving a workflow:
 > - `{{.vars.key}}` — the key must be defined in `vars`
 > - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
 > - `{{.self.key}}` — the key only supports `id` and `name`
-> - Referencing non-existent variables, steps, or output keys will raise an error, preventing silent template passthrough at runtime
+> - `{{.fn.xxx}}` — the function name must be a supported template function (now, now_tz, date, date_tz, unix, env)
+> - Referencing non-existent variables, steps, output keys, or functions will raise an error, preventing silent template passthrough at runtime
 
 > **Tool parameter validation**: Required parameters for `tool_call` steps are validated when saving a workflow:
 > - The tool's parameter schema is queried from the tool registry (supports both built-in and MCP tools)
@@ -374,6 +437,7 @@ Each step (including parallel sub-steps and if branch sub-steps) also has its ow
 - **StartedAt** / **FinishedAt**: Start and finish timestamps
 - **Attempts**: Execution attempt count (1 on first execution, increments on retry)
 - **Error**: Error message on failure
+- **ResolvedInput**: Resolved input parameters (containing Prompt and Args), used to display the actual values after template variable substitution in instance details
 
 Unexecuted if-branch sub-steps are automatically marked as `skipped`.
 
@@ -408,6 +472,7 @@ vars:
 
 config:
   failure_strategy: stop  # stop or continue
+  workdir: "/root/.picoclaw/workspace/news"  # optional, default working directory for tool_call steps
   notify_channel: telegram  # optional, default notification channel
   notify_chat_id: "-100xxx" # optional, default notification chat ID
 
