@@ -127,7 +127,7 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
     if (!instance?.finished_at) return null
     const ms = new Date(instance.finished_at).getTime() - new Date(instance.started_at).getTime()
     return formatDuration(ms)
-  }, [instance?.finished_at, instance?.started_at])
+  }, [instance])
 
   const stepStats = useMemo(() => {
     if (!instance) return { total: 0, completed: 0 }
@@ -521,10 +521,8 @@ const StepTreeNode = memo(function StepTreeNode({
   t: TFunction
   depth: number
 }) {
-  const state = stepStates[step.id]
-  if (!state) return null
-
   const [showResolved, setShowResolved] = useState(true)
+  const state = stepStates[step.id]
 
   const childSteps = step.action === "parallel"
     ? step.parallel || []
@@ -533,9 +531,11 @@ const StepTreeNode = memo(function StepTreeNode({
       : []
 
   const duration = useMemo(() => {
-    if (!state.started_at || !state.finished_at) return null
+    if (!state?.started_at || !state?.finished_at) return null
     return formatDuration(new Date(state.finished_at).getTime() - new Date(state.started_at).getTime())
-  }, [state.started_at, state.finished_at])
+  }, [state?.started_at, state?.finished_at])
+
+  if (!state) return null
 
   const hasRawInput = !!(step.prompt || (step.args && Object.keys(step.args).length > 0))
   const hasResolvedInput = !!(state.resolved_input?.prompt || (state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0))

@@ -3,6 +3,7 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -392,6 +393,7 @@ func (s *Service) ShowWorkflow(name string) (*commands.WorkflowInfo, []string, e
 		TriggerType: describeTriggerType(wf.Triggers),
 		StepCount:   len(wf.Steps),
 		Vars:        wf.Vars,
+		Triggers:    formatTriggers(wf.Triggers),
 	}
 	return info, stepIDs, nil
 }
@@ -426,7 +428,47 @@ func (s *Service) InstancesForCommand(name string) ([]commands.WorkflowInstanceI
 	return result, nil
 }
 
-// describeTriggerType 返回人类可读的触发器类型标签。
+// CronListForCommand 返回所有待执行的 Cron 任务列表。
+func (s *Service) CronListForCommand() []commands.CronTaskInfo {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var result []commands.CronTaskInfo
+
+	for _, wf := range s.workflows {
+		if !wf.Enabled {
+			continue
+		}
+		for _, trigger := range wf.Triggers {
+			if trigger.Cron == "" {
+				continue
+			}
+			tz := trigger.TZ
+			if tz == "" {
+				tz = "UTC"
+			}
+			// 计算下次执行时间
+			loc, err := time.LoadLocation(tz)
+			if err != nil {
+				loc = time.UTC
+			}
+			// 使用 gronx 包级别的 NextTick 函数
+			nextRun, err := gronx.NextTick(trigger.Cron, false)
+			if err != nil {
+				continue
+			}
+			result = append(result, commands.CronTaskInfo{
+				WorkflowName: wf.Name,
+				CronExpr:     trigger.Cron,
+				Timezone:     tz,
+				NextRun:      nextRun.In(loc).Format("2006-01-02 15:04:05 MST"),
+			})
+		}
+	}
+	return result
+}
+
+// describeTriggerType 返回人类可读的触发器类型标签（用于列表显示）。
 func describeTriggerType(triggers []Trigger) string {
 	if len(triggers) == 0 {
 		return "manual"
@@ -434,16 +476,39 @@ func describeTriggerType(triggers []Trigger) string {
 	var parts []string
 	for _, t := range triggers {
 		if t.Cron != "" {
-			parts = append(parts, "cron:"+t.Cron)
-		}
-		if t.Event != "" {
-			parts = append(parts, "event:"+t.Event)
+			parts = append(parts, "cron")
+		} else if t.Event != "" {
+			parts = append(parts, "event")
+		} else {
+			parts = append(parts, "manual")
 		}
 	}
 	if len(parts) == 0 {
 		return "manual"
 	}
-	return fmt.Sprintf("%s", parts[0])
+	return strings.Join(parts, ", ")
+}
+
+// formatTriggers 返回格式化的触发器详情列表。
+func formatTriggers(triggers []Trigger) []string {
+	if len(triggers) == 0 {
+		return []string{"manual"}
+	}
+	var result []string
+	for i, t := range triggers {
+		if t.Cron != "" {
+			tz := t.TZ
+			if tz == "" {
+				tz = "UTC"
+			}
+			result = append(result, fmt.Sprintf("%d. cron: %s (tz: %s)", i+1, t.Cron, tz))
+		} else if t.Event != "" {
+			result = append(result, fmt.Sprintf("%d. event: %s", i+1, t.Event))
+		} else {
+			result = append(result, fmt.Sprintf("%d. manual", i+1))
+		}
+	}
+	return result
 }
 
 // GetInstances 获取工作流的执行历史。

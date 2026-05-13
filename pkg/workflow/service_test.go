@@ -681,9 +681,11 @@ func TestDescribeTriggerType(t *testing.T) {
 		want     string
 	}{
 		{"empty", nil, "manual"},
-		{"cron", []Trigger{{Cron: "0 8 * * *"}}, "cron:0 8 * * *"},
-		{"event", []Trigger{{Event: "tool.end"}}, "event:tool.end"},
-		{"both", []Trigger{{Cron: "0 8 * * *"}, {Event: "tool.end"}}, "cron:0 8 * * *"},
+		{"cron", []Trigger{{Cron: "0 8 * * *"}}, "cron"},
+		{"event", []Trigger{{Event: "tool.end"}}, "event"},
+		{"both", []Trigger{{Cron: "0 8 * * *"}, {Event: "tool.end"}}, "cron, event"},
+		{"multiple_cron", []Trigger{{Cron: "0 8 * * *"}, {Cron: "0 12 * * *"}}, "cron, cron"},
+		{"manual", []Trigger{{}}, "manual"},
 	}
 
 	for _, tt := range tests {

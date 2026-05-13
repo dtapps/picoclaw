@@ -64,6 +64,11 @@ func workflowCommand() Definition {
 				ArgsUsage:   "<instance-id>",
 				Handler:     workflowStopHandler(),
 			},
+			{
+				Name:        "cron",
+				Description: "List upcoming cron tasks",
+				Handler:     workflowCronListHandler(),
+			},
 		},
 	}
 }
@@ -137,7 +142,10 @@ func workflowShowHandler() Handler {
 		sb.WriteString(fmt.Sprintf("Workflow: %s\n", info.Name))
 		sb.WriteString(fmt.Sprintf("Description: %s\n", info.Description))
 		sb.WriteString(fmt.Sprintf("Enabled: %v\n", info.Enabled))
-		sb.WriteString(fmt.Sprintf("Triggers: %s\n", info.TriggerType))
+		sb.WriteString(fmt.Sprintf("Triggers (%d):\n", len(info.Triggers)))
+		for _, t := range info.Triggers {
+			sb.WriteString(fmt.Sprintf("  %s\n", t))
+		}
 		sb.WriteString(fmt.Sprintf("Steps (%d):\n", len(steps)))
 		for i, stepID := range steps {
 			sb.WriteString(fmt.Sprintf("  %d. %s\n", i+1, stepID))
@@ -267,5 +275,26 @@ func workflowStopHandler() Handler {
 		}
 
 		return req.Reply(fmt.Sprintf("Instance '%s' stopped", instanceID))
+	}
+}
+
+func workflowCronListHandler() Handler {
+	return func(ctx context.Context, req Request, rt *Runtime) error {
+		if rt == nil || rt.WorkflowCronList == nil {
+			return req.Reply("Workflow service not available")
+		}
+
+		tasks := rt.WorkflowCronList()
+		if len(tasks) == 0 {
+			return req.Reply("No cron tasks scheduled")
+		}
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf("Upcoming Cron Tasks (%d):\n", len(tasks)))
+		for _, t := range tasks {
+			sb.WriteString(fmt.Sprintf("- %s: %s (tz: %s) → %s\n",
+				t.WorkflowName, t.CronExpr, t.Timezone, t.NextRun))
+		}
+		return req.Reply(sb.String())
 	}
 }

@@ -868,6 +868,134 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
   )
 }
 
+// --- 触发器编辑器 ---
+import type { TriggerConfig } from "./workflow-definition"
+
+function TriggersEditor({ labels }: { labels: RootEditorLabels }) {
+  const { t } = useTranslation()
+  const { properties, setProperty } = useRootEditor()
+
+  const triggers = (properties.triggers as TriggerConfig[]) || [{ type: "manual" }]
+
+  const handleAddTrigger = () => {
+    const updated = [...triggers, { type: "manual" as const }]
+    setProperty("triggers", updated)
+  }
+
+  const handleRemoveTrigger = (index: number) => {
+    if (triggers.length <= 1) {
+      toast.warning(t("pages.workflows.at_least_one_trigger", "At least one trigger is required"))
+      return
+    }
+    const updated = triggers.filter((_, i) => i !== index)
+    setProperty("triggers", updated)
+  }
+
+  const handleTypeChange = (index: number, type: TriggerConfig["type"]) => {
+    const updated = [...triggers]
+    updated[index] = { type }
+    setProperty("triggers", updated)
+  }
+
+  const handleCronChange = (index: number, field: "cron" | "tz", value: string) => {
+    const updated = [...triggers]
+    updated[index] = { ...updated[index], [field]: value }
+    setProperty("triggers", updated)
+  }
+
+  const handleEventChange = (index: number, value: string) => {
+    const updated = [...triggers]
+    updated[index] = { ...updated[index], event: value }
+    setProperty("triggers", updated)
+  }
+
+  return (
+    <div className="sqd-editor-field">
+      <label>{labels.trigger}</label>
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {triggers.map((trigger, index) => (
+          <div key={index} className="border rounded p-2 space-y-2">
+            <div className="flex items-center gap-2">
+              <select
+                value={trigger.type}
+                onChange={(e) => handleTypeChange(index, e.target.value as TriggerConfig["type"])}
+                className="flex-1"
+              >
+                <option value="manual">{labels.triggerManual}</option>
+                <option value="cron">{labels.triggerCron}</option>
+                <option value="event">{labels.triggerEvent}</option>
+              </select>
+              <button
+                type="button"
+                onClick={() => handleRemoveTrigger(index)}
+                style={{
+                  background: "transparent",
+                  border: "1px solid var(--input)",
+                  borderRadius: "var(--radius)",
+                  color: "var(--destructive)",
+                  cursor: "pointer",
+                  fontSize: "0.75rem",
+                  padding: "2px 6px",
+                  lineHeight: 1,
+                }}
+                title={t("pages.workflows.remove_trigger", "Remove Trigger")}
+              >
+                ×
+              </button>
+            </div>
+            {trigger.type === "cron" && (
+              <div className="sqd-editor-grid">
+                <div className="sqd-editor-field">
+                  <label>Cron</label>
+                  <input
+                    value={trigger.cron || ""}
+                    onChange={(e) => handleCronChange(index, "cron", e.target.value)}
+                    placeholder="0 9 * * *"
+                  />
+                </div>
+                <div className="sqd-editor-field">
+                  <label>Timezone</label>
+                  <input
+                    value={trigger.tz || ""}
+                    onChange={(e) => handleCronChange(index, "tz", e.target.value)}
+                    placeholder="Asia/Shanghai"
+                  />
+                </div>
+              </div>
+            )}
+            {trigger.type === "event" && (
+              <div className="sqd-editor-field">
+                <label>Event</label>
+                <input
+                  value={trigger.event || ""}
+                  onChange={(e) => handleEventChange(index, e.target.value)}
+                  placeholder="agent.tool.exec_end"
+                />
+              </div>
+            )}
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={handleAddTrigger}
+          style={{
+            background: "transparent",
+            border: "1px dashed var(--input)",
+            borderRadius: "var(--radius)",
+            color: "var(--muted-foreground)",
+            cursor: "pointer",
+            fontSize: "0.75rem",
+            padding: "4px 8px",
+            textAlign: "left",
+          }}
+        >
+          + {t("pages.workflows.add_trigger", "Add Trigger")}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // --- 根属性编辑器 ---
 
 interface RootEditorLabels {
@@ -971,47 +1099,7 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
           rows={2}
         />
       </div>
-      <div className="sqd-editor-field">
-        <label>{labels.trigger}</label>
-        <select
-          value={(properties.triggerType as string) || "manual"}
-          onChange={(e) => setProperty("triggerType", e.target.value)}
-        >
-          <option value="manual">{labels.triggerManual}</option>
-          <option value="cron">{labels.triggerCron}</option>
-          <option value="event">{labels.triggerEvent}</option>
-        </select>
-      </div>
-      {properties.triggerType === "cron" && (
-        <div className="sqd-editor-grid">
-          <div className="sqd-editor-field">
-            <label>Cron</label>
-            <input
-              value={(properties.cronExpr as string) || ""}
-              onChange={(e) => setProperty("cronExpr", e.target.value)}
-              placeholder="0 9 * * *"
-            />
-          </div>
-          <div className="sqd-editor-field">
-            <label>Timezone</label>
-            <input
-              value={(properties.triggerTZ as string) || ""}
-              onChange={(e) => setProperty("triggerTZ", e.target.value)}
-              placeholder="Asia/Shanghai"
-            />
-          </div>
-        </div>
-      )}
-      {properties.triggerType === "event" && (
-        <div className="sqd-editor-field">
-          <label>Event</label>
-          <input
-            value={(properties.eventKind as string) || ""}
-            onChange={(e) => setProperty("eventKind", e.target.value)}
-            placeholder="agent.tool.exec_end"
-          />
-        </div>
-      )}
+      <TriggersEditor labels={labels} />
       <div className="sqd-editor-field">
         <label>{labels.failureStrategy}</label>
         <select
