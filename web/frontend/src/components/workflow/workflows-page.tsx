@@ -10,6 +10,7 @@ import {
   IconTrash,
   IconUpload,
   IconExternalLink,
+  IconClock,
 } from "@tabler/icons-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
 import { useTranslation } from "react-i18next"
@@ -17,24 +18,25 @@ import { useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 
-import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent } from "@/api/workflow"
+import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent, CronTaskInfo } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
   formatTriggerDescription,
   getInstanceStatusColor,
+  getCronTasks,
 } from "@/api/workflow"
 import { getWorkflowInstances, getWorkflowInstance, getWorkflow, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -89,6 +91,9 @@ export function WorkflowsPage() {
   const [importOpen, setImportOpen] = useState(false)
   const [importPending, setImportPending] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
+  const [cronDialogOpen, setCronDialogOpen] = useState(false)
+  const [cronTasks, setCronTasks] = useState<CronTaskInfo[]>([])
+  const [cronLoading, setCronLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
 
@@ -158,6 +163,17 @@ export function WorkflowsPage() {
     if (file) await doImport(file)
   }
 
+  // 打开 Cron 调度弹窗时加载
+  useEffect(() => {
+    if (cronDialogOpen) {
+      setCronLoading(true)
+      getCronTasks()
+        .then((data) => setCronTasks(data.tasks || []))
+        .catch(() => setCronTasks([]))
+        .finally(() => setCronLoading(false))
+    }
+  }, [cronDialogOpen])
+
   if (error) {
     return (
       <div className="bg-background flex h-full flex-col">
@@ -184,6 +200,10 @@ export function WorkflowsPage() {
     <div className="bg-background flex h-full flex-col">
       <PageHeader title={t("navigation.workflows", "Workflows")}>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCronDialogOpen(true)}>
+            <IconClock className="mr-2 h-4 w-4" />
+            {t("pages.workflows.cron_schedule", "Cron Schedule")}
+          </Button>
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             {t("pages.workflows.import", "Import")}
@@ -299,6 +319,7 @@ export function WorkflowsPage() {
                 <WorkflowCard
                   key={wf.name}
                   workflow={wf}
+                  nextRun={cronTasks.find((ct) => ct.workflow_name === wf.name)?.next_run || null}
                   onToggle={(name, checked) => {
                     if (checked) {
                       handleToggle(name, checked)
@@ -383,6 +404,51 @@ export function WorkflowsPage() {
         confirmLabel={t("common.disable", "Disable")}
         isPending={isToggling}
       />
+
+      {/* Cron 调度弹窗 */}
+      <Dialog open={cronDialogOpen} onOpenChange={setCronDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IconClock className="h-5 w-5" />
+              {t("pages.workflows.cron_schedule", "Cron Schedule")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            {cronLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                {t("common.loading", "Loading...")}
+              </div>
+            ) : cronTasks.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                {t("pages.workflows.no_cron_tasks", "No scheduled cron tasks")}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {cronTasks.map((task) => (
+                  <div
+                    key={`${task.workflow_name}-${task.cron_expr}`}
+                    className="flex items-center justify-between rounded-md border px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{task.workflow_name}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <code className="rounded bg-muted px-1.5 py-0.5">{task.cron_expr}</code>
+                        {task.timezone && task.timezone !== "UTC" && (
+                          <span>({task.timezone})</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="ml-3 shrink-0 text-sm font-medium text-blue-600 whitespace-nowrap">
+                      → {task.next_run}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <WorkflowImportDialog
         open={importOpen}
@@ -699,6 +765,7 @@ function InstanceDialog({
 
 function WorkflowCard({
   workflow,
+  nextRun,
   onToggle,
   onRun,
   onStop,
@@ -709,6 +776,7 @@ function WorkflowCard({
   isRunning,
 }: {
   workflow: WorkflowListItem
+  nextRun: string | null
   onToggle: (name: string, enabled: boolean) => void
   onRun: (name: string) => void
   onStop: (name: string) => void
@@ -761,13 +829,19 @@ function WorkflowCard({
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <Badge variant="outline">{triggerLabel}</Badge>
           <Badge variant="secondary">
             {t("pages.workflows.step_count", "{{count}} steps", { count: workflow.step_count })}
           </Badge>
           {workflow.trigger_type !== "manual" && (
             <span className="text-muted-foreground text-xs ml-1">{triggerDesc}</span>
+          )}
+          {nextRun && (
+            <span className="flex items-center gap-1 text-xs text-blue-600">
+              <IconClock className="h-3 w-3" />
+              → {nextRun}
+            </span>
           )}
         </div>
 

@@ -1196,6 +1196,8 @@
       "vars_remove": "Remove",
       "add_trigger": "Add Trigger",
       "remove_trigger": "Remove Trigger",
+      "cron_schedule": "Cron Schedule",
+      "no_cron_tasks": "No scheduled cron tasks",
       "at_least_one_trigger": "At least one trigger is required",
       "when": "Pre-condition",
       "when_placeholder": "Pre-execution condition expression",

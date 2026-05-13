@@ -284,6 +284,19 @@ export function formatTriggerType(triggers: Trigger[]): string {
   return "manual"
 }
 
+export interface CronTaskInfo {
+  workflow_name: string
+  cron_expr: string
+  timezone: string
+  next_run: string
+}
+
+export async function getCronTasks(): Promise<{ tasks: CronTaskInfo[] }> {
+  const res = await launcherFetch("/api/workflow/cron-tasks")
+  if (!res.ok) throw new Error("Failed to fetch cron tasks")
+  return res.json()
+}
+
 export function formatTriggerDescription(triggers: Trigger[], t?: (key: string, fallback: string) => string): string {
   if (triggers.length === 0) {
     return t ? t("pages.workflows.trigger_manual", "Manual") : "Manual"

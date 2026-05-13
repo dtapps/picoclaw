@@ -30,20 +30,25 @@ func (h *Handler) registerWorkflowRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/workflows/{name}/instances/{id}/stream", h.handleStreamInstance) // 实例SSE流
 	mux.HandleFunc("DELETE /api/workflows/{name}/instances/{id}", h.handleDeleteInstance)     // 删除实例
 	mux.HandleFunc("POST /api/workflows/import", h.handleImportWorkflow)                      // 导入
+	mux.HandleFunc("GET /api/workflow/cron-tasks", h.handleCronTasks)                         // Cron 调度列表
 }
 
-// getWorkflowStore 从配置创建持久化存储实例。
+// getWorkflowStore 从配置创建持久化存储实例（懒初始化 + 缓存，避免每次请求重复读配置文件）。
 // CRUD 操作不依赖运行中的网关进程，可直接通过文件系统读写工作流定义。
 func (h *Handler) getWorkflowStore() (*workflow.PersistStore, error) {
-	cfg, err := config.LoadConfig(h.configPath)
-	if err != nil {
-		return nil, err
-	}
-	workspace := cfg.WorkspacePath()
-	if workspace == "" {
-		workspace = ".picoclaw/workspace"
-	}
-	return workflow.NewPersistStore(workspace), nil
+	h.workflowStoreOnce.Do(func() {
+		cfg, err := config.LoadConfig(h.configPath)
+		if err != nil {
+			h.workflowStoreErr = err
+			return
+		}
+		workspace := cfg.WorkspacePath()
+		if workspace == "" {
+			workspace = ".picoclaw/workspace"
+		}
+		h.workflowStore = workflow.NewPersistStore(workspace)
+	})
+	return h.workflowStore, h.workflowStoreErr
 }
 
 // gatewayAvailableForWorkflow 检查网关是否运行且可用于代理请求。
@@ -79,6 +84,53 @@ func (h *Handler) proxyToGateway(w http.ResponseWriter, method, path string, bod
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(resp.StatusCode)
 	w.Write(respBody)
+}
+
+// proxyToGatewayFast 向网关内部端点发送请求（1秒超时），用于实例查询等对延迟敏感的接口。
+// 返回 (响应体, 是否成功)。失败时快速降级，不阻塞调用方。
+func (h *Handler) proxyToGatewayFast(method, path string, body io.Reader) ([]byte, bool) {
+	if !h.gatewayAvailableForWorkflow() {
+		return nil, false
+	}
+	target := h.gatewayProxyURL()
+	url := target.Scheme + "://" + target.Host + path
+
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		return nil, false
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{Timeout: 1 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, false
+	}
+	defer resp.Body.Close()
+
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil || resp.StatusCode != http.StatusOK {
+		return nil, false
+	}
+	return respBody, true
+}
+
+// fallbackLoadInstances 从文件系统加载实例列表（网关代理降级路径）。
+func (h *Handler) fallbackLoadInstances(w http.ResponseWriter, workflowName string) {
+	store, err := h.getWorkflowStore()
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"instances": []any{}})
+		return
+	}
+	instances, err := store.LoadInstances(workflowName)
+	if err != nil {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"instances": []any{}})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"instances": instances})
 }
 
 // triggerGatewayReload 通知网关进程重新加载工作流定义。
@@ -302,6 +354,18 @@ func (h *Handler) handleImportWorkflow(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(makeDetailResponse(wf))
 }
 
+// handleCronTasks 获取所有启用的工作流 cron 调度列表（下次运行时间）。
+// 通过反向代理转发到网关进程的内部 API；网关不可用时返回空列表。
+func (h *Handler) handleCronTasks(w http.ResponseWriter, r *http.Request) {
+	if body, ok := h.proxyToGatewayFast(http.MethodGet, "/internal/workflow/cron_tasks", nil); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"tasks": []any{}})
+}
+
 // handleUpdateWorkflow 更新已有工作流的定义。
 func (h *Handler) handleUpdateWorkflow(w http.ResponseWriter, r *http.Request) {
 	store, err := h.getWorkflowStore()
@@ -453,75 +517,34 @@ func (h *Handler) handleToggleWorkflow(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleListInstances 获取指定工作流的执行实例列表。
-// 优先通过反向代理转发到网关进程的内部 API；
-// 网关不可用或内部端点不存在时，降级从文件系统读取历史记录。
+// 优先通过反向代理转发到网关进程的内部 API（1秒超时）；
+// 网关不可用或超时时，降级从文件系统读取历史记录。
 func (h *Handler) handleListInstances(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 
-	// 尝试代理到网关内部端点
-	if h.gatewayAvailableForWorkflow() {
-		target := h.gatewayProxyURL()
-		url := target.Scheme + "://" + target.Host + "/internal/workflow/instances?name=" + name
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err == nil {
-			client := &http.Client{Timeout: 5 * time.Second}
-			resp, err := client.Do(req)
-			if err == nil {
-				defer resp.Body.Close()
-				respBody, _ := io.ReadAll(resp.Body)
-				if resp.StatusCode == http.StatusOK {
-					w.Header().Set("Content-Type", "application/json")
-					w.Write(respBody)
-					return
-				}
-			}
-		}
+	// 尝试代理到网关内部端点（短超时，快速降级）
+	if body, ok := h.proxyToGatewayFast(http.MethodGet, "/internal/workflow/instances?name="+name, nil); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+		return
 	}
 
 	// 降级：直接从文件系统读取实例数据
-	store, err := h.getWorkflowStore()
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"instances": []any{}})
-		return
-	}
-
-	instances, err := store.LoadInstances(name)
-	if err != nil {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"instances": []any{}})
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]any{"instances": instances})
+	h.fallbackLoadInstances(w, name)
 }
 
 // handleGetInstance 获取指定工作流实例的详细状态。
-// 优先通过反向代理转发到网关进程的内部 API；
-// 网关不可用或内部端点不存在时，降级从文件系统读取。
+// 优先通过反向代理转发到网关进程的内部 API（1秒超时）；
+// 网关不可用或超时时，降级从文件系统读取。
 func (h *Handler) handleGetInstance(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	id := r.PathValue("id")
 
 	// 尝试代理到网关内部端点
-	if h.gatewayAvailableForWorkflow() {
-		target := h.gatewayProxyURL()
-		url := target.Scheme + "://" + target.Host + "/internal/workflow/instance?name=" + name + "&id=" + id
-		req, err := http.NewRequest(http.MethodGet, url, nil)
-		if err == nil {
-			client := &http.Client{Timeout: 5 * time.Second}
-			resp, err := client.Do(req)
-			if err == nil {
-				defer resp.Body.Close()
-				respBody, _ := io.ReadAll(resp.Body)
-				if resp.StatusCode == http.StatusOK {
-					w.Header().Set("Content-Type", "application/json")
-					w.Write(respBody)
-					return
-				}
-			}
-		}
+	if body, ok := h.proxyToGatewayFast(http.MethodGet, "/internal/workflow/instance?name="+name+"&id="+id, nil); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+		return
 	}
 
 	// 降级：直接从文件系统读取实例数据
@@ -542,31 +565,18 @@ func (h *Handler) handleGetInstance(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleDeleteInstance 删除指定工作流实例记录。
-// 优先通过反向代理转发到网关进程的内部 API；
+// 优先通过反向代理转发到网关进程的内部 API（1秒超时）；
 // 网关不可用时，降级从文件系统删除。
 func (h *Handler) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
 	id := r.PathValue("id")
 
 	// 尝试代理到网关内部端点
-	if h.gatewayAvailableForWorkflow() {
-		target := h.gatewayProxyURL()
-		url := target.Scheme + "://" + target.Host + "/internal/workflow/delete_instance"
-		body := strings.NewReader(fmt.Sprintf(`{"name":%q,"id":%q}`, name, id))
-		req, err := http.NewRequest(http.MethodPost, url, body)
-		if err == nil {
-			req.Header.Set("Content-Type", "application/json")
-			client := &http.Client{Timeout: 5 * time.Second}
-			resp, err := client.Do(req)
-			if err == nil {
-				defer resp.Body.Close()
-				if resp.StatusCode == http.StatusOK {
-					w.Header().Set("Content-Type", "application/json")
-					json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
-					return
-				}
-			}
-		}
+	body := strings.NewReader(fmt.Sprintf(`{"name":%q,"id":%q}`, name, id))
+	if _, ok := h.proxyToGatewayFast(http.MethodPost, "/internal/workflow/delete_instance", body); ok {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+		return
 	}
 
 	// 降级：直接从文件系统删除

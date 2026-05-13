@@ -41,6 +41,7 @@ func (a *InternalAPI) RegisterOnMux(mux HandlerMux) {
 	mux.HandleFunc("/internal/workflow/delete_instance", a.handleDeleteInstance)
 	mux.HandleFunc("/internal/workflow/stream", a.handleStream)
 	mux.HandleFunc("/internal/workflow/clear_cache", a.handleClearCache)
+	mux.HandleFunc("/internal/workflow/cron_tasks", a.handleCronTasks)
 }
 
 // handleRun 手动触发工作流执行。
@@ -303,4 +304,16 @@ func (a *InternalAPI) handleClearCache(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
+}
+
+// handleCronTasks 获取所有启用工作流的 cron 调度列表（下次运行时间）。
+func (a *InternalAPI) handleCronTasks(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	tasks := a.service.CronListForCommand()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"tasks": tasks})
 }
