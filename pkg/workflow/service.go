@@ -1258,17 +1258,10 @@ func (s *Service) clearTriggerCache() {
 }
 
 // handleWorkflowCompleteEvent 处理工作流完成事件，更新 LastRunAt 和 LastRunStatus。
+// 注意：先从磁盘读取最新工作流定义，避免用内存中的旧数据覆盖用户修改。
 func (s *Service) handleWorkflowCompleteEvent(evt runtimeevents.Event) {
 	workflowName := evt.Source.Name
 	if workflowName == "" {
-		return
-	}
-
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	wf, ok := s.workflows[workflowName]
-	if !ok {
 		return
 	}
 
@@ -1287,16 +1280,31 @@ func (s *Service) handleWorkflowCompleteEvent(evt runtimeevents.Event) {
 		}
 	}
 
+	// 先从磁盘读取最新工作流定义，避免覆盖用户修改
+	wf, err := s.store.LoadSingleWorkflow(workflowName)
+	if err != nil {
+		logger.ErrorCF("workflow", "加载工作流失败，无法更新状态",
+			map[string]any{"workflow": workflowName, "error": err.Error()})
+		return
+	}
+
 	// 更新工作流状态
 	now := time.Now()
 	wf.LastRunAt = &now
 	wf.LastRunStatus = status
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	// 保存到磁盘
 	if err := s.store.SaveWorkflow(wf); err != nil {
 		logger.ErrorCF("workflow", "保存工作流状态失败",
 			map[string]any{"workflow": workflowName, "error": err.Error()})
+		return
 	}
+
+	// 同时更新内存中的缓存
+	s.workflows[workflowName] = wf
 
 	logger.DebugCF("workflow", "更新工作流最后运行状态",
 		map[string]any{"workflow": workflowName, "status": status, "time": now})
