@@ -315,11 +315,17 @@ export function WorkflowsPage() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredWorkflows.map((wf) => (
+              {filteredWorkflows.map((wf) => {
+                // 获取该工作流的所有 cron 任务，找出最近的下次执行时间
+                const workflowCronTasks = cronTasks.filter((ct) => ct.workflow_name === wf.name)
+                const nextRun = workflowCronTasks.length > 0
+                  ? workflowCronTasks.sort((a, b) => new Date(a.next_run).getTime() - new Date(b.next_run).getTime())[0].next_run
+                  : null
+                return (
                 <WorkflowCard
                   key={wf.name}
                   workflow={wf}
-                  nextRun={cronTasks.find((ct) => ct.workflow_name === wf.name)?.next_run || null}
+                  nextRun={nextRun}
                   onToggle={(name, checked) => {
                     if (checked) {
                       handleToggle(name, checked)
@@ -347,7 +353,8 @@ export function WorkflowsPage() {
                   isToggling={isToggling}
                   isRunning={isRunning}
                 />
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
