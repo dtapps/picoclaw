@@ -290,10 +290,10 @@ func workflowCronListHandler() Handler {
 		}
 
 		var sb strings.Builder
-		sb.WriteString(fmt.Sprintf("Upcoming Cron Tasks (%d):\n", len(tasks)))
+		sb.WriteString(fmt.Sprintf("Upcoming Scheduled Tasks (%d):\n", len(tasks)))
 		for _, t := range tasks {
-			sb.WriteString(fmt.Sprintf("- %s: %s (tz: %s) → %s\n",
-				t.WorkflowName, t.CronExpr, t.Timezone, t.NextRun))
+			sb.WriteString(fmt.Sprintf("- %s [%s]: %s (tz: %s) → %s\n",
+				t.WorkflowName, t.TriggerType, t.Schedule, t.Timezone, t.NextRun))
 		}
 		return req.Reply(sb.String())
 	}

@@ -4,9 +4,72 @@ import { launcherFetch } from "./http"
 
 export interface Trigger {
   cron?: string
+  at?: string
+  interval?: string
   event?: string
+  event_filters?: Record<string, string>
+  event_mapping?: Record<string, string>
   tz?: string
 }
+
+// 标准事件类型
+export const EventTypes = {
+  // 工具相关事件
+  TOOL_EXEC_START: "agent.tool.exec_start",
+  TOOL_EXEC_END: "agent.tool.exec_end",
+  TOOL_EXEC_ERROR: "agent.tool.exec_error",
+
+  // Agent 相关事件
+  AGENT_PROMPT_START: "agent.prompt.start",
+  AGENT_PROMPT_END: "agent.prompt.end",
+  AGENT_RESPONSE: "agent.response",
+
+  // 工作流相关事件
+  WORKFLOW_START: "workflow.instance.start",
+  WORKFLOW_COMPLETE: "workflow.instance.complete",
+  WORKFLOW_ERROR: "workflow.instance.error",
+
+  // 系统相关事件
+  SYSTEM_STARTUP: "system.startup",
+  SYSTEM_SHUTDOWN: "system.shutdown",
+} as const
+
+export type EventType = (typeof EventTypes)[keyof typeof EventTypes]
+
+// 事件类型分组
+export const EventTypeGroups = [
+  {
+    label: "工具事件",
+    options: [
+      { value: EventTypes.TOOL_EXEC_START, label: "工具开始执行", description: "当工具开始执行时触发" },
+      { value: EventTypes.TOOL_EXEC_END, label: "工具执行完成", description: "当工具成功执行完成时触发" },
+      { value: EventTypes.TOOL_EXEC_ERROR, label: "工具执行错误", description: "当工具执行出错时触发" },
+    ],
+  },
+  {
+    label: "Agent 事件",
+    options: [
+      { value: EventTypes.AGENT_PROMPT_START, label: "Agent 开始处理", description: "当 Agent 开始处理提示词时触发" },
+      { value: EventTypes.AGENT_PROMPT_END, label: "Agent 处理完成", description: "当 Agent 完成提示词处理时触发" },
+      { value: EventTypes.AGENT_RESPONSE, label: "Agent 响应", description: "当 Agent 产生响应时触发" },
+    ],
+  },
+  {
+    label: "工作流事件",
+    options: [
+      { value: EventTypes.WORKFLOW_START, label: "工作流开始", description: "当工作流实例开始时触发" },
+      { value: EventTypes.WORKFLOW_COMPLETE, label: "工作流完成", description: "当工作流实例成功完成时触发" },
+      { value: EventTypes.WORKFLOW_ERROR, label: "工作流错误", description: "当工作流实例执行出错时触发" },
+    ],
+  },
+  {
+    label: "系统事件",
+    options: [
+      { value: EventTypes.SYSTEM_STARTUP, label: "系统启动", description: "当系统启动时触发" },
+      { value: EventTypes.SYSTEM_SHUTDOWN, label: "系统关闭", description: "当系统关闭时触发" },
+    ],
+  },
+]
 
 export interface Step {
   id: string
@@ -44,6 +107,9 @@ export interface Workflow {
   config: WorkflowConfig
   createdAt: string
   updatedAt: string
+  nextRunAt?: string
+  lastRunAt?: string
+  lastRunStatus?: "running" | "success" | "failed"
 }
 
 export interface WorkflowListItem {
@@ -286,7 +352,8 @@ export function formatTriggerType(triggers: Trigger[]): string {
 
 export interface CronTaskInfo {
   workflow_name: string
-  cron_expr: string
+  trigger_type: "cron" | "at" | "interval"
+  schedule: string
   timezone: string
   next_run: string
 }

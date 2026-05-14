@@ -1013,6 +1013,8 @@
       "finished_at": "Finalizado",
       "trigger_manual": "Manual",
       "trigger_cron": "Cron",
+      "trigger_at": "Agendado (Uma vez)",
+      "trigger_interval": "Intervalo",
       "trigger_event": "Evento",
       "remove_step": "Remover",
       "prompt_placeholder": "Prompt para o agente...",

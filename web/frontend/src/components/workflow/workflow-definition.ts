@@ -16,9 +16,13 @@ export const COMPONENT_SWITCH = "switch"
 
 /** 触发器配置 */
 export interface TriggerConfig {
-  type: "manual" | "cron" | "event"
+  type: "manual" | "cron" | "at" | "interval" | "event"
   cron?: string
+  at?: string
+  interval?: string
   event?: string
+  event_filters?: Record<string, string>
+  event_mapping?: Record<string, string>
   tz?: string
 }
 
@@ -29,6 +33,10 @@ export function workflowToDefinition(wf: Workflow): Definition {
   for (const t of wf.triggers || []) {
     if (t.cron) {
       triggers.push({ type: "cron", cron: t.cron, tz: t.tz || "" })
+    } else if (t.at) {
+      triggers.push({ type: "at", at: t.at, tz: t.tz || "" })
+    } else if (t.interval) {
+      triggers.push({ type: "interval", interval: t.interval, tz: t.tz || "" })
     } else if (t.event) {
       triggers.push({ type: "event", event: t.event })
     }
@@ -147,6 +155,10 @@ export function definitionToWorkflow(def: Definition): {
     if (t.type === "cron" && t.cron) {
       // 始终包含 tz 字段，即使为空字符串
       triggers.push({ cron: t.cron, tz: t.tz })
+    } else if (t.type === "at" && t.at) {
+      triggers.push({ at: t.at, tz: t.tz })
+    } else if (t.type === "interval" && t.interval) {
+      triggers.push({ interval: t.interval, tz: t.tz })
     } else if (t.type === "event" && t.event) {
       triggers.push({ event: t.event })
     }
