@@ -33,6 +33,7 @@ import {
 
 import { getTools, type ToolParamProperty } from "@/api/tools"
 import { getMCPConfig, getMCPServerDetails } from "@/api/mcp"
+import { EventTypeGroups } from "@/api/workflow"
 
 // --- 步骤图标 ---
 
@@ -903,9 +904,33 @@ function TriggersEditor({ labels }: { labels: RootEditorLabels }) {
     setProperty("triggers", updated)
   }
 
+  const handleAtChange = (index: number, field: "at" | "tz", value: string) => {
+    const updated = [...triggers]
+    updated[index] = { ...updated[index], [field]: value }
+    setProperty("triggers", updated)
+  }
+
+  const handleIntervalChange = (index: number, field: "interval" | "tz", value: string) => {
+    const updated = [...triggers]
+    updated[index] = { ...updated[index], [field]: value }
+    setProperty("triggers", updated)
+  }
+
   const handleEventChange = (index: number, value: string) => {
     const updated = [...triggers]
     updated[index] = { ...updated[index], event: value }
+    setProperty("triggers", updated)
+  }
+
+  const handleEventFilterChange = (index: number, key: string, value: string) => {
+    const updated = [...triggers]
+    const currentFilters = updated[index].event_filters || {}
+    if (value === "") {
+      delete currentFilters[key]
+    } else {
+      currentFilters[key] = value
+    }
+    updated[index] = { ...updated[index], event_filters: { ...currentFilters } }
     setProperty("triggers", updated)
   }
 
@@ -923,6 +948,8 @@ function TriggersEditor({ labels }: { labels: RootEditorLabels }) {
               >
                 <option value="manual">{labels.triggerManual}</option>
                 <option value="cron">{labels.triggerCron}</option>
+                <option value="at">{labels.triggerAt || "At (Once)"}</option>
+                <option value="interval">{labels.triggerInterval || "Interval"}</option>
                 <option value="event">{labels.triggerEvent}</option>
               </select>
               <button
@@ -963,14 +990,168 @@ function TriggersEditor({ labels }: { labels: RootEditorLabels }) {
                 </div>
               </div>
             )}
+            {trigger.type === "at" && (
+              <div className="sqd-editor-grid">
+                <div className="sqd-editor-field">
+                  <label>DateTime</label>
+                  <input
+                    value={trigger.at || ""}
+                    onChange={(e) => handleAtChange(index, "at", e.target.value)}
+                    placeholder="2025-05-15 09:00:00"
+                  />
+                </div>
+                <div className="sqd-editor-field">
+                  <label>Timezone</label>
+                  <input
+                    value={trigger.tz || ""}
+                    onChange={(e) => handleAtChange(index, "tz", e.target.value)}
+                    placeholder="Asia/Shanghai"
+                  />
+                </div>
+              </div>
+            )}
+            {trigger.type === "interval" && (
+              <div className="sqd-editor-grid">
+                <div className="sqd-editor-field">
+                  <label>Interval</label>
+                  <input
+                    value={trigger.interval || ""}
+                    onChange={(e) => handleIntervalChange(index, "interval", e.target.value)}
+                    placeholder="30m, 1h, 2h30m"
+                  />
+                </div>
+                <div className="sqd-editor-field">
+                  <label>Timezone</label>
+                  <input
+                    value={trigger.tz || ""}
+                    onChange={(e) => handleIntervalChange(index, "tz", e.target.value)}
+                    placeholder="Asia/Shanghai"
+                  />
+                </div>
+              </div>
+            )}
             {trigger.type === "event" && (
-              <div className="sqd-editor-field">
-                <label>Event</label>
-                <input
-                  value={trigger.event || ""}
-                  onChange={(e) => handleEventChange(index, e.target.value)}
-                  placeholder="agent.tool.exec_end"
-                />
+              <div className="space-y-2">
+                <div className="sqd-editor-field">
+                  <label>{labels.eventType}</label>
+                  <select
+                    value={trigger.event || ""}
+                    onChange={(e) => handleEventChange(index, e.target.value)}
+                  >
+                    <option value="">{labels.selectEventType}</option>
+                    {EventTypeGroups.map((group) => (
+                      <optgroup key={group.label} label={group.label}>
+                        {group.options.map((opt) => (
+                          <option key={opt.value} value={opt.value}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ))}
+                  </select>
+                </div>
+                {/* 事件过滤条件 */}
+                <div className="sqd-editor-field">
+                  <label>{labels.eventFilters}</label>
+                  <div className="space-y-2">
+                    {/* 工具事件过滤 */}
+                    {(trigger.event === "agent.tool.exec_end" || 
+                      trigger.event === "agent.tool.exec_error" ||
+                      trigger.event === "agent.tool.exec_start") && (
+                      <>
+                        <div className="flex gap-2">
+                          <input
+                            value={trigger.event_filters?.tool || ""}
+                            onChange={(e) => handleEventFilterChange(index, "tool", e.target.value)}
+                            placeholder={labels.filterToolPlaceholder}
+                            className="flex-1"
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{labels.filterToolDesc}</p>
+                      </>
+                    )}
+                    {/* 通用过滤条件 - 所有事件类型都显示 */}
+                    <div className="space-y-2">
+                      <p className="text-xs text-muted-foreground">{labels.customFilters}</p>
+                      {Object.entries(trigger.event_filters || {}).filter(([k]) => k !== "tool").map(([key, value]) => (
+                        <div key={key} className="flex gap-2">
+                          <input
+                            value={key}
+                            onChange={(e) => {
+                              const newFilters = { ...trigger.event_filters }
+                              delete newFilters[key]
+                              if (e.target.value) {
+                                newFilters[e.target.value] = value
+                              }
+                              const updated = [...triggers]
+                              updated[index] = { ...updated[index], event_filters: newFilters }
+                              setProperty("triggers", updated)
+                            }}
+                            placeholder={labels.filterKeyPlaceholder}
+                            className="flex-1"
+                          />
+                          <input
+                            value={value}
+                            onChange={(e) => handleEventFilterChange(index, key, e.target.value)}
+                            placeholder={labels.filterValuePlaceholder}
+                            className="flex-1"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newFilters = { ...trigger.event_filters }
+                              delete newFilters[key]
+                              const updated = [...triggers]
+                              updated[index] = { ...updated[index], event_filters: newFilters }
+                              setProperty("triggers", updated)
+                            }}
+                            style={{
+                              background: "transparent",
+                              border: "1px solid var(--input)",
+                              borderRadius: "var(--radius)",
+                              color: "var(--destructive)",
+                              cursor: "pointer",
+                              fontSize: "0.75rem",
+                              padding: "2px 6px",
+                              lineHeight: 1,
+                            }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newFilters = { ...trigger.event_filters, "": "" }
+                          const updated = [...triggers]
+                          updated[index] = { ...updated[index], event_filters: newFilters }
+                          setProperty("triggers", updated)
+                        }}
+                        style={{
+                          background: "transparent",
+                          border: "1px dashed var(--input)",
+                          borderRadius: "var(--radius)",
+                          color: "var(--muted-foreground)",
+                          cursor: "pointer",
+                          fontSize: "0.75rem",
+                          padding: "4px 8px",
+                          textAlign: "left",
+                        }}
+                      >
+                        + {labels.addFilter}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                {/* 事件变量映射 */}
+                <div className="sqd-editor-field">
+                  <label>{labels.eventMapping}</label>
+                  <p className="text-xs text-muted-foreground mb-2">{labels.eventMappingDesc}</p>
+                  <div className="space-y-1 text-xs text-muted-foreground">
+                    <p>{labels.eventVarsAvailable}</p>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -1004,7 +1185,21 @@ interface RootEditorLabels {
   trigger: string
   triggerManual: string
   triggerCron: string
+  triggerAt: string
+  triggerInterval: string
   triggerEvent: string
+  eventType: string
+  selectEventType: string
+  eventFilters: string
+  filterToolPlaceholder: string
+  filterToolDesc: string
+  customFilters: string
+  filterKeyPlaceholder: string
+  filterValuePlaceholder: string
+  addFilter: string
+  eventMapping: string
+  eventMappingDesc: string
+  eventVarsAvailable: string
   failureStrategy: string
   strategyStop: string
   strategyContinue: string
@@ -1406,7 +1601,21 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     trigger: t("pages.workflows.trigger", "Trigger"),
     triggerManual: t("pages.workflows.trigger_manual", "Manual"),
     triggerCron: t("pages.workflows.trigger_cron", "Cron"),
+    triggerAt: t("pages.workflows.trigger_at", "At (Once)"),
+    triggerInterval: t("pages.workflows.trigger_interval", "Interval"),
     triggerEvent: t("pages.workflows.trigger_event", "Event"),
+    eventType: t("pages.workflows.event_type", "Event Type"),
+    selectEventType: t("pages.workflows.select_event_type", "Select Event Type"),
+    eventFilters: t("pages.workflows.event_filters", "Event Filters"),
+    filterToolPlaceholder: t("pages.workflows.filter_tool_placeholder", "Tool name (e.g., git_commit)"),
+    filterToolDesc: t("pages.workflows.filter_tool_desc", "Only respond to completion events for this tool"),
+    customFilters: t("pages.workflows.custom_filters", "Custom Filters"),
+    filterKeyPlaceholder: t("pages.workflows.filter_key_placeholder", "Field name (e.g., result)"),
+    filterValuePlaceholder: t("pages.workflows.filter_value_placeholder", "Field value"),
+    addFilter: t("pages.workflows.add_filter", "Add Filter"),
+    eventMapping: t("pages.workflows.event_mapping", "Event Variable Mapping"),
+    eventMappingDesc: t("pages.workflows.event_mapping_desc", "Event data will be automatically mapped to workflow variables"),
+    eventVarsAvailable: t("pages.workflows.event_vars_available", "Available: event_kind, event_time, event_tool, event_result, event_error"),
     failureStrategy: t("pages.workflows.failure_strategy", "Failure Strategy"),
     strategyStop: t("pages.workflows.strategy_stop", "Stop on failure"),
     strategyContinue: t("pages.workflows.strategy_continue", "Continue on failure"),

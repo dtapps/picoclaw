@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "@tanstack/react-router"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
 import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent, CronTaskInfo } from "@/api/workflow"
 import {
@@ -434,13 +435,23 @@ export function WorkflowsPage() {
               <div className="space-y-2">
                 {cronTasks.map((task) => (
                   <div
-                    key={`${task.workflow_name}-${task.cron_expr}`}
+                    key={`${task.workflow_name}-${task.trigger_type}-${task.schedule}`}
                     className="flex items-center justify-between rounded-md border px-4 py-3"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm truncate">{task.workflow_name}</p>
                       <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
-                        <code className="rounded bg-muted px-1.5 py-0.5">{task.cron_expr}</code>
+                        <span className={cn(
+                          "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          task.trigger_type === "cron" && "bg-blue-100 text-blue-700",
+                          task.trigger_type === "at" && "bg-green-100 text-green-700",
+                          task.trigger_type === "interval" && "bg-purple-100 text-purple-700"
+                        )}>
+                          {task.trigger_type === "cron" && "CRON"}
+                          {task.trigger_type === "at" && "AT"}
+                          {task.trigger_type === "interval" && "INTERVAL"}
+                        </span>
+                        <code className="rounded bg-muted px-1.5 py-0.5">{task.schedule}</code>
                         {task.timezone && task.timezone !== "UTC" && (
                           <span>({task.timezone})</span>
                         )}

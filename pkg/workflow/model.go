@@ -35,15 +35,77 @@ type Workflow struct {
 	Enabled     bool              `yaml:"-"                    json:"enabled"`          // 是否启用（运行时状态，不序列化到 YAML）
 	CreatedAt   time.Time         `yaml:"created_at,omitempty" json:"createdAt"`        // 创建时间
 	UpdatedAt   time.Time         `yaml:"updated_at,omitempty" json:"updatedAt"`        // 更新时间
+
+	// 运行时状态字段
+	NextRunAt     *time.Time `yaml:"-"                         json:"nextRunAt,omitempty"`     // 下次运行时间（动态计算）
+	LastRunAt     *time.Time `yaml:"last_run_at,omitempty"     json:"lastRunAt,omitempty"`     // 上次运行时间
+	LastRunStatus string     `yaml:"last_run_status,omitempty" json:"lastRunStatus,omitempty"` // 上次运行状态：running/success/failed
 }
 
 // Trigger 定义工作流的触发条件。
-// 支持三种触发方式：cron 定时表达式、事件总线订阅、手动触发。
+// 支持多种触发方式：cron 定时表达式、一次性执行、间隔执行、事件总线订阅、手动触发。
 // 同一个工作流可以有多个触发器。
 type Trigger struct {
-	Cron  string `yaml:"cron,omitempty"  json:"cron,omitempty"`  // Cron 定时表达式，如 "0 9 * * *"
-	Event string `yaml:"event,omitempty" json:"event,omitempty"` // 事件总线 Kind，如 "agent.tool.exec_end"
-	TZ    string `yaml:"tz,omitempty"    json:"tz,omitempty"`    // 时区，如 "Asia/Shanghai"
+	Cron         string            `yaml:"cron,omitempty"          json:"cron,omitempty"`          // Cron 定时表达式，如 "0 9 * * *"
+	At           string            `yaml:"at,omitempty"            json:"at,omitempty"`            // 一次性执行时间，如 "2025-05-15 09:00:00"
+	Interval     string            `yaml:"interval,omitempty"      json:"interval,omitempty"`      // 间隔执行，如 "30m", "1h", "2h30m"
+	Event        string            `yaml:"event,omitempty"         json:"event,omitempty"`         // 事件总线 Kind，如 "agent.tool.exec_end"
+	EventFilters map[string]string `yaml:"event_filters,omitempty" json:"event_filters,omitempty"` // 事件过滤条件，如 {"tool": "git_commit"}
+	EventMapping map[string]string `yaml:"event_mapping,omitempty" json:"event_mapping,omitempty"` // 事件数据映射到变量，如 {"result": "output.result"}
+	TZ           string            `yaml:"tz,omitempty"            json:"tz,omitempty"`            // 时区，如 "Asia/Shanghai"
+}
+
+// EventType 标准事件类型常量
+type EventType string
+
+const (
+	// EventToolExecStart 工具开始执行
+	EventToolExecStart EventType = "agent.tool.exec_start"
+	// EventToolExecEnd 工具执行完成
+	EventToolExecEnd EventType = "agent.tool.exec_end"
+	// EventToolExecError 工具执行错误
+	EventToolExecError EventType = "agent.tool.exec_error"
+
+	// EventAgentPromptStart Agent 开始处理提示词
+	EventAgentPromptStart EventType = "agent.prompt.start"
+	// EventAgentPromptEnd Agent 完成提示词处理
+	EventAgentPromptEnd EventType = "agent.prompt.end"
+	// EventAgentResponse Agent 产生响应
+	EventAgentResponse EventType = "agent.response"
+
+	// EventWorkflowStart 工作流实例开始
+	EventWorkflowStart EventType = "workflow.instance.start"
+	// EventWorkflowComplete 工作流实例完成
+	EventWorkflowComplete EventType = "workflow.instance.complete"
+	// EventWorkflowError 工作流实例错误
+	EventWorkflowError EventType = "workflow.instance.error"
+
+	// EventSystemStartup 系统启动
+	EventSystemStartup EventType = "system.startup"
+	// EventSystemShutdown 系统关闭
+	EventSystemShutdown EventType = "system.shutdown"
+)
+
+// EventTypeList 返回所有标准事件类型列表
+func EventTypeList() []EventType {
+	return []EventType{
+		EventToolExecStart,
+		EventToolExecEnd,
+		EventToolExecError,
+		EventAgentPromptStart,
+		EventAgentPromptEnd,
+		EventAgentResponse,
+		EventWorkflowStart,
+		EventWorkflowComplete,
+		EventWorkflowError,
+		EventSystemStartup,
+		EventSystemShutdown,
+	}
+}
+
+// String 返回事件类型的字符串表示
+func (e EventType) String() string {
+	return string(e)
 }
 
 // DefaultStepTimeout 是步骤的默认超时时间。

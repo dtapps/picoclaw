@@ -10,7 +10,7 @@ The Workflow Engine is a declarative multi-step task orchestration system for pi
 2. **Reliable Execution**: Steps support retry, timeout, and error handling with automatic on_error fallback steps
 3. **Condition Control**: Branch logic via `when` condition expressions — no hardcoded flow needed
 4. **Data Passing**: Steps pass results via `output_key` + template syntax `{{.step_id.key}}`, and reference variables via `{{.vars.key}}`, decoupling step dependencies
-5. **Multiple Triggers**: Cron scheduling, event-driven, and manual trigger modes
+5. **Multiple Triggers**: Cron scheduling, one-time execution (At), interval execution (Interval), event-driven, and manual trigger modes
 6. **System Integration**: Reuses AgentLoop's SubTurn for prompts, ToolRegistry for tool calls, and EventBus for event monitoring
 
 ## System Architecture
@@ -25,7 +25,7 @@ The Workflow Engine is a declarative multi-step task orchestration system for pi
 ├─────────────────────────────────────────────────┤
 │               Service Layer                      │  Lifecycle management, trigger scheduling
 ├──────────┬──────────┬───────────────────────────┤
-│  Engine  │ Persist  │  Triggers (Cron/Event/Manual) │  Core engine + persistence
+│  Engine  │ Persist  │  Triggers (Cron/At/Interval/Event/Manual) │  Core engine + persistence
 ├──────────┴──────────┴───────────────────────────┤
 │              StepExecutor                        │  Step executor (retry/timeout)
 ├────────────────────┬────────────────────────────┤
@@ -300,17 +300,73 @@ Triggers determine when a workflow auto-executes:
 
 - **manual**: Manual trigger only (default)
 - **cron**: Scheduled via cron expression, e.g., `0 9 * * *` (daily at 9am)
+- **at**: One-time trigger at specified datetime, e.g., `2025-05-15 09:00:00`
+- **interval**: Repeated trigger at fixed intervals, e.g., `30m` (every 30 minutes), `1h` (every hour)
 - **event**: Triggered by listening for specific event types on the event bus
 
-Cron trigger behavior:
-- After Service starts, checks all enabled workflows' cron expressions every 30 seconds
+#### Cron Trigger
+- After Service starts, checks all enabled workflows' cron expressions every 10 seconds
 - Uses `gronx` library to determine if a cron expression is due
 - Only one instance of a workflow can run at a time (dedup)
+- Supports timezone setting (`tz` field)
 
-Event trigger behavior:
+#### At Trigger (One-time)
+- Executes once at the specified date and time
+- Time format: `2025-05-15 09:00:00` or `2025-05-15 09:00`
+- Supports timezone setting (`tz` field)
+- Automatically marked as completed after execution, won't trigger again
+
+#### Interval Trigger
+- Repeatedly executes at fixed time intervals
+- Format: Go duration format, e.g., `30m` (30 minutes), `1h` (1 hour), `2h30m` (2 hours 30 minutes)
+- Supports timezone setting (`tz` field)
+- First trigger occurs after the interval, then repeats at the interval period
+
+#### Event Trigger
+
+The event trigger listens to the system event bus and automatically triggers workflow execution when specific events occur.
+
+**Basic Features:**
 - Subscribes to event stream via `EventBus.Channel().SubscribeChan()`
 - Matches `Event.Kind` against `Trigger.Event`
 - Also enforces single-instance running constraint
+
+**Standard Event Types:**
+
+| Event Type | Description | Common Use Cases |
+|------------|-------------|------------------|
+| `agent.tool.exec_start` | Tool starts execution | Log tool invocations |
+| `agent.tool.exec_end` | Tool execution completed | Analyze tool execution results |
+| `agent.tool.exec_error` | Tool execution error | Error handling and alerting |
+| `agent.prompt.start` | Agent starts processing prompt | Log conversation start |
+| `agent.prompt.end` | Agent finishes processing prompt | Log conversation end |
+| `agent.response` | Agent generates response | Post-response processing |
+| `workflow.instance.start` | Workflow instance starts | Workflow chaining |
+| `workflow.instance.complete` | Workflow instance completed | Workflow chaining |
+| `workflow.instance.error` | Workflow instance error | Error handling |
+| `system.startup` | System startup | Initialization tasks |
+| `system.shutdown` | System shutdown | Cleanup tasks |
+
+**Event Filters:**
+- Supports filtering event content via the `event_filters` field
+- Example: Only respond to completion events for a specific tool `{ "tool": "git_commit" }`
+
+**Event Variable Mapping:**
+- Event data is automatically mapped to workflow variables, accessible via `{{.vars.event_xxx}}` in steps
+- Default variables provided:
+  - `event_kind` - Event type
+  - `event_time` - Event occurrence time
+  - `event_tool` - Tool name (tool events)
+  - `event_result` - Execution result (completion events)
+  - `event_error` - Error message (error events)
+
+**Example Configuration:**
+```yaml
+triggers:
+  - event: "agent.tool.exec_end"
+    event_filters:
+      tool: "git_commit"  # Only respond to git_commit tool completion events
+```
 
 ### Condition Expressions
 
@@ -718,6 +774,31 @@ Persistence mechanism (`persist.go`):
 - The `enabled` field is a runtime state (`yaml:"-"` tag) not serialized to the YAML file; disable feature uses create/delete of `.disabled` suffix file to persist the state
 - File names preserve case sensitivity; `MyWorkflow` and `myworkflow` are treated as different workflows
 - File names processed through `sanitizeName()` for safety
+
+### Workflow State Fields
+
+The workflow definition file (YAML) supports the following runtime state fields for tracking execution history:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `created_at` | string | Creation time (ISO 8601 format) |
+| `updated_at` | string | Last update time (ISO 8601 format) |
+| `last_run_at` | string | Last run time (ISO 8601 format), automatically updated after workflow execution completes |
+| `last_run_status` | string | Last run status: `running` / `success` / `failed`, automatically updated after workflow execution completes |
+
+These fields are automatically maintained by the system:
+- `created_at` / `updated_at`: Automatically set when creating or updating a workflow
+- `last_run_at` / `last_run_status`: Automatically updated based on instance status after workflow execution completes
+
+Example:
+```yaml
+name: morning-briefing
+description: Daily morning briefing
+created_at: 2025-05-13T08:00:00Z
+updated_at: 2025-05-13T10:30:00Z
+last_run_at: 2025-05-13T10:00:00Z
+last_run_status: success
+```
 
 ## Execution Results & Notifications
 

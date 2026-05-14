@@ -18,8 +18,8 @@ type mockBus struct {
 func newMockBus() *mockBus {
 	return &mockBus{
 		ch: &mockEventChannel{
-			sub: &mockSubscription{done: make(chan struct{})},
-			ch:  make(chan runtimeevents.Event, 16),
+			subs: make(map[string]*mockSubscription),
+			chs:  make(map[string]chan runtimeevents.Event),
 		},
 	}
 }
@@ -36,8 +36,9 @@ func (m *mockBus) Close() error                        { return nil }
 func (m *mockBus) Stats() runtimeevents.Stats          { return runtimeevents.Stats{} }
 
 type mockEventChannel struct {
-	sub *mockSubscription
-	ch  chan runtimeevents.Event
+	subs map[string]*mockSubscription
+	chs  map[string]chan runtimeevents.Event
+	mu   sync.Mutex
 }
 
 func (m *mockEventChannel) Filter(_ runtimeevents.Filter) runtimeevents.EventChannel     { return m }
@@ -48,17 +49,27 @@ func (m *mockEventChannel) Scope(_ runtimeevents.ScopeFilter) runtimeevents.Even
 
 func (m *mockEventChannel) Subscribe(
 	_ context.Context,
-	_ runtimeevents.SubscribeOptions,
+	opts runtimeevents.SubscribeOptions,
 	_ runtimeevents.Handler,
 ) (runtimeevents.Subscription, error) {
-	return m.sub, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sub := &mockSubscription{done: make(chan struct{})}
+	m.subs[opts.Name] = sub
+	return sub, nil
 }
 
 func (m *mockEventChannel) SubscribeChan(
 	_ context.Context,
-	_ runtimeevents.SubscribeOptions,
+	opts runtimeevents.SubscribeOptions,
 ) (runtimeevents.Subscription, <-chan runtimeevents.Event, error) {
-	return m.sub, m.ch, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sub := &mockSubscription{done: make(chan struct{})}
+	ch := make(chan runtimeevents.Event, 16)
+	m.subs[opts.Name] = sub
+	m.chs[opts.Name] = ch
+	return sub, ch, nil
 }
 
 func (m *mockEventChannel) SubscribeOnce(
@@ -66,16 +77,38 @@ func (m *mockEventChannel) SubscribeOnce(
 	_ runtimeevents.SubscribeOptions,
 	_ runtimeevents.Handler,
 ) (runtimeevents.Subscription, error) {
-	return m.sub, nil
+	return &mockSubscription{done: make(chan struct{})}, nil
+}
+
+// PublishToAll 发送事件到所有订阅的 channel（用于测试）
+func (m *mockEventChannel) PublishToAll(evt runtimeevents.Event) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, ch := range m.chs {
+		select {
+		case ch <- evt:
+		default:
+		}
+	}
 }
 
 type mockSubscription struct {
-	done chan struct{}
+	done   chan struct{}
+	closed bool
+	mu     sync.Mutex
 }
 
-func (m *mockSubscription) ID() uint64            { return 1 }
-func (m *mockSubscription) Name() string          { return "mock" }
-func (m *mockSubscription) Close() error          { close(m.done); return nil }
+func (m *mockSubscription) ID() uint64   { return 1 }
+func (m *mockSubscription) Name() string { return "mock" }
+func (m *mockSubscription) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.closed {
+		close(m.done)
+		m.closed = true
+	}
+	return nil
+}
 func (m *mockSubscription) Done() <-chan struct{} { return m.done }
 func (m *mockSubscription) Stats() runtimeevents.SubscriberStats {
 	return runtimeevents.SubscriberStats{}
@@ -164,7 +197,7 @@ func TestService_StartWithEventBus(t *testing.T) {
 	}
 
 	// 发布事件
-	mbus.ch.ch <- runtimeevents.Event{Kind: "test.event"}
+	mbus.ch.PublishToAll(runtimeevents.Event{Kind: "test.event"})
 }
 
 func TestService_Reload(t *testing.T) {
@@ -612,7 +645,7 @@ func TestService_CheckEventTriggers(t *testing.T) {
 	defer svc.Stop()
 
 	// 发送匹配的事件
-	mbus.ch.ch <- runtimeevents.Event{Kind: "agent.tool.exec_end"}
+	mbus.ch.PublishToAll(runtimeevents.Event{Kind: "agent.tool.exec_end"})
 
 	waitFor(t, 3*time.Second, func() bool {
 		mu.Lock()

@@ -97,10 +97,11 @@ type Runtime struct {
 	WorkflowCronList  func() []CronTaskInfo
 }
 
-// CronTaskInfo 表示一个待执行的 Cron 任务。
+// CronTaskInfo 表示一个待执行的调度任务。
 type CronTaskInfo struct {
 	WorkflowName string `json:"workflow_name"`
-	CronExpr     string `json:"cron_expr"`
+	TriggerType  string `json:"trigger_type"` // cron, at, interval
+	Schedule     string `json:"schedule"`     // cron 表达式、at 时间或 interval 值
 	Timezone     string `json:"timezone"`
 	NextRun      string `json:"next_run"`
 }

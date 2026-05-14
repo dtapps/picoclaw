@@ -10,7 +10,7 @@
 2. **可靠执行**：步骤支持重试、超时、错误处理，失败后自动执行 on_error 处理步骤
 3. **条件控制**：通过 `when` 条件表达式实现分支逻辑，无需硬编码流程
 4. **数据传递**：步骤间通过 `output_key` + 模板语法 `{{.step_id.key}}` 传递结果，通过 `{{.vars.key}}` 引用变量，解耦步骤依赖
-5. **多触发方式**：支持 Cron 定时、事件驱动、手动触发三种方式
+5. **多触发方式**：支持 Cron 定时、一次性执行（At）、间隔执行（Interval）、事件驱动、手动触发五种方式
 6. **与现有系统集成**：复用 AgentLoop 的 SubTurn 机制执行提示词，复用 ToolRegistry 调用工具，复用事件总线监听事件
 
 ## 系统架构
@@ -25,7 +25,7 @@
 ├─────────────────────────────────────────────────┤
 │               Service 层                         │  生命周期管理、触发器调度
 ├──────────┬──────────┬───────────────────────────┤
-│  Engine  │ Persist  │  触发器（Cron/Event/手动）  │  核心引擎 + 持久化
+│  Engine  │ Persist  │  触发器（Cron/At/Interval/Event/手动）  │  核心引擎 + 持久化
 ├──────────┴──────────┴───────────────────────────┤
 │              StepExecutor                        │  步骤执行器（重试/超时）
 ├────────────────────┬────────────────────────────┤
@@ -300,17 +300,73 @@ steps:
 
 - **manual**：仅手动触发（默认）
 - **cron**：按 Cron 表达式定时触发，如 `0 9 * * *`（每天 9 点）
+- **at**：在指定时间一次性触发，如 `2025-05-15 09:00:00`
+- **interval**：按固定间隔重复触发，如 `30m`（每 30 分钟）、`1h`（每小时）
 - **event**：监听事件总线上的特定事件类型触发
 
-Cron 触发器的工作方式：
-- Service 启动后，以 30 秒为周期检查所有已启用工作流的 cron 表达式
+#### Cron 触发器
+- Service 启动后，以 10 秒为周期检查所有已启用工作流的 cron 表达式
 - 使用 `gronx` 库判断 cron 表达式是否到期
 - 同一工作流同时只允许一个实例运行（防重复触发）
+- 支持时区设置（`tz` 字段）
 
-事件触发器的工作方式：
+#### At 触发器（一次性）
+- 在指定的日期时间执行一次
+- 时间格式：`2025-05-15 09:00:00` 或 `2025-05-15 09:00`
+- 支持时区设置（`tz` 字段）
+- 执行后自动标记为已完成，不会重复触发
+
+#### Interval 触发器（间隔）
+- 按固定时间间隔重复执行
+- 格式：Go 语言 duration 格式，如 `30m`（30分钟）、`1h`（1小时）、`2h30m`（2小时30分钟）
+- 支持时区设置（`tz` 字段）
+- 首次触发在间隔时间后，之后按间隔周期执行
+
+#### 事件触发器
+
+事件触发器监听系统事件总线，当特定事件发生时自动触发工作流执行。
+
+**基本特性：**
 - 通过 `EventBus.Channel().SubscribeChan()` 订阅事件流
 - 匹配 `Event.Kind` 与 `Trigger.Event` 字段
 - 同样遵循单实例运行约束
+
+**标准事件类型：**
+
+| 事件类型 | 说明 | 常用场景 |
+|---------|------|---------|
+| `agent.tool.exec_start` | 工具开始执行 | 记录工具调用日志 |
+| `agent.tool.exec_end` | 工具执行完成 | 分析工具执行结果 |
+| `agent.tool.exec_error` | 工具执行错误 | 错误处理和告警 |
+| `agent.prompt.start` | Agent 开始处理提示词 | 记录对话开始 |
+| `agent.prompt.end` | Agent 完成提示词处理 | 记录对话结束 |
+| `agent.response` | Agent 产生响应 | 响应后处理 |
+| `workflow.instance.start` | 工作流实例开始 | 工作流联动 |
+| `workflow.instance.complete` | 工作流实例完成 | 工作流联动 |
+| `workflow.instance.error` | 工作流实例错误 | 错误处理 |
+| `system.startup` | 系统启动 | 初始化任务 |
+| `system.shutdown` | 系统关闭 | 清理任务 |
+
+**事件过滤条件：**
+- 支持通过 `event_filters` 字段对事件内容进行过滤
+- 例如：只响应特定工具的完成事件 `{ "tool": "git_commit" }`
+
+**事件变量映射：**
+- 事件数据自动映射为工作流变量，可在步骤中通过 `{{.vars.event_xxx}}` 引用
+- 默认提供的变量：
+  - `event_kind` - 事件类型
+  - `event_time` - 事件发生时间
+  - `event_tool` - 工具名称（工具事件）
+  - `event_result` - 执行结果（完成事件）
+  - `event_error` - 错误信息（错误事件）
+
+**示例配置：**
+```yaml
+triggers:
+  - event: "agent.tool.exec_end"
+    event_filters:
+      tool: "git_commit"  # 只响应 git_commit 工具的完成事件
+```
 
 ### 条件表达式
 
@@ -716,6 +772,31 @@ Agent：→ workflow action=bind name=morning-briefing
 - `enabled` 字段是运行时状态（`yaml:"-"` 标签），不会序列化到 YAML 文件中；禁用功能通过创建/删除 `.disabled` 后缀文件来持久化状态
 - 文件名保留大小写；`MyWorkflow` 和 `myworkflow` 视为不同工作流
 - 文件名使用 `sanitizeName()` 处理，确保安全
+
+### 工作流状态字段
+
+工作流定义文件（YAML）支持以下运行时状态字段，用于追踪工作流执行历史：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `created_at` | string | 创建时间（ISO 8601 格式） |
+| `updated_at` | string | 最后更新时间（ISO 8601 格式） |
+| `last_run_at` | string | 上次运行时间（ISO 8601 格式），工作流执行完成后自动更新 |
+| `last_run_status` | string | 上次运行状态：`running` / `success` / `failed`，工作流执行完成后自动更新 |
+
+这些字段由系统自动维护：
+- `created_at` / `updated_at`：创建和更新工作流时自动设置
+- `last_run_at` / `last_run_status`：工作流实例执行完成后，根据实例状态自动更新
+
+示例：
+```yaml
+name: morning-briefing
+description: 每日早间简报
+created_at: 2025-05-13T08:00:00Z
+updated_at: 2025-05-13T10:30:00Z
+last_run_at: 2025-05-13T10:00:00Z
+last_run_status: success
+```
 
 ## 执行结果与通知
 
