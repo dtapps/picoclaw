@@ -335,7 +335,7 @@ func NormalizeInlineToolCalls(resp *LLMResponse) {
 		return
 	}
 	if len(resp.ToolCalls) > 0 {
-		log.Printf("common: NormalizeInlineToolCalls 跳过：响应已有 %d 个标准 tool_calls", len(resp.ToolCalls))
+		// log.Printf("common: NormalizeInlineToolCalls 跳过：响应已有 %d 个标准 tool_calls", len(resp.ToolCalls))
 		return
 	}
 
@@ -349,7 +349,7 @@ func NormalizeInlineToolCalls(resp *LLMResponse) {
 	for _, tc := range extracted {
 		toolNames = append(toolNames, tc.Name)
 	}
-	log.Printf("common: NormalizeInlineToolCalls 提取到 %d 个内联工具调用: %v", len(extracted), toolNames)
+	// log.Printf("common: NormalizeInlineToolCalls 提取到 %d 个内联工具调用: %v", len(extracted), toolNames)
 
 	resp.ToolCalls = extracted
 	resp.Content = cleanedContent
