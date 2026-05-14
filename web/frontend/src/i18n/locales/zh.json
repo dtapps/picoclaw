@@ -1191,6 +1191,8 @@
       "vars_remove": "删除",
       "add_trigger": "添加触发器",
       "remove_trigger": "删除触发器",
+      "cron_schedule": "定时调度",
+      "no_cron_tasks": "暂无定时调度任务",
       "at_least_one_trigger": "至少需要一个触发器",
       "when": "执行前条件",
       "when_placeholder": "执行前条件表达式",
