@@ -640,8 +640,11 @@ func (s *Service) checkCronTriggers() {
 	// 获取工作流（使用缓存机制）
 	workflows := s.getWorkflowsForTriggerCheck()
 
+	logger.DebugCF("workflow", "检查 cron 触发器", map[string]any{"workflows": len(workflows)})
+
 	for _, wf := range workflows {
 		if !wf.Enabled {
+			logger.DebugCF("workflow", "工作流未启用，跳过", map[string]any{"workflow": wf.Name})
 			continue
 		}
 		for i, trigger := range wf.Triggers {
@@ -650,6 +653,9 @@ func (s *Service) checkCronTriggers() {
 			}
 
 			fireKey := wf.Name + "|" + trigger.Cron
+
+			logger.DebugCF("workflow", "检查 cron 表达式",
+				map[string]any{"workflow": wf.Name, "cron": trigger.Cron, "tz": trigger.TZ})
 
 			// 检查 cron 表达式是否到期（使用触发器配置的时区）
 			isDue, err := s.isCronDue(trigger.Cron, trigger.TZ)
@@ -662,6 +668,8 @@ func (s *Service) checkCronTriggers() {
 				continue
 			}
 			if !isDue {
+				logger.DebugCF("workflow", "cron 未到期",
+					map[string]any{"workflow": wf.Name, "cron": trigger.Cron})
 				continue
 			}
 
@@ -670,6 +678,8 @@ func (s *Service) checkCronTriggers() {
 			lastFire, fired := s.lastCronFire[fireKey]
 			s.lastCronFireMu.Unlock()
 			if fired && time.Since(lastFire) < 90*time.Second {
+				logger.DebugCF("workflow", "cron 触发去重",
+					map[string]any{"workflow": wf.Name, "cron": trigger.Cron, "last_fire": lastFire})
 				continue
 			}
 
