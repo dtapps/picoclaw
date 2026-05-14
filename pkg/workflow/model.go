@@ -113,21 +113,23 @@ func (e EventType) String() string {
 const DefaultStepTimeout = "30m"
 
 // Step 表示工作流中的一个执行步骤。
-// 步骤是工作流的核心执行单元，支持四种动作类型：
+// 步骤是工作流的核心执行单元，支持五种动作类型：
 //   - agent_prompt: 让 LLM agent 执行一段提示词
 //   - tool_call: 直接调用已注册的工具
 //   - parallel: 并行执行多个子步骤
 //   - if: 条件判断，根据 when 表达式执行 true 或 false 分支
+//   - notify: 发送通知消息到绑定的频道
 type Step struct {
 	ID        string         `yaml:"id"                   json:"id"`                   // 步骤唯一标识，用于步骤间引用（仅限 a-zA-Z0-9_）
 	Name      string         `yaml:"name,omitempty"       json:"name,omitempty"`       // 步骤显示名称（可选，支持任意字符）
-	Action    string         `yaml:"action"               json:"action"`               // 动作类型：agent_prompt | tool_call | parallel | if
+	Action    string         `yaml:"action"               json:"action"`               // 动作类型：agent_prompt | tool_call | parallel | if | notify
 	Prompt    string         `yaml:"prompt,omitempty"     json:"prompt,omitempty"`     // agent_prompt 的提示词内容
 	Tool      string         `yaml:"tool,omitempty"       json:"tool,omitempty"`       // tool_call 的工具名称
 	Args      map[string]any `yaml:"args,omitempty"       json:"args,omitempty"`       // tool_call 的参数
 	Parallel  []Step         `yaml:"parallel,omitempty"   json:"parallel,omitempty"`   // parallel 的子步骤列表
 	IfTrue    []Step         `yaml:"if_true,omitempty"    json:"if_true,omitempty"`    // if 条件为 true 时执行的步骤
 	IfFalse   []Step         `yaml:"if_false,omitempty"   json:"if_false,omitempty"`   // if 条件为 false 时执行的步骤
+	Message   string         `yaml:"message,omitempty"    json:"message,omitempty"`    // notify 的消息内容（支持模板）
 	When      string         `yaml:"when,omitempty"       json:"when,omitempty"`       // 执行条件：on_error | on_success | 模板比较
 	Delay     string         `yaml:"delay,omitempty"      json:"delay,omitempty"`      // 执行前等待时间，如 "5s"、"1m"
 	Retry     *RetryConfig   `yaml:"retry,omitempty"      json:"retry,omitempty"`      // 重试配置
@@ -296,7 +298,7 @@ func validateStep(step Step, ids map[string]bool) error {
 	}
 	ids[step.ID] = true
 	if step.Action != "agent_prompt" && step.Action != "tool_call" && step.Action != "parallel" &&
-		step.Action != "if" {
+		step.Action != "if" && step.Action != "notify" {
 		return validationError(fmt.Sprintf("工作流校验：步骤「%s」动作类型 '%s' 无效", label, step.Action))
 	}
 	if step.Action == "agent_prompt" && step.Prompt == "" {
@@ -313,6 +315,9 @@ func validateStep(step Step, ids map[string]bool) error {
 	}
 	if step.Action == "if" && len(step.IfTrue) == 0 && len(step.IfFalse) == 0 {
 		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要至少一个分支步骤", label))
+	}
+	if step.Action == "notify" && step.Message == "" {
+		return validationError(fmt.Sprintf("工作流校验：步骤「%s」需要提供 message", label))
 	}
 
 	// 校验 duration 格式字段

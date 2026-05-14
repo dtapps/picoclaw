@@ -45,6 +45,8 @@ const ICON_IF = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www
 
 const ICON_PARALLEL = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="M12 18v4"/><path d="M4 8h16"/><path d="M4 16h16"/><path d="M8 8v8"/><path d="M16 8v8"/></svg>')}`
 
+const ICON_NOTIFY = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>')}`
+
 // --- When 条件编辑器（用于 task 步骤）---
 
 function WhenEditor({ labels }: { labels: StepEditorLabels }) {
@@ -645,6 +647,7 @@ interface StepEditorLabels {
   name: string
   action: string
   prompt: string
+  message: string
   tool: string
   toolSelect: string
   toolCustom: string
@@ -664,6 +667,7 @@ interface StepEditorLabels {
   retry_delay: string
   agentPrompt: string
   toolCall: string
+  notify: string
   parallelLabel: string
   addBranch: string
   removeBranch: string
@@ -813,7 +817,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           <div className="sqd-editor-field">
             <label>{labels.action}</label>
             <input
-              value={action === "agent_prompt" ? labels.agentPrompt : labels.toolCall}
+              value={action === "agent_prompt" ? labels.agentPrompt : action === "notify" ? labels.notify : labels.toolCall}
               readOnly
               className="opacity-70"
             />
@@ -832,16 +836,29 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           {action === "tool_call" && (
             <ToolCallEditor labels={labels} />
           )}
-          <WhenEditor labels={labels} />
-          <div className="sqd-editor-grid">
+          {action === "notify" && (
             <div className="sqd-editor-field">
-              <label>{labels.outputKey}</label>
-              <input
-                value={(properties.output_key as string) || ""}
-                onChange={(e) => setProperty("output_key", e.target.value)}
-                placeholder="result"
+              <label>{labels.message}</label>
+              <textarea
+                value={(properties.message as string) || ""}
+                onChange={(e) => setProperty("message", e.target.value)}
+                rows={3}
+                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.self.name}} 模板引用"
               />
             </div>
+          )}
+          <WhenEditor labels={labels} />
+          <div className="sqd-editor-grid">
+            {action !== "notify" && (
+              <div className="sqd-editor-field">
+                <label>{labels.outputKey}</label>
+                <input
+                  value={(properties.output_key as string) || ""}
+                  onChange={(e) => setProperty("output_key", e.target.value)}
+                  placeholder="result"
+                />
+              </div>
+            )}
             <div className="sqd-editor-field">
               <label>{labels.delay}</label>
               <input
@@ -862,7 +879,7 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
               )}
             </div>
           </div>
-          <RetryEditor labels={labels} />
+          {action !== "notify" && <RetryEditor labels={labels} />}
         </>
       )}
     </div>
@@ -1373,25 +1390,35 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
 
 // --- 工具箱步骤模板 ---
 
-function createTaskStep(action: string) {
+function createTaskStep(action: string): Step {
+  const baseProperties: Record<string, unknown> = {
+    stepId: "",
+    action,
+    when: "",
+    delay: "",
+    timeout: "",
+    enabled: true,
+  }
+
+  if (action === "agent_prompt") {
+    baseProperties.prompt = ""
+    baseProperties.output_key = "result"
+    baseProperties.retry = ""
+  } else if (action === "tool_call") {
+    baseProperties.tool = ""
+    baseProperties.args = ""
+    baseProperties.output_key = "result"
+    baseProperties.retry = ""
+  } else if (action === "notify") {
+    baseProperties.message = ""
+  }
+
   return {
     componentType: COMPONENT_TASK,
     type: action,
     name: "",
-    properties: {
-      stepId: "",
-      action,
-      prompt: "",
-      tool: "",
-      args: "",
-      retry: "",
-      when: "",
-      delay: "",
-      output_key: "result",
-      timeout: "",
-      enabled: true,
-    },
-  }
+    properties: baseProperties,
+  } as Step
 }
 
 function createIfStep() {
@@ -1458,6 +1485,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
   const getStepPrefix = (action: string, type: string): string => {
     if (action === "agent_prompt") return "prompt"
     if (action === "tool_call") return "tool"
+    if (action === "notify") return "notify"
     if (action === "parallel" || type === "parallel") return "parallel"
     if (action === "if" || type === "if") return "if"
     return "step"
@@ -1554,6 +1582,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     name: t("pages.workflows.name", "Name"),
     action: t("pages.workflows.action", "Action"),
     prompt: t("pages.workflows.prompt_placeholder", "Prompt for the agent..."),
+    message: t("pages.workflows.message_placeholder", "Notification message..."),
     tool: t("pages.workflows.tool_placeholder", "Tool name"),
     toolSelect: t("pages.workflows.tool_select", "Select or type tool name"),
     toolCustom: t("pages.workflows.tool_custom", "Custom..."),
@@ -1573,6 +1602,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     retry_delay: t("pages.workflows.retry_delay", "Retry Delay"),
     agentPrompt: t("pages.workflows.trigger_agent", "Agent Prompt"),
     toolCall: t("pages.workflows.trigger_tool", "Tool Call"),
+    notify: t("pages.workflows.trigger_notify", "Notify"),
     parallelLabel: t("pages.workflows.parallel", "Parallel"),
     addBranch: t("pages.workflows.add_branch", "Add Branch"),
     removeBranch: t("pages.workflows.remove_branch", "Remove Branch"),
@@ -1658,6 +1688,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
       labelProvider: (step) => {
         if (step.type === "agent_prompt") return t("pages.workflows.agent_prompt", "Agent Prompt")
         if (step.type === "tool_call") return t("pages.workflows.tool_call", "Tool Call")
+        if (step.type === "notify") return t("pages.workflows.trigger_notify", "Notify")
         if (step.type === "parallel") return t("pages.workflows.parallel", "Parallel")
         if (step.type === "if") return t("pages.workflows.trigger_if", "If")
         return step.type
@@ -1665,6 +1696,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
       descriptionProvider: (step) => {
         if (step.type === "agent_prompt") return t("pages.workflows.agent_prompt_desc", "Send a prompt to the LLM agent and get a response")
         if (step.type === "tool_call") return t("pages.workflows.tool_call_desc", "Call a registered tool by name with parameters")
+        if (step.type === "notify") return t("pages.workflows.notify_desc", "Send a notification message to the bound channel")
         if (step.type === "parallel") return t("pages.workflows.parallel_desc", "Execute multiple sub-steps concurrently")
         if (step.type === "if") return t("pages.workflows.if_desc", "Conditional branch: execute true or false path based on condition")
         return ""
@@ -1675,6 +1707,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
           steps: [
             createTaskStep("agent_prompt"),
             createTaskStep("tool_call"),
+            createTaskStep("notify"),
           ],
         },
         {
@@ -1694,6 +1727,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
       iconUrlProvider: (_componentType, type) => {
         if (type === "agent_prompt") return ICON_AGENT_PROMPT
         if (type === "tool_call") return ICON_TOOL_CALL
+        if (type === "notify") return ICON_NOTIFY
         if (type === "parallel") return ICON_PARALLEL
         if (type === "if") return ICON_IF
         return null

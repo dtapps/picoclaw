@@ -244,6 +244,7 @@ steps:
 | `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数，必填参数不能为空） |
 | `parallel` | 并行执行多个子步骤 | `parallel`（子步骤列表） |
 | `if` | 条件判断，执行 true 或 false 分支 | `when`（条件表达式）、`if_true`/`if_false`（分支步骤） |
+| `notify` | 发送通知消息到绑定的频道 | `message`（消息内容，支持模板） |
 
 每个步骤支持以下配置：
 
@@ -909,6 +910,57 @@ steps:
 | 并行执行 | 不支持 | parallel 步骤类型 |
 | 失败策略 | 无 | stop / continue |
 | UI 管理 | 有 | 有 |
+
+### Notify 步骤
+
+`notify` 步骤用于在工作流执行过程中发送通知消息到绑定的频道（如 Telegram）。它不会执行任何实际的计算或操作，只是将消息发送到频道，适用于进度报告、关键节点通知等场景。
+
+**基本用法：**
+
+```yaml
+steps:
+  - id: start_notify
+    name: 开始通知
+    action: notify
+    message: "🚀 工作流开始执行"
+
+  - id: do_something
+    action: tool_call
+    tool: exec
+    args:
+      command: "echo hello"
+    output_key: result
+
+  - id: done_notify
+    name: 完成通知
+    action: notify
+    message: "✅ 工作流执行完成，结果是: {{.do_something.result}}"
+```
+
+**特性：**
+
+- **消息模板**：`message` 字段支持模板语法，可以引用前面步骤的输出 `{{.step_id.output_key}}`
+- **条件控制**：支持 `when` 条件，可以实现条件通知
+- **延迟发送**：支持 `delay` 字段，可以延迟发送通知
+- **无输出**：notify 步骤不产生输出，不需要设置 `output_key`
+
+**条件通知示例：**
+
+```yaml
+steps:
+  - id: check_status
+    action: tool_call
+    tool: http_get
+    args:
+      url: "https://api.example.com/status"
+    output_key: status
+
+  - id: alert_if_error
+    name: 异常告警
+    action: notify
+    when: '{{ne .check_status.status "ok"}}'
+    message: "🚨 服务状态异常: {{.check_status.status}}"
+```
 
 ## 示例工作流
 

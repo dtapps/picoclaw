@@ -116,6 +116,25 @@ function stepToSwd(s: WorkflowStep): Step {
     } as BranchedStep
   }
 
+  // notify 步骤
+  if (s.action === "notify") {
+    return {
+      id: stepId,
+      componentType: COMPONENT_TASK,
+      type: "notify",
+      name: displayName,
+      properties: {
+        stepId,
+        action: "notify",
+        message: s.message || "",
+        when: s.when || "",
+        delay: s.delay || "",
+        timeout: s.timeout || "",
+        enabled: s.enabled ?? true,
+      },
+    }
+  }
+
   return {
     id: stepId,
     componentType: COMPONENT_TASK,
@@ -266,6 +285,7 @@ function swdToStep(s: Step): WorkflowStep {
     prompt: action === "agent_prompt" ? (sp.prompt as string) : undefined,
     tool: action === "tool_call" ? (sp.tool as string) : undefined,
     args,
+    message: action === "notify" ? (sp.message as string) : undefined,
     retry,
     when: (sp.when as string) || undefined,
     delay: (sp.delay as string) || undefined,
