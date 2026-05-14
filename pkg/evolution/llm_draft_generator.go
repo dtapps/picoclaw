@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/providers"
@@ -62,12 +63,21 @@ func (g *LLMDraftGenerator) GenerateDraftWithEvidence(
 		return g.generateFallback(ctx, rule, matches, evidence)
 	}
 
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
 	callCtx, cancel := withLLMCallTimeout(ctx, llmDraftGenerationTimeout)
 	defer cancel()
+
+	systemPrompt := "Return exactly one JSON object for a skill draft. Do not use markdown fences."
+	if isZh {
+		systemPrompt = "返回一个技能草稿的 JSON 对象。不要使用 markdown 代码块。"
+	}
+
 	resp, err := g.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Return exactly one JSON object for a skill draft. Do not use markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -111,6 +121,38 @@ func (g *LLMDraftGenerator) buildPrompt(
 	matches []skills.SkillInfo,
 	evidence DraftEvidence,
 ) string {
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
+	if isZh {
+		return strings.Join([]string{
+			"生成一个技能草稿 JSON 对象，包含以下必填字符串字段：",
+			`target_skill_name, draft_type, change_kind, human_summary, body_or_patch.`,
+			"可选数组字段: intended_use_cases, preferred_entry_path, avoid_patterns.",
+			"",
+			"允许的值:",
+			"- draft_type: workflow | shortcut",
+			"- change_kind: create | append | replace | merge",
+			"- target_skill_name: 小写连字符格式的技能名称，描述功能用途; 不能仅为数字",
+			"",
+			"规则摘要: " + strings.TrimSpace(rule.Summary),
+			"成功路径: " + joinOrFallback(rule.WinningPath, "无"),
+			"后期添加的成功技能: " + joinOrFallback(rule.LateAddedSkills, "无"),
+			"最终快照触发器: " + fallbackString(rule.FinalSnapshotTrigger, "无"),
+			fmt.Sprintf("事件数量: %d", rule.EventCount),
+			fmt.Sprintf("成功率: %.2f", rule.SuccessRate),
+			"匹配的技能引用: " + summarizeSkillMatches(matches),
+			"匹配的技能名称: " + joinOrFallback(rule.MatchedSkillNames, "无"),
+			"源任务证据:",
+			summarizeDraftTaskEvidence(evidence),
+			"匹配的技能内容摘录:",
+			summarizeMatchedSkillExcerpts(matches),
+			"",
+			combinedSkillGuidance(rule),
+			skillDraftPromptText(),
+		}, "\n")
+	}
+
 	return strings.Join([]string{
 		"Generate a skill draft JSON object with these required string fields:",
 		`target_skill_name, draft_type, change_kind, human_summary, body_or_patch.`,
@@ -140,19 +182,31 @@ func (g *LLMDraftGenerator) buildPrompt(
 }
 
 func summarizeDraftTaskEvidence(evidence DraftEvidence) string {
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
 	if len(evidence.TaskRecords) == 0 {
+		if isZh {
+			return "无"
+		}
 		return "none"
 	}
+
+	idLabel, summaryLabel, outputLabel, skillsLabel, unknownLabel, noneLabel := "id", "summary", "final_output_excerpt", "used_skill_names", "unknown", "none"
+	if isZh {
+		idLabel, summaryLabel, outputLabel, skillsLabel, unknownLabel, noneLabel = "ID", "摘要", "最终输出摘录", "使用的技能名称", "未知", "无"
+	}
+
 	lines := make([]string, 0, minInt(len(evidence.TaskRecords), 5))
 	for i, task := range evidence.TaskRecords {
 		if i >= 5 {
 			break
 		}
 		parts := []string{
-			"- id: " + fallbackString(task.ID, "unknown"),
-			"  summary: " + fallbackString(task.Summary, "none"),
-			"  final_output_excerpt: " + fallbackString(summarizeText(task.FinalOutput, 700), "none"),
-			"  used_skill_names: " + joinOrFallback(task.UsedSkillNames, "none"),
+			"- " + idLabel + ": " + fallbackString(task.ID, unknownLabel),
+			"  " + summaryLabel + ": " + fallbackString(task.Summary, noneLabel),
+			"  " + outputLabel + ": " + fallbackString(summarizeText(task.FinalOutput, 700), noneLabel),
+			"  " + skillsLabel + ": " + joinOrFallback(task.UsedSkillNames, noneLabel),
 		}
 		lines = append(lines, strings.Join(parts, "\n"))
 	}
@@ -160,12 +214,25 @@ func summarizeDraftTaskEvidence(evidence DraftEvidence) string {
 }
 
 func combinedSkillGuidance(rule LearningRecord) string {
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
 	if target := inferCombinedSkillName(rule); target != "" {
+		if isZh {
+			return strings.Join([]string{
+				"此规则代表一个稳定的多步骤成功路径。",
+				"优先创建一个新的组合快捷技能，而不是修改单个组件技能。",
+				"建议的目标技能名称: " + target,
+			}, "\n")
+		}
 		return strings.Join([]string{
 			"This rule represents a stable multi-step successful path.",
 			"Prefer creating a new combined shortcut skill instead of modifying one component skill.",
 			"Suggested target skill name: " + target,
 		}, "\n")
+	}
+	if isZh {
+		return "仅当学习到的模式明确属于单个技能时，才优先更新现有技能。"
 	}
 	return "Prefer updating an existing skill only when the learned pattern clearly belongs inside that single skill."
 }
