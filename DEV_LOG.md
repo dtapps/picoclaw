@@ -77,6 +77,7 @@
 | **Heartbeat 提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `service.go` 中的 `buildPrompt` 和 `createDefaultHeartbeatTemplate` 函数支持中文 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 | **Agent 系统提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `context.go` 中的 `getIdentity`、`BuildSystemPromptParts` 等函数支持中文（身份介绍、技能目录、多消息输出策略等） | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 | **Compaction 提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `short_compaction.go` 中的 `buildLeafSummaryPrompt`、`buildCondensedSummaryPrompt`、`buildAggressiveLeafSummaryPrompt` 函数支持中文 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
+| **Evolution 提示词** | 英文提示词        | **根据 LANG 环境变量自动切换中英文**   | `pattern_clusterer.go`、`success_judge.go`、`llm_draft_generator.go`、`skill_draft_policy.go`、`skill_content.go`、`runtime.go`、`drafts.go` 中的 LLM Prompt 和技能生成相关文本支持中文 | [feat/translate-workspace-docs](https://github.com/dtapps/picoclaw/tree/feat/translate-workspace-docs) |
 
 ---
 

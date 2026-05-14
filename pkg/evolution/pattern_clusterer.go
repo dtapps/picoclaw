@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -168,12 +169,21 @@ func (c *LLMPatternClusterer) BuildPatterns(
 		return fallback.BuildPatterns(ctx, workspace, tasks, existing)
 	}
 
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
 	callCtx, cancel := withLLMCallTimeout(ctx, llmPatternClusterTimeout)
 	defer cancel()
+
+	systemPrompt := "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+	if isZh {
+		systemPrompt = "按任务含义对代理任务记录进行聚类。返回一个 JSON 对象，包含 clusters:[{label,summary,task_record_ids,cluster_reason}]。不要使用 markdown 代码块。"
+	}
+
 	resp, err := c.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -240,12 +250,21 @@ func (c *LLMPatternClusterer) BuildPatternsWithEvidence(
 		evidenceTasks = successfulTasks
 	}
 
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
 	callCtx, cancel := withLLMCallTimeout(ctx, llmPatternClusterTimeout)
 	defer cancel()
+
+	systemPrompt := "Cluster agent task records by task meaning. Include successful and failed task IDs in the same cluster when they share the same reusable meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+	if isZh {
+		systemPrompt = "按任务含义对代理任务记录进行聚类。当成功和失败的任务具有相同的可复用含义时，将它们归入同一聚类。返回一个 JSON 对象，包含 clusters:[{label,summary,task_record_ids,cluster_reason}]。不要使用 markdown 代码块。"
+	}
+
 	resp, err := c.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Cluster agent task records by task meaning. Include successful and failed task IDs in the same cluster when they share the same reusable meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -558,12 +577,20 @@ func buildPatternClusterPrompt(workspace string, tasks []LearningRecord, existin
 		Label   string `json:"label"`
 		Summary string `json:"summary"`
 	}
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
+	instruction := "Group tasks that have the same reusable task meaning. Use existing pattern labels when they fit. Labels must be lowercase hyphenated and must not include concrete values."
+	if isZh {
+		instruction = "将具有相同可复用任务含义的任务分组。当现有模式标签合适时，请使用它们。标签必须为小写连字符格式，且不能包含具体值。"
+	}
+
 	payload := struct {
 		Instruction      string           `json:"instruction"`
 		ExistingPatterns []patternPayload `json:"existing_patterns,omitempty"`
 		Tasks            []taskPayload    `json:"tasks"`
 	}{
-		Instruction: "Group tasks that have the same reusable task meaning. Use existing pattern labels when they fit. Labels must be lowercase hyphenated and must not include concrete values.",
+		Instruction: instruction,
 	}
 	for _, pattern := range existing {
 		if pattern.WorkspaceID != workspace {
