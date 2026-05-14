@@ -537,22 +537,23 @@ const StepTreeNode = memo(function StepTreeNode({
 
   if (!state) return null
 
-  const hasRawInput = !!(step.prompt || (step.args && Object.keys(step.args).length > 0))
-  const hasResolvedInput = !!(state.resolved_input?.prompt || (state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0))
+  // 处理不同步骤类型的输入
+  const rawInput = step.action === "notify" ? step.message : step.prompt
+  const rawArgs = step.args
+  const resolvedInput = state.resolved_input?.prompt
+  const resolvedArgs = state.resolved_input?.args
+
+  const hasRawInput = !!(rawInput || (rawArgs && Object.keys(rawArgs).length > 0))
+  const hasResolvedInput = !!(resolvedInput || (resolvedArgs && Object.keys(resolvedArgs).length > 0))
   const hasInput = hasRawInput || hasResolvedInput
   const hasOutput = stepOutputs?.[step.id] && Object.keys(stepOutputs[step.id]).length > 0
 
-  const displayPrompt = showResolved && state.resolved_input?.prompt
-    ? state.resolved_input.prompt
-    : step.prompt
-
-  const displayArgs = showResolved && state.resolved_input?.args && Object.keys(state.resolved_input.args).length > 0
-    ? state.resolved_input.args
-    : step.args
+  const displayPrompt = showResolved && resolvedInput ? resolvedInput : rawInput
+  const displayArgs = showResolved && resolvedArgs && Object.keys(resolvedArgs).length > 0 ? resolvedArgs : rawArgs
 
   const canToggle = hasRawInput && hasResolvedInput && (
-    step.prompt !== state.resolved_input?.prompt ||
-    JSON.stringify(step.args) !== JSON.stringify(state.resolved_input?.args)
+    rawInput !== resolvedInput ||
+    JSON.stringify(rawArgs) !== JSON.stringify(resolvedArgs)
   )
 
   return (
@@ -622,7 +623,9 @@ const StepTreeNode = memo(function StepTreeNode({
                 <div className="mt-1 rounded bg-muted/30 p-2 font-mono text-xs max-h-40 overflow-auto space-y-1">
                   {displayPrompt && (
                     <div>
-                      <span className="text-purple-600">{t("pages.workflows.prompt", "Prompt")}</span>:{" "}
+                      <span className="text-purple-600">
+                        {step.action === "notify" ? t("pages.workflows.message", "Message") : t("pages.workflows.prompt", "Prompt")}
+                      </span>:{" "}
                       <span className="text-foreground/80 whitespace-pre-wrap break-all">{displayPrompt}</span>
                     </div>
                   )}

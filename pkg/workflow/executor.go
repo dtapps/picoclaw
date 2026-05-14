@@ -49,8 +49,9 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 	}
 	localOutputs["self"] = selfOutput
 
-	// 解析 prompt 和 args 中的模板引用
+	// 解析 prompt、message 和 args 中的模板引用
 	prompt := ResolveStepTemplates(step.Prompt, localOutputs)
+	message := ResolveStepTemplates(step.Message, localOutputs)
 	args := resolveArgsTemplates(step.Args, localOutputs)
 
 	// 应用步骤级超时：未设置时使用默认值 30m
@@ -93,7 +94,7 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 		return StepResult{Output: "if step: use engine branch evaluation"}
 	case "notify":
 		// notify 步骤由 Engine 通过回调处理，这里只返回消息内容
-		return StepResult{Output: prompt}
+		return StepResult{Output: message}
 	default:
 		return StepResult{Error: fmt.Errorf("未知动作类型: %s", step.Action)}
 	}
