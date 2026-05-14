@@ -74,13 +74,14 @@ export const EventTypeGroups = [
 export interface Step {
   id: string
   name?: string
-  action: "agent_prompt" | "tool_call" | "parallel" | "if"
+  action: "agent_prompt" | "tool_call" | "parallel" | "if" | "notify"
   prompt?: string
   tool?: string
   args?: Record<string, unknown>
   parallel?: Step[]
   if_true?: Step[]
   if_false?: Step[]
+  message?: string
   when?: string
   delay?: string
   retry?: { max_attempts: number; delay: string }

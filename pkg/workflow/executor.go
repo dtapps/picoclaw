@@ -91,6 +91,9 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 	case "if":
 		// if 步骤不直接执行，由 Engine 评估条件后选择分支执行
 		return StepResult{Output: "if step: use engine branch evaluation"}
+	case "notify":
+		// notify 步骤由 Engine 通过回调处理，这里只返回消息内容
+		return StepResult{Output: prompt}
 	default:
 		return StepResult{Error: fmt.Errorf("未知动作类型: %s", step.Action)}
 	}

@@ -1006,6 +1006,21 @@ func setupWorkflowService(
 			return
 		}
 
+		// notify 步骤：直接发送消息（不显示步骤完成标记）
+		if step.Action == "notify" {
+			if result.Error != nil {
+				return
+			}
+			message := result.Output
+			if message == "" {
+				message = step.Message
+			}
+			if message != "" {
+				sendNotification(inst.Channel, inst.ChatID, message)
+			}
+			return
+		}
+
 		if step.Action == "tool_call" {
 			stepLabel := workflow.StepLabel(step)
 			var resultMsg string
