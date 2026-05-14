@@ -65,7 +65,8 @@ linters:
   settings:
     gomoddirectives:
       replace-allow-list:
-        - github.com/bwmarrin/discordgo
+        - github.com/bwmarrin/discordgo 
+        - github.com/open-dingtalk/dingtalk-stream-sdk-go
     errcheck:
       check-type-assertions: true
       check-blank: true
