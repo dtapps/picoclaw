@@ -33,6 +33,36 @@ export interface CoreConfigForm {
   inlineToolCallsEnabled: boolean
   // 模型响应内容清理配置
   cleanContentEnabled: boolean
+  mcpEnabled: boolean
+  mcpDiscoveryEnabled: boolean
+  mcpDiscoveryTTL: string
+  mcpDiscoveryMaxSearchResults: string
+  mcpDiscoveryUseBM25: boolean
+  mcpDiscoveryUseRegex: boolean
+  mcpServers: MCPServerForm[]
+  evolutionEnabled: boolean
+  evolutionMode: string
+  evolutionStateDir: string
+  evolutionMinTaskCount: string
+  evolutionMinSuccessRatio: string
+  evolutionColdPathTrigger: string
+  evolutionColdPathTimesText: string
+}
+
+export type MCPServerType = "http" | "sse" | "stdio"
+
+export interface MCPServerForm {
+  id: string
+  name: string
+  enabled: boolean
+  deferredOverride: boolean | null
+  type: MCPServerType
+  url: string
+  command: string
+  argsText: string
+  envText: string
+  envFile: string
+  headersText: string
 }
 
 export interface LauncherForm {
@@ -42,6 +72,27 @@ export interface LauncherForm {
   dashboardPassword: string
   dashboardPasswordConfirm: string
 }
+
+// 请求追踪配置表单
+export interface TracingForm {
+  enabled: boolean
+  // 每行一个映射，格式: "Header-Name: field_name"
+  headersText: string
+}
+
+// 可用的上下文字段选项
+export const TRACING_FIELD_OPTIONS = [
+  { value: "session_key", label: "session_key" },
+  { value: "turn_id", label: "turn_id" },
+  { value: "agent_id", label: "agent_id" },
+  { value: "agent_name", label: "agent_name" },
+  { value: "channel", label: "channel" },
+  { value: "chat_id", label: "chat_id" },
+  { value: "parent_turn_id", label: "parent_turn_id" },
+  { value: "sender_id", label: "sender_id" },
+  { value: "message_id", label: "message_id" },
+  { value: "model", label: "model" },
+] as const
 
 export const DM_SCOPE_OPTIONS = [
   {
@@ -107,6 +158,20 @@ export const EMPTY_FORM: CoreConfigForm = {
   inlineToolCallsEnabled: false,
   // 模型响应内容清理默认值
   cleanContentEnabled: false,
+  mcpEnabled: false,
+  mcpDiscoveryEnabled: false,
+  mcpDiscoveryTTL: "5",
+  mcpDiscoveryMaxSearchResults: "5",
+  mcpDiscoveryUseBM25: true,
+  mcpDiscoveryUseRegex: false,
+  mcpServers: [],
+  evolutionEnabled: false,
+  evolutionMode: "observe",
+  evolutionStateDir: "",
+  evolutionMinTaskCount: "2",
+  evolutionMinSuccessRatio: "0.7",
+  evolutionColdPathTrigger: "after_turn",
+  evolutionColdPathTimesText: "",
 }
 
 export const EMPTY_LAUNCHER_FORM: LauncherForm = {
@@ -115,6 +180,11 @@ export const EMPTY_LAUNCHER_FORM: LauncherForm = {
   allowedCIDRsText: "",
   dashboardPassword: "",
   dashboardPasswordConfirm: "",
+}
+
+export const EMPTY_TRACING_FORM: TracingForm = {
+  enabled: false,
+  headersText: "",
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -132,6 +202,10 @@ function asBool(value: unknown): boolean {
   return value === true
 }
 
+function asOptionalBool(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null
+}
+
 function asNumberString(value: unknown, fallback: string): string {
   if (typeof value === "number" && Number.isFinite(value)) {
     return String(value)
@@ -142,6 +216,54 @@ function asNumberString(value: unknown, fallback: string): string {
   return fallback
 }
 
+function toMCPServerType(value: unknown): MCPServerType {
+  if (value === "http" || value === "sse") {
+    return value
+  }
+  return "stdio"
+}
+
+function makeMCPServerID(name: string): string {
+  const encoded = encodeURIComponent(name)
+  if (encoded.length > 0) {
+    return `mcp-${encoded}`
+  }
+  return `mcp-${Math.random().toString(36).slice(2, 10)}`
+}
+
+function mapMCPServers(value: unknown): MCPServerForm[] {
+  const servers = asRecord(value)
+  return Object.entries(servers).map(([name, rawConfig]) => {
+    const cfg = asRecord(rawConfig)
+    const argsList = Array.isArray(cfg.args)
+      ? cfg.args.filter((item): item is string => typeof item === "string")
+      : []
+    const url = asString(cfg.url)
+    const type =
+      cfg.type === undefined
+        ? url
+          ? "sse"
+          : "stdio"
+        : toMCPServerType(cfg.type)
+    const env = asRecord(cfg.env)
+    const headers = asRecord(cfg.headers)
+
+    return {
+      id: makeMCPServerID(name),
+      name,
+      enabled: cfg.enabled !== false,
+      deferredOverride: asOptionalBool(cfg.deferred),
+      type,
+      url,
+      command: asString(cfg.command),
+      argsText: argsList.join("\n"),
+      envText: JSON.stringify(env, null, 2),
+      envFile: asString(cfg.env_file),
+      headersText: JSON.stringify(headers, null, 2),
+    }
+  })
+}
+
 export function buildFormFromConfig(config: unknown): CoreConfigForm {
   const root = asRecord(config)
   const agents = asRecord(root.agents)
@@ -149,7 +271,10 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
   const session = asRecord(root.session)
   const heartbeat = asRecord(root.heartbeat)
   const devices = asRecord(root.devices)
+  const evolution = asRecord(root.evolution)
   const tools = asRecord(root.tools)
+  const mcp = asRecord(tools.mcp)
+  const mcpDiscovery = asRecord(mcp.discovery)
   const cron = asRecord(tools.cron)
   const exec = asRecord(tools.exec)
   const toolFeedback = asRecord(defaults.tool_feedback)
@@ -280,7 +405,94 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
         ? EMPTY_FORM.cleanContentEnabled
         : asBool(itc.clean_content)
     })(),
+    mcpEnabled:
+      mcp.enabled === undefined ? EMPTY_FORM.mcpEnabled : asBool(mcp.enabled),
+    mcpDiscoveryEnabled:
+      mcpDiscovery.enabled === undefined
+        ? EMPTY_FORM.mcpDiscoveryEnabled
+        : asBool(mcpDiscovery.enabled),
+    mcpDiscoveryTTL: asNumberString(
+      mcpDiscovery.ttl,
+      EMPTY_FORM.mcpDiscoveryTTL,
+    ),
+    mcpDiscoveryMaxSearchResults: asNumberString(
+      mcpDiscovery.max_search_results,
+      EMPTY_FORM.mcpDiscoveryMaxSearchResults,
+    ),
+    mcpDiscoveryUseBM25:
+      mcpDiscovery.use_bm25 === undefined
+        ? EMPTY_FORM.mcpDiscoveryUseBM25
+        : asBool(mcpDiscovery.use_bm25),
+    mcpDiscoveryUseRegex:
+      mcpDiscovery.use_regex === undefined
+        ? EMPTY_FORM.mcpDiscoveryUseRegex
+        : asBool(mcpDiscovery.use_regex),
+    mcpServers: mapMCPServers(mcp.servers),
+    evolutionEnabled:
+      evolution.enabled === undefined
+        ? EMPTY_FORM.evolutionEnabled
+        : asBool(evolution.enabled),
+    evolutionMode: asString(evolution.mode) || EMPTY_FORM.evolutionMode,
+    evolutionStateDir:
+      asString(evolution.state_dir) || EMPTY_FORM.evolutionStateDir,
+    evolutionMinTaskCount: asNumberString(
+      evolution.min_task_count,
+      EMPTY_FORM.evolutionMinTaskCount,
+    ),
+    evolutionMinSuccessRatio: asNumberString(
+      evolution.min_success_ratio,
+      EMPTY_FORM.evolutionMinSuccessRatio,
+    ),
+    evolutionColdPathTrigger:
+      asString(evolution.cold_path_trigger) ||
+      EMPTY_FORM.evolutionColdPathTrigger,
+    evolutionColdPathTimesText: Array.isArray(evolution.cold_path_times)
+      ? evolution.cold_path_times
+          .filter((value): value is string => typeof value === "string")
+          .join("\n")
+      : EMPTY_FORM.evolutionColdPathTimesText,
   }
+}
+
+// buildTracingFormFromConfig 从原始配置中解析追踪配置表单
+export function buildTracingFormFromConfig(config: unknown): TracingForm {
+  const root = asRecord(config)
+  const tracing = asRecord(root.tracing)
+  const enabled = asBool(tracing.enabled)
+  const headers = tracing.headers
+  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
+    return { enabled, headersText: "" }
+  }
+  const entries = Object.entries(headers as Record<string, unknown>)
+    .filter(([, v]) => typeof v === "string")
+    .map(([k, v]) => `${k}: ${v}`)
+  return {
+    enabled,
+    headersText: entries.length > 0 ? entries.join("\n") : "",
+  }
+}
+
+// parseTracingHeaders 将文本格式的映射解析为 headers 对象
+// 格式: 每行 "Header-Name: field_name"
+// 未启用或无有效映射时返回 undefined
+export function parseTracingHeaders(enabled: boolean, text: string): Record<string, string> | undefined {
+  if (!enabled) return undefined
+  const lines = text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0)
+  if (lines.length === 0) return undefined
+  const result: Record<string, string> = {}
+  for (const line of lines) {
+    const idx = line.indexOf(":")
+    if (idx < 0) continue
+    const key = line.slice(0, idx).trim()
+    const value = line.slice(idx + 1).trim()
+    if (key && value) {
+      result[key] = value
+    }
+  }
+  return Object.keys(result).length > 0 ? result : undefined
 }
 
 export function parseIntField(
@@ -291,6 +503,24 @@ export function parseIntField(
   const value = Number(rawValue)
   if (!Number.isInteger(value)) {
     throw new Error(`${label} must be an integer.`)
+  }
+  if (options.min !== undefined && value < options.min) {
+    throw new Error(`${label} must be >= ${options.min}.`)
+  }
+  if (options.max !== undefined && value > options.max) {
+    throw new Error(`${label} must be <= ${options.max}.`)
+  }
+  return value
+}
+
+export function parseFloatField(
+  rawValue: string,
+  label: string,
+  options: { min?: number; max?: number } = {},
+): number {
+  const value = Number(rawValue)
+  if (!Number.isFinite(value)) {
+    throw new Error(`${label} must be a number.`)
   }
   if (options.min !== undefined && value < options.min) {
     throw new Error(`${label} must be >= ${options.min}.`)
@@ -319,4 +549,35 @@ export function parseMultilineList(raw: string): string[] {
     .split("\n")
     .map((value) => value.trim())
     .filter((value) => value.length > 0)
+}
+
+export function parseJSONObjectField(
+  rawValue: string,
+  label: string,
+): Record<string, string> {
+  const trimmed = rawValue.trim()
+  if (trimmed === "") {
+    return {}
+  }
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    throw new Error(`${label} must be valid JSON.`)
+  }
+
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error(`${label} must be a JSON object.`)
+  }
+
+  const entries = Object.entries(parsed as Record<string, unknown>)
+  const result: Record<string, string> = {}
+  for (const [key, value] of entries) {
+    if (typeof value !== "string") {
+      throw new Error(`${label}.${key} must be a string.`)
+    }
+    result[key] = value
+  }
+  return result
 }

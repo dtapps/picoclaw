@@ -100,6 +100,10 @@ type Manager struct {
 	channelHashes map[string]string // channel name → config hash
 }
 
+type mediaStoreSetter interface {
+	SetMediaStore(s media.MediaStore)
+}
+
 // ManagerOption configures a channel Manager.
 type ManagerOption func(*Manager)
 
@@ -167,7 +171,15 @@ func outboundMessageBypassesPlaceholderEdit(msg bus.OutboundMessage) bool {
 		return false
 	}
 	kind := strings.TrimSpace(msg.Context.Raw["message_kind"])
-	return strings.EqualFold(kind, "thought") || strings.EqualFold(kind, "tool_calls")
+	return strings.EqualFold(kind, "thought") || strings.EqualFold(kind, "tool_calls") ||
+		strings.EqualFold(kind, "workflow_notification")
+}
+
+func outboundMessageIsWorkflowNotification(msg bus.OutboundMessage) bool {
+	if len(msg.Context.Raw) == 0 {
+		return false
+	}
+	return strings.EqualFold(strings.TrimSpace(msg.Context.Raw["message_kind"]), "workflow_notification")
 }
 
 func outboundMediaChannel(msg bus.OutboundMediaMessage) string {
@@ -320,6 +332,15 @@ func (m *Manager) RecordReactionUndo(channel, chatID string, undo func()) {
 func (m *Manager) preSend(ctx context.Context, name string, msg bus.OutboundMessage, ch Channel) ([]string, bool) {
 	chatID := outboundMessageChatID(msg)
 	key := name + ":" + chatID
+
+	// Workflow notifications bypass all preSend logic to ensure they are
+	// always delivered as new messages in order, without any side effects.
+	if outboundMessageIsWorkflowNotification(msg) {
+		logger.DebugCF("channels", "workflow_notification preSend bypass", map[string]any{
+			"channel": name, "chat_id": chatID, "content_len": len(msg.Content),
+		})
+		return nil, false
+	}
 
 	// 1. Stop typing
 	if v, loaded := m.typingStops.LoadAndDelete(key); loaded {
@@ -485,6 +506,22 @@ func NewManager(
 	return m, nil
 }
 
+// SetMediaStore updates the store used by the manager and every channel that
+// accepts media store injection. Gateway reload creates a fresh store, so
+// keeping existing channels on the same store as the agent is required for
+// inbound media refs to remain resolvable after reload.
+func (m *Manager) SetMediaStore(store media.MediaStore) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.mediaStore = store
+	for _, ch := range m.channels {
+		if setter, ok := ch.(mediaStoreSetter); ok {
+			setter.SetMediaStore(store)
+		}
+	}
+}
+
 // GetStreamer implements bus.StreamDelegate.
 // It checks if the named channel supports streaming and returns a Streamer.
 func (m *Manager) GetStreamer(ctx context.Context, channelName, chatID string) (bus.Streamer, bool) {
@@ -582,7 +619,7 @@ func (m *Manager) initChannel(typeName, channelName string) {
 	} else {
 		// Inject MediaStore if channel supports it
 		if m.mediaStore != nil {
-			if setter, ok := ch.(interface{ SetMediaStore(s media.MediaStore) }); ok {
+			if setter, ok := ch.(mediaStoreSetter); ok {
 				setter.SetMediaStore(m.mediaStore)
 			}
 		}
@@ -667,6 +704,8 @@ func (m *Manager) getChannelConfigAndEnabled(channelName string) (*config.Channe
 	case *config.MaixCamSettings:
 		return bc, true
 	case *config.TeamsWebhookSettings:
+		return bc, true
+	case *config.SlackWebhookSettings:
 		return bc, true
 	case *config.DiscordSettings:
 		return bc, settings.Token.String() != ""

@@ -14,6 +14,7 @@ import (
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 // CallLLM performs an LLM call with fallback support, hook invocation, and retry logic.
@@ -151,6 +152,21 @@ func (p *Pipeline) CallLLM(
 			providerCancel()
 			ts.clearProviderCancel(providerCancel)
 		}()
+
+		// 注入追踪信息到 context，供 provider 层读取并设置 HTTP 请求头
+		if p.Cfg != nil && p.Cfg.Tracing.IsEnabled() {
+			providerCtx = tracing.WithHeaders(providerCtx, p.Cfg.Tracing.Headers)
+			providerCtx = tracing.WithSessionKey(providerCtx, ts.sessionKey)
+			providerCtx = tracing.WithTurnID(providerCtx, ts.turnID)
+			providerCtx = tracing.WithAgentID(providerCtx, ts.agentID)
+			providerCtx = tracing.WithAgentName(providerCtx, ts.agent.Name)
+			providerCtx = tracing.WithChannel(providerCtx, ts.channel)
+			providerCtx = tracing.WithChatID(providerCtx, ts.chatID)
+			providerCtx = tracing.WithParentTurnID(providerCtx, ts.parentTurnID)
+			providerCtx = tracing.WithSenderID(providerCtx, ts.opts.SenderID)
+			providerCtx = tracing.WithMessageID(providerCtx, ts.opts.MessageID)
+			providerCtx = tracing.WithModel(providerCtx, exec.llmModel)
+		}
 
 		al.activeRequests.Add(1)
 		defer al.activeRequests.Done()
@@ -364,9 +380,14 @@ func (p *Pipeline) CallLLM(
 				exec.history = asmResp.History
 				exec.summary = asmResp.Summary
 			}
-			exec.messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(
-				promptBuildRequestForTurn(ts, exec.history, exec.summary, "", nil),
-			)
+			contextualSkills := ts.activeSkills
+			if ts.agent.ContextBuilder != nil {
+				contextualSkills = ts.agent.ContextBuilder.ResolveActiveSkillsForContext(ts.activeSkills)
+			}
+			ts.recordSkillContextSnapshot(skillContextTriggerContextRetryRebuild, contextualSkills)
+			rebuildPromptReq := promptBuildRequestForTurn(ts, exec.history, exec.summary, "", nil)
+			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
+			exec.messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 			exec.callMessages = exec.messages
 			if exec.gracefulTerminal {
 				msgs := append([]providers.Message(nil), exec.messages...)

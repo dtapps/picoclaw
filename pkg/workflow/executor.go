@@ -3,9 +3,11 @@ package workflow
 import (
 	"context"
 	"fmt"
-	"log"
+	"maps"
 	"strings"
 	"time"
+
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // StepExecutor 负责执行工作流中的单个步骤。
@@ -23,24 +25,51 @@ type StepExecutor struct {
 
 // StepResult 保存步骤执行的输出结果。
 type StepResult struct {
-	Output string // 步骤输出文本
-	Error  error  // 执行错误
+	Output   string // 步骤输出文本
+	Error    error  // 执行错误
+	Attempts int    // 实际执行次数（含重试）
 }
 
 // Execute 执行单个步骤并返回结果。
 // 会先解析模板变量，再根据动作类型分发执行。
 func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[string]map[string]any) StepResult {
-	// 解析 prompt 和 args 中的模板引用
-	prompt := ResolveStepTemplates(step.Prompt, stepOutputs)
-	args := resolveArgsTemplates(step.Args, stepOutputs)
+	// 注意：delay 已由 Engine.executeStepWithState 处理，此处不再重复
 
-	// 应用步骤级超时
-	if step.Timeout != "" {
+	// 检查步骤是否启用
+	if step.Enabled != nil && !*step.Enabled {
+		return StepResult{Output: "step disabled"}
+	}
+
+	// 构建包含 self 属性的模板输出映射（不修改共享的 stepOutputs，避免并行步骤数据竞争）
+	localOutputs := make(map[string]map[string]any, len(stepOutputs)+1)
+	maps.Copy(localOutputs, stepOutputs)
+	selfOutput := map[string]any{"id": step.ID}
+	if step.Name != "" {
+		selfOutput["name"] = step.Name
+	}
+	localOutputs["self"] = selfOutput
+
+	// 解析 prompt 和 args 中的模板引用
+	prompt := ResolveStepTemplates(step.Prompt, localOutputs)
+	args := resolveArgsTemplates(step.Args, localOutputs)
+
+	// 应用步骤级超时：未设置时使用默认值 30m
+	timeoutStr := step.Timeout
+	if timeoutStr == "" {
+		timeoutStr = DefaultStepTimeout
+	}
+	if timeoutStr != "" {
 		var cancel context.CancelFunc
-		timeout, err := time.ParseDuration(step.Timeout)
+		timeout, err := time.ParseDuration(timeoutStr)
 		if err == nil {
 			ctx, cancel = context.WithTimeout(ctx, timeout)
 			defer cancel()
+		} else {
+			logger.WarnCF(
+				"workflow",
+				"步骤 timeout 格式无效，跳过超时设置",
+				map[string]any{"step": step.ID, "timeout": timeoutStr},
+			)
 		}
 	}
 
@@ -48,6 +77,14 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 	case "agent_prompt":
 		return se.executeAgentPrompt(ctx, prompt)
 	case "tool_call":
+		if _, hasCwd := args["cwd"]; !hasCwd {
+			if wd, ok := WorkdirFromCtx(ctx); ok && wd != "" {
+				if args == nil {
+					args = make(map[string]any)
+				}
+				args["cwd"] = ResolveStepTemplates(wd, localOutputs)
+			}
+		}
 		return se.executeToolCall(ctx, step.Tool, args)
 	case "parallel":
 		return se.executeParallel(ctx, step.Parallel, stepOutputs)
@@ -105,7 +142,7 @@ func (se *StepExecutor) executeParallel(
 	ch := make(chan parallelResult, len(steps))
 	for i, step := range steps {
 		go func(idx int, s Step) {
-			ch <- parallelResult{index: idx, result: se.Execute(ctx, s, stepOutputs)}
+			ch <- parallelResult{index: idx, result: se.ExecuteWithRetry(ctx, s, stepOutputs)}
 		}(i, step)
 	}
 
@@ -163,14 +200,17 @@ func (se *StepExecutor) ExecuteWithRetry(
 	var lastResult StepResult
 	for attempt := 1; attempt <= maxAttempts; attempt++ {
 		result := se.Execute(ctx, step, stepOutputs)
+		result.Attempts = attempt
 		if result.Error == nil {
 			return result
 		}
 		lastResult = result
 
 		if attempt < maxAttempts {
-			log.Printf("[workflow] 步骤 '%s' 第 %d/%d 次尝试失败: %v，%s 后重试",
-				step.ID, attempt, maxAttempts, result.Error, retryDelay)
+			logger.WarnCF("workflow", "步骤执行失败，即将重试", map[string]any{
+				"step": step.ID, "attempt": attempt, "max_attempts": maxAttempts,
+				"error": result.Error.Error(), "retry_delay": retryDelay.String(),
+			})
 			if retryDelay > 0 {
 				select {
 				case <-time.After(retryDelay):
@@ -185,19 +225,36 @@ func (se *StepExecutor) ExecuteWithRetry(
 }
 
 // resolveArgsTemplates 解析工具调用参数中的模板引用。
-// 只对字符串类型的参数值进行模板替换。
+// 递归处理字符串值和嵌套 map/slice 中的模板替换。
 func resolveArgsTemplates(args map[string]any, outputs map[string]map[string]any) map[string]any {
 	if args == nil {
 		return nil
 	}
 	resolved := make(map[string]any, len(args))
 	for k, v := range args {
-		switch val := v.(type) {
-		case string:
-			resolved[k] = ResolveStepTemplates(val, outputs)
-		default:
-			resolved[k] = v
-		}
+		resolved[k] = resolveValueTemplates(v, outputs)
 	}
 	return resolved
+}
+
+// resolveValueTemplates 递归解析任意值中的模板引用。
+func resolveValueTemplates(v any, outputs map[string]map[string]any) any {
+	switch val := v.(type) {
+	case string:
+		return ResolveStepTemplates(val, outputs)
+	case map[string]any:
+		result := make(map[string]any, len(val))
+		for k, v2 := range val {
+			result[k] = resolveValueTemplates(v2, outputs)
+		}
+		return result
+	case []any:
+		result := make([]any, len(val))
+		for i, item := range val {
+			result[i] = resolveValueTemplates(item, outputs)
+		}
+		return result
+	default:
+		return v
+	}
 }

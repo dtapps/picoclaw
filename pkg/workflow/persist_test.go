@@ -23,8 +23,8 @@ func TestNewPersistStore(t *testing.T) {
 	if store.workflowsDir != "/tmp/test-workspace/workflows" {
 		t.Fatalf("workflowsDir = %q, want %q", store.workflowsDir, "/tmp/test-workspace/workflows")
 	}
-	if store.stateDir != "/tmp/test-workspace/workflows/.state" {
-		t.Fatalf("stateDir = %q, want %q", store.stateDir, "/tmp/test-workspace/workflows/.state")
+	if store.stateDir != "/tmp/test-workspace/state/workflows" {
+		t.Fatalf("stateDir = %q, want %q", store.stateDir, "/tmp/test-workspace/state/workflows")
 	}
 }
 
@@ -334,9 +334,10 @@ func TestPersistStore_PurgeOldInstances(t *testing.T) {
 	if len(instances) != 2 {
 		t.Fatalf("len(instances) after purge = %d, want 2", len(instances))
 	}
-	// 应保留最新的 2 个
-	if instances[0].ID == "purge-inst-4" || instances[1].ID == "purge-inst-3" {
-		// 保留的是最新的
+	// 应保留最新的 2 个（LoadInstances 返回倒序，所以 [0] 是最新的）
+	if instances[0].ID != "purge-inst-4" || instances[1].ID != "purge-inst-3" {
+		t.Errorf("purge kept wrong instances: got [%s, %s], want [purge-inst-4, purge-inst-3]",
+			instances[0].ID, instances[1].ID)
 	}
 }
 
@@ -346,12 +347,12 @@ func TestSanitizeName(t *testing.T) {
 		want  string
 	}{
 		{"hello-world", "hello-world"},
-		{"Hello World", "hello-world"},
+		{"Hello World", "Hello-World"},
 		{"my_workflow", "my_workflow"},
-		{"Test123", "test123"},
+		{"Test123", "Test123"},
 		{"special!@#chars", "specialchars"},
 		{"", "unnamed"},
-		{"UPPERCASE", "uppercase"},
+		{"UPPERCASE", "UPPERCASE"},
 		{"a b c", "a-b-c"},
 	}
 

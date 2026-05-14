@@ -8,6 +8,7 @@ triggers:
 steps:
   - id: fetch_all
     action: parallel
+    delay: 5s
     parallel:
       - id: fetch_tech_news
         action: agent_prompt

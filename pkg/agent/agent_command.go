@@ -317,6 +317,9 @@ func (al *AgentLoop) buildCommandsRuntime(
 		rt.WorkflowStop = func(instanceID string) error {
 			return ws.StopInstance(instanceID)
 		}
+		rt.WorkflowCronList = func() []commands.CronTaskInfo {
+			return ws.CronListForCommand()
+		}
 	}
 	if agent != nil {
 		if agent.ContextBuilder != nil {

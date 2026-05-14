@@ -9,28 +9,35 @@ import {
   IconSubtask,
   IconTrash,
   IconUpload,
+  IconExternalLink,
+  IconClock,
 } from "@tabler/icons-react"
 import { useEffect, useRef, useState, type DragEvent } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "@tanstack/react-router"
+import { useQueryClient } from "@tanstack/react-query"
+import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 
-import type { WorkflowInstance, WorkflowListItem } from "@/api/workflow"
+import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent, CronTaskInfo } from "@/api/workflow"
 import {
+  createInstanceStream,
   formatInstanceStatus,
   formatTriggerDescription,
   getInstanceStatusColor,
+  getCronTasks,
 } from "@/api/workflow"
-import { getWorkflowInstances, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
+import { getWorkflowInstances, getWorkflowInstance, getWorkflow, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import {
   Select,
@@ -47,20 +54,25 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip"
 
+import { ConfirmDialog } from "./confirm-dialog"
 import { DeleteDialog } from "./delete-dialog"
+import { RunDialog } from "./run-dialog"
 import { WorkflowImportDialog } from "./import-dialog"
-import { type WorkflowFilter, useWorkflows } from "./use-workflows"
+import { type StatusFilter, type TriggerFilter, useWorkflows } from "./use-workflows"
 
 export function WorkflowsPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const {
     filteredWorkflows,
     isLoading,
     error,
-    filter,
+    statusFilter,
+    triggerFilter,
     searchQuery,
-    setFilter,
+    setStatusFilter,
+    setTriggerFilter,
     setSearchQuery,
     handleDelete,
     handleToggle,
@@ -69,13 +81,20 @@ export function WorkflowsPage() {
     isDeleting,
     isToggling,
     isRunning,
+    isStopping,
   } = useWorkflows()
 
   const [deleteWorkflow, setDeleteWorkflow] = useState<WorkflowListItem | null>(null)
+  const [runWorkflow, setRunWorkflow] = useState<WorkflowListItem | null>(null)
+  const [stopWorkflow, setStopWorkflow] = useState<WorkflowListItem | null>(null)
+  const [toggleOffWorkflow, setToggleOffWorkflow] = useState<WorkflowListItem | null>(null)
   const [historyWorkflow, setHistoryWorkflow] = useState<string | null>(null)
   const [importOpen, setImportOpen] = useState(false)
   const [importPending, setImportPending] = useState(false)
   const [isDragActive, setIsDragActive] = useState(false)
+  const [cronDialogOpen, setCronDialogOpen] = useState(false)
+  const [cronTasks, setCronTasks] = useState<CronTaskInfo[]>([])
+  const [cronLoading, setCronLoading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const dragDepthRef = useRef(0)
 
@@ -100,7 +119,7 @@ export function WorkflowsPage() {
   const doImport = async (file: File) => {
     const err = validateImportFile(file)
     if (err) {
-      alert(err)
+      toast.error(err)
       return
     }
     setImportPending(true)
@@ -108,9 +127,10 @@ export function WorkflowsPage() {
       const yamlContent = await file.text()
       await importWorkflow(yamlContent)
       setImportOpen(false)
-      window.location.reload()
+      await queryClient.invalidateQueries({ queryKey: ["workflows"] })
+      toast.success(t("pages.workflows.import_success", "Workflow imported successfully"))
     } catch (err) {
-      alert(err instanceof Error ? err.message : t("pages.workflows.import_error"))
+      toast.error(err instanceof Error ? err.message : t("pages.workflows.import_error"))
     }
     setImportPending(false)
   }
@@ -144,6 +164,17 @@ export function WorkflowsPage() {
     if (file) await doImport(file)
   }
 
+  // 打开 Cron 调度弹窗时加载
+  useEffect(() => {
+    if (cronDialogOpen) {
+      setCronLoading(true)
+      getCronTasks()
+        .then((data) => setCronTasks(data.tasks || []))
+        .catch(() => setCronTasks([]))
+        .finally(() => setCronLoading(false))
+    }
+  }, [cronDialogOpen])
+
   if (error) {
     return (
       <div className="bg-background flex h-full flex-col">
@@ -170,6 +201,10 @@ export function WorkflowsPage() {
     <div className="bg-background flex h-full flex-col">
       <PageHeader title={t("navigation.workflows", "Workflows")}>
         <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => setCronDialogOpen(true)}>
+            <IconClock className="mr-2 h-4 w-4" />
+            {t("pages.workflows.cron_schedule", "Cron Schedule")}
+          </Button>
           <Button variant="outline" onClick={() => setImportOpen(true)}>
             <IconUpload className="mr-2 h-4 w-4" />
             {t("pages.workflows.import", "Import")}
@@ -193,10 +228,7 @@ export function WorkflowsPage() {
           <div className="relative max-w-md flex-1">
             <IconSearch className="text-muted-foreground absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2" />
             <Input
-              placeholder={t(
-                "pages.workflows.search_placeholder",
-                "Search workflows...",
-              )}
+              placeholder={t("pages.workflows.search_placeholder", "Search workflows...")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -205,10 +237,10 @@ export function WorkflowsPage() {
           <div className="flex items-center gap-2">
             <IconFilter className="text-muted-foreground h-4 w-4" />
             <Select
-              value={filter}
-              onValueChange={(v) => setFilter(v as WorkflowFilter)}
+              value={statusFilter}
+              onValueChange={(v) => setStatusFilter(v as StatusFilter)}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[120px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -223,19 +255,49 @@ export function WorkflowsPage() {
                 </SelectItem>
               </SelectContent>
             </Select>
+            <Select
+              value={triggerFilter}
+              onValueChange={(v) => setTriggerFilter(v as TriggerFilter)}
+            >
+              <SelectTrigger className="w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">
+                  {t("pages.workflows.filter_all", "All")}
+                </SelectItem>
+                <SelectItem value="manual">
+                  {t("pages.workflows.trigger_manual", "Manual")}
+                </SelectItem>
+                <SelectItem value="cron">
+                  {t("pages.workflows.trigger_cron", "Cron")}
+                </SelectItem>
+                <SelectItem value="event">
+                  {t("pages.workflows.trigger_event", "Event")}
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto px-6 py-6">
+      <div
+        className="flex-1 overflow-auto px-6 py-6"
+        onDragEnter={handleDragEnter}
+        onDragOver={(e) => e.preventDefault()}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        {isDragActive && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80">
+            <p className="text-lg font-medium">{t("pages.workflows.drop_yaml", "Drop YAML file here")}</p>
+          </div>
+        )}
         <div className="mx-auto w-full max-w-6xl">
           {isLoading ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {[...Array(6)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-card h-48 animate-pulse rounded-lg border"
-                />
+                <div key={i} className="bg-card h-48 animate-pulse rounded-lg border" />
               ))}
             </div>
           ) : filteredWorkflows.length === 0 ? (
@@ -245,10 +307,7 @@ export function WorkflowsPage() {
                 {t("pages.workflows.empty_title", "No workflows yet")}
               </h3>
               <p className="text-muted-foreground mt-1">
-                {t(
-                  "pages.workflows.empty_description",
-                  "Create your first workflow to automate multi-step tasks.",
-                )}
+                {t("pages.workflows.empty_description", "Create your first workflow to automate multi-step tasks.")}
               </p>
               <Button className="mt-4" onClick={() => void navigate({ to: "/workflows/editor", search: { name: "" } })}>
                 <IconPlus className="mr-2 h-4 w-4" />
@@ -257,27 +316,46 @@ export function WorkflowsPage() {
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredWorkflows.map((wf) => (
+              {filteredWorkflows.map((wf) => {
+                // 获取该工作流的所有 cron 任务，找出最近的下次执行时间
+                const workflowCronTasks = cronTasks.filter((ct) => ct.workflow_name === wf.name)
+                const nextRun = workflowCronTasks.length > 0
+                  ? workflowCronTasks.sort((a, b) => new Date(a.next_run).getTime() - new Date(b.next_run).getTime())[0].next_run
+                  : null
+                return (
                 <WorkflowCard
                   key={wf.name}
                   workflow={wf}
-                  onToggle={handleToggle}
-                  onRun={handleRun}
-                  onStop={handleStop}
+                  nextRun={nextRun}
+                  onToggle={(name, checked) => {
+                    if (checked) {
+                      handleToggle(name, checked)
+                    } else {
+                      const found = filteredWorkflows.find((w) => w.name === name)
+                      setToggleOffWorkflow(found || null)
+                    }
+                  }}
+                  onRun={(name) => {
+                    const found = filteredWorkflows.find((w) => w.name === name)
+                    setRunWorkflow(found || null)
+                  }}
+                  onStop={(name) => {
+                    const found = filteredWorkflows.find((w) => w.name === name)
+                    setStopWorkflow(found || null)
+                  }}
                   onEdit={(name) =>
                     void navigate({ to: "/workflows/editor", search: { name } })
                   }
                   onDelete={(name) => {
-                    const found = filteredWorkflows.find(
-                      (w) => w.name === name,
-                    )
+                    const found = filteredWorkflows.find((w) => w.name === name)
                     setDeleteWorkflow(found || null)
                   }}
                   onHistory={(name) => setHistoryWorkflow(name)}
                   isToggling={isToggling}
                   isRunning={isRunning}
                 />
-              ))}
+                )
+              })}
             </div>
           )}
         </div>
@@ -296,6 +374,99 @@ export function WorkflowsPage() {
         onConfirm={onDeleteConfirm}
         isDeleting={isDeleting}
       />
+
+      <RunDialog
+        workflow={runWorkflow}
+        open={!!runWorkflow}
+        onOpenChange={(open) => !open && setRunWorkflow(null)}
+        onConfirm={() => {
+          if (runWorkflow) handleRun(runWorkflow.name)
+          setRunWorkflow(null)
+        }}
+        isRunning={isRunning}
+      />
+
+      <ConfirmDialog
+        title={t("pages.workflows.stop_title", "Stop Workflow")}
+        description={t("pages.workflows.stop_description", "Are you sure you want to stop \"{{name}}\"?", { name: stopWorkflow?.name || "" })}
+        open={!!stopWorkflow}
+        onOpenChange={(open) => !open && setStopWorkflow(null)}
+        onConfirm={() => {
+          if (stopWorkflow) handleStop(stopWorkflow.name)
+          setStopWorkflow(null)
+        }}
+        confirmLabel={t("pages.workflows.stop", "Stop")}
+        confirmVariant="destructive"
+        isPending={isStopping}
+      />
+
+      <ConfirmDialog
+        title={t("pages.workflows.disable_title", "Disable Workflow")}
+        description={t("pages.workflows.disable_description", "Are you sure you want to disable \"{{name}}\"?", { name: toggleOffWorkflow?.name || "" })}
+        open={!!toggleOffWorkflow}
+        onOpenChange={(open) => !open && setToggleOffWorkflow(null)}
+        onConfirm={() => {
+          if (toggleOffWorkflow) handleToggle(toggleOffWorkflow.name, false)
+          setToggleOffWorkflow(null)
+        }}
+        confirmLabel={t("common.disable", "Disable")}
+        isPending={isToggling}
+      />
+
+      {/* Cron 调度弹窗 */}
+      <Dialog open={cronDialogOpen} onOpenChange={setCronDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <IconClock className="h-5 w-5" />
+              {t("pages.workflows.cron_schedule", "Cron Schedule")}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            {cronLoading ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                {t("common.loading", "Loading...")}
+              </div>
+            ) : cronTasks.length === 0 ? (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                {t("pages.workflows.no_cron_tasks", "No scheduled cron tasks")}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {cronTasks.map((task) => (
+                  <div
+                    key={`${task.workflow_name}-${task.trigger_type}-${task.schedule}`}
+                    className="flex items-center justify-between rounded-md border px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-sm truncate">{task.workflow_name}</p>
+                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                        <span className={cn(
+                          "rounded px-1.5 py-0.5 text-[10px] font-medium",
+                          task.trigger_type === "cron" && "bg-blue-100 text-blue-700",
+                          task.trigger_type === "at" && "bg-green-100 text-green-700",
+                          task.trigger_type === "interval" && "bg-purple-100 text-purple-700"
+                        )}>
+                          {task.trigger_type === "cron" && "CRON"}
+                          {task.trigger_type === "at" && "AT"}
+                          {task.trigger_type === "interval" && "INTERVAL"}
+                        </span>
+                        <code className="rounded bg-muted px-1.5 py-0.5">{task.schedule}</code>
+                        {task.timezone && task.timezone !== "UTC" && (
+                          <span>({task.timezone})</span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="ml-3 shrink-0 text-sm font-medium text-blue-600 whitespace-nowrap">
+                      → {task.next_run}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <WorkflowImportDialog
         open={importOpen}
@@ -321,9 +492,17 @@ function InstanceDialog({
   onOpenChange: (open: boolean) => void
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const [instances, setInstances] = useState<WorkflowInstance[]>([])
+  const [workflowSteps, setWorkflowSteps] = useState<Step[]>([])
   const [loading, setLoading] = useState(false)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
+  const esRef = useRef<EventSource | null>(null)
+  const retryCountRef = useRef(0)
+  const instancesRef = useRef(instances)
+  useEffect(() => { instancesRef.current = instances })
+  const MAX_SSE_RETRIES = 5
 
   const loadInstances = async (name: string) => {
     setLoading(true)
@@ -341,8 +520,88 @@ function InstanceDialog({
     if (workflowName) {
       setExpandedId(null)
       loadInstances(workflowName)
+      // 同时获取工作流定义（步骤层级结构，用于树形渲染）
+      getWorkflow(workflowName)
+        .then((wf) => setWorkflowSteps(wf.steps))
+        .catch(() => setWorkflowSteps([]))
     }
   }, [workflowName])
+
+  // 对正在运行的展开实例建立 SSE 连接，实时更新状态
+  useEffect(() => {
+    // 清除旧连接
+    if (esRef.current) {
+      esRef.current.close()
+      esRef.current = null
+    }
+    retryCountRef.current = 0
+
+    if (!workflowName || !expandedId) return
+
+    // 仅对运行中的实例建立 SSE
+    const expanded = instancesRef.current.find((i) => i.id === expandedId)
+    if (!expanded || expanded.status !== "running") return
+
+    const es = createInstanceStream(workflowName, expandedId)
+    esRef.current = es
+
+    es.onopen = () => {
+      retryCountRef.current = 0
+    }
+
+    es.addEventListener("snapshot", (e) => {
+      try {
+        const updated = JSON.parse(e.data) as WorkflowInstance
+        setInstances((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+      } catch { /* ignore */ }
+    })
+
+    es.addEventListener("step_update", (e) => {
+      try {
+        const evt = JSON.parse(e.data) as WorkflowStepEvent
+        const payload = evt.payload
+        if (!payload.step_id) return
+        const stepID = payload.step_id
+        setInstances((prev) =>
+          prev.map((i) => {
+            if (i.id !== expandedId) return i
+            const stepStates = { ...i.step_states }
+            stepStates[stepID] = {
+              ...stepStates[stepID],
+              status: payload.status || stepStates[stepID]?.status || "running",
+            }
+            return { ...i, step_states: stepStates }
+          }),
+        )
+      } catch { /* ignore */ }
+    })
+
+    es.addEventListener("instance_complete", () => {
+      // 重新获取完整实例数据（包含 step_states 的 error、timing、attempts 等）
+      if (workflowName && expandedId) {
+        getWorkflowInstance(workflowName, expandedId)
+          .then((inst) => {
+            setInstances((prev) => prev.map((i) => i.id === expandedId ? inst : i))
+          })
+          .catch(() => {})
+      }
+      es.close()
+      esRef.current = null
+    })
+
+    es.onerror = () => {
+      retryCountRef.current++
+      if (retryCountRef.current >= MAX_SSE_RETRIES) {
+        es.close()
+        if (esRef.current === es) esRef.current = null
+      }
+    }
+
+    return () => {
+      es.close()
+      if (esRef.current === es) esRef.current = null
+    }
+  }, [workflowName, expandedId])
 
   const handleOpenChange = (nextOpen: boolean) => {
     onOpenChange(nextOpen)
@@ -369,15 +628,21 @@ function InstanceDialog({
             <div className="space-y-2">
               {instances.map((inst) => (
                 <div key={inst.id} className="rounded-lg border">
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-muted/50"
-                    onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
-                  >
-                    <div className="flex items-center gap-3">
+                  <div className="flex w-full items-center justify-between px-4 py-3">
+                    <button
+                      type="button"
+                      className="flex flex-1 items-center gap-3 text-left hover:bg-muted/50 -mx-4 -my-3 px-4 py-3"
+                      onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
+                    >
                       <Badge variant="outline" className={getInstanceStatusColor(inst.status)}>
                         {formatInstanceStatus(inst.status, t)}
                       </Badge>
+                      {inst.status === "running" && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75" />
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500" />
+                        </span>
+                      )}
                       <span className="text-sm text-muted-foreground">
                         {inst.trigger_type === "cron"
                           ? t("pages.workflows.trigger_cron", "Cron")
@@ -388,16 +653,37 @@ function InstanceDialog({
                       <span className="text-xs text-muted-foreground">
                         {new Date(inst.started_at).toLocaleString()}
                       </span>
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {inst.id.slice(0, 8)}
+                      </span>
                       {inst.channel && (
-                        <span className="text-xs text-muted-foreground">
-                          {t("pages.workflows.notify_channel", "Channel")}: {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
+                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
                         </span>
                       )}
+                    </button>
+                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => void navigate({
+                          to: "/workflows/instance",
+                          search: { workflow: workflowName!, instance: inst.id },
+                        })}
+                      >
+                        <IconExternalLink className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 w-7"
+                        onClick={() => setDeleteInstanceId(inst.id)}
+                      >
+                        <IconTrash className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
-                    <span className="text-xs font-mono text-muted-foreground">
-                      {inst.id.slice(0, 8)}
-                    </span>
-                  </button>
+                  </div>
                   {expandedId === inst.id && (
                     <div className="border-t px-4 py-3 space-y-3">
                       {Object.entries(inst.step_states).length > 0 && (
@@ -406,24 +692,28 @@ function InstanceDialog({
                             {t("pages.workflows.step_progress", "Step Progress")}
                           </p>
                           <div className="space-y-1">
-                            {Object.entries(inst.step_states)
-                              .sort(([, a], [, b]) => {
-                                if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
-                                if (a.started_at) return -1
-                                if (b.started_at) return 1
-                                return 0
-                              })
-                              .map(([stepID, state]) => (
-                              <div key={stepID} className="flex items-center gap-2 text-xs">
-                                <span className={getInstanceStatusColor(state.status)}>
-                                  {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
-                                </span>
-                                <span>{stepID}</span>
-                                {state.error && (
-                                  <span className="text-destructive ml-2">{state.error}</span>
-                                )}
-                              </div>
-                            ))}
+                            {workflowSteps.length > 0 ? (
+                              <CompactStepTree steps={workflowSteps} stepStates={inst.step_states} />
+                            ) : (
+                              Object.entries(inst.step_states)
+                                .sort(([, a], [, b]) => {
+                                  if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
+                                  if (a.started_at) return -1
+                                  if (b.started_at) return 1
+                                  return 0
+                                })
+                                .map(([stepID, state]) => (
+                                <div key={stepID} className="flex items-center gap-2 text-xs">
+                                  <span className={getInstanceStatusColor(state.status)}>
+                                    {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+                                  </span>
+                                  <span>{state.name || `#${stepID}`}</span>
+                                  {state.error && (
+                                    <span className="text-destructive ml-2">{state.error}</span>
+                                  )}
+                                </div>
+                              ))
+                            )}
                           </div>
                         </div>
                       )}
@@ -448,7 +738,7 @@ function InstanceDialog({
                                   {new Date(log.timestamp).toLocaleTimeString()}
                                 </span>
                                 {log.step_id && (
-                                  <span className="text-blue-600 shrink-0">[{log.step_id}]</span>
+                                  <span className="text-blue-600 shrink-0">[{inst.step_states?.[log.step_id]?.name || `#${log.step_id}`}]</span>
                                 )}
                                 <span>{log.message}</span>
                               </div>
@@ -459,25 +749,6 @@ function InstanceDialog({
                       {inst.error && (
                         <p className="text-xs text-destructive">{inst.error}</p>
                       )}
-                      <div className="flex justify-end">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 h-7 text-xs"
-                          onClick={async () => {
-                            if (!confirm(t("pages.workflows.delete_instance_confirm", "Are you sure you want to delete this execution record?"))) return
-                            try {
-                              await deleteWorkflowInstance(inst.workflow_name, inst.id)
-                              setInstances(instances.filter(i => i.id !== inst.id))
-                            } catch {
-                              // ignore
-                            }
-                          }}
-                        >
-                          <IconTrash className="mr-1 h-3 w-3" />
-                          {t("common.delete", "Delete")}
-                        </Button>
-                      </div>
                     </div>
                   )}
                 </div>
@@ -485,6 +756,26 @@ function InstanceDialog({
             </div>
           )}
         </div>
+
+        <ConfirmDialog
+          title={t("pages.workflows.delete_instance_title", "Delete Execution Record")}
+          description={t("pages.workflows.delete_instance_confirm", "Are you sure you want to delete this execution record?")}
+          open={!!deleteInstanceId}
+          onOpenChange={(open) => !open && setDeleteInstanceId(null)}
+          onConfirm={async () => {
+            if (deleteInstanceId && workflowName) {
+              try {
+                await deleteWorkflowInstance(workflowName, deleteInstanceId)
+                setInstances((prev) => prev.filter(i => i.id !== deleteInstanceId))
+              } catch {
+                // ignore
+              }
+            }
+            setDeleteInstanceId(null)
+          }}
+          confirmVariant="destructive"
+          confirmLabel={t("common.delete", "Delete")}
+        />
       </DialogContent>
     </Dialog>
   )
@@ -492,6 +783,7 @@ function InstanceDialog({
 
 function WorkflowCard({
   workflow,
+  nextRun,
   onToggle,
   onRun,
   onStop,
@@ -502,6 +794,7 @@ function WorkflowCard({
   isRunning,
 }: {
   workflow: WorkflowListItem
+  nextRun: string | null
   onToggle: (name: string, enabled: boolean) => void
   onRun: (name: string) => void
   onStop: (name: string) => void
@@ -533,34 +826,40 @@ function WorkflowCard({
           </div>
           <div className="flex shrink-0 items-center gap-0.5 ml-2">
             {workflow.trigger_type !== "manual" && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span tabIndex={0}>
-                    <Switch
-                      checked={workflow.enabled}
-                      onCheckedChange={(checked) => onToggle(workflow.name, checked)}
-                      disabled={isToggling}
-                    />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {workflow.enabled
-                    ? t("common.disable", "Disable")
-                    : t("common.enable", "Enable")}
-                </TooltipContent>
-              </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span tabIndex={0}>
+                  <Switch
+                    checked={workflow.enabled}
+                    onCheckedChange={(checked) => onToggle(workflow.name, checked)}
+                    disabled={isToggling}
+                  />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                {workflow.enabled
+                  ? t("common.disable", "Disable")
+                  : t("common.enable", "Enable")}
+              </TooltipContent>
+            </Tooltip>
             )}
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="mb-3 flex items-center gap-2">
+        <div className="mb-3 flex flex-wrap items-center gap-2">
           <Badge variant="outline">{triggerLabel}</Badge>
           <Badge variant="secondary">
             {t("pages.workflows.step_count", "{{count}} steps", { count: workflow.step_count })}
           </Badge>
           {workflow.trigger_type !== "manual" && (
             <span className="text-muted-foreground text-xs ml-1">{triggerDesc}</span>
+          )}
+          {nextRun && (
+            <span className="flex items-center gap-1 text-xs text-blue-600">
+              <IconClock className="h-3 w-3" />
+              → {nextRun}
+            </span>
           )}
         </div>
 
@@ -651,5 +950,78 @@ function WorkflowCard({
         </TooltipProvider>
       </CardContent>
     </Card>
+  )
+}
+
+/** 紧凑树形步骤进度（用于实例弹窗） */
+function CompactStepTree({
+  steps,
+  stepStates,
+}: {
+  steps: Step[]
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+}) {
+  return (
+    <div className="space-y-1">
+      {steps.map((step) => (
+        <CompactStepNode key={step.id} step={step} stepStates={stepStates} depth={0} />
+      ))}
+    </div>
+  )
+}
+
+/** 紧凑步骤节点 */
+function CompactStepNode({
+  step,
+  stepStates,
+  depth,
+}: {
+  step: Step
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  depth: number
+}) {
+  const state = stepStates[step.id]
+  if (!state) return null
+
+  const indent = depth * 16
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-xs" style={{ paddingLeft: indent }}>
+        <span className={getInstanceStatusColor(state.status)}>
+          {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+        </span>
+        <span>{state.name || `#${step.id}`}</span>
+        {(step.action === "parallel" || step.action === "if") && (
+          <span className="text-muted-foreground">{step.action === "parallel" ? "∥" : "↔"}</span>
+        )}
+        {step.action === "tool_call" && step.tool && (
+          <span className="text-muted-foreground">{step.tool}</span>
+        )}
+        {state.error && (
+          <span className="text-destructive ml-1">{state.error}</span>
+        )}
+      </div>
+      {/* 递归渲染子步骤 */}
+      {step.action === "if" && step.if_true && step.if_true.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✓ true</div>
+          {step.if_true.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "if" && step.if_false && step.if_false.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✗ false</div>
+          {step.if_false.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
+        <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+      ))}
+    </div>
   )
 }

@@ -10,7 +10,7 @@
 2. **可靠执行**：步骤支持重试、超时、错误处理，失败后自动执行 on_error 处理步骤
 3. **条件控制**：通过 `when` 条件表达式实现分支逻辑，无需硬编码流程
 4. **数据传递**：步骤间通过 `output_key` + 模板语法 `{{.step_id.key}}` 传递结果，通过 `{{.vars.key}}` 引用变量，解耦步骤依赖
-5. **多触发方式**：支持 Cron 定时、事件驱动、手动触发三种方式
+5. **多触发方式**：支持 Cron 定时、一次性执行（At）、间隔执行（Interval）、事件驱动、手动触发五种方式
 6. **与现有系统集成**：复用 AgentLoop 的 SubTurn 机制执行提示词，复用 ToolRegistry 调用工具，复用事件总线监听事件
 
 ## 系统架构
@@ -25,7 +25,7 @@
 ├─────────────────────────────────────────────────┤
 │               Service 层                         │  生命周期管理、触发器调度
 ├──────────┬──────────┬───────────────────────────┤
-│  Engine  │ Persist  │  触发器（Cron/Event/手动）  │  核心引擎 + 持久化
+│  Engine  │ Persist  │  触发器（Cron/At/Interval/Event/手动）  │  核心引擎 + 持久化
 ├──────────┴──────────┴───────────────────────────┤
 │              StepExecutor                        │  步骤执行器（重试/超时）
 ├────────────────────┬────────────────────────────┤
@@ -114,22 +114,25 @@ RunWorkflow()
         │     │     ├── 条件不满足 → 跳过该步骤（skipped）
         │     │     └── 条件满足 → 继续执行
         │     │
-        │     ├── 2. 模板替换：ResolveStepTemplates(prompt/args, 已完成步骤输出)
-        │     │     └── 将 {{.step_id.output_key}} 替换为实际值
-        │     │
-        │     ├── 3. 执行步骤：ExecuteWithRetry()
+  │     ├── 2. 模板替换：ResolveStepTemplates(prompt/args, 已完成步骤输出)
+  │     │     └── 将 {{.step_id.output_key}} 替换为实际值
+  │     │
+  │     ├── 3. 延迟等待：如果设置了 step.delay，等待指定时长
+  │     │     └── 等待期间被取消 → 步骤状态: cancelled
+  │     │
+  │     ├── 4. 执行步骤：ExecuteWithRetry()
         │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
-        │     │     ├── parallel    → goroutine 并行执行子步骤
-        │     │     └── if          → 评估 when 条件，执行 if_true 或 if_false 分支
+        │     │     ├── parallel    → goroutine 并行执行子步骤（子步骤失败遵守 failure_strategy）
+        │     │     └── if          → 评估 when 条件，执行 if_true 或 if_false 分支（分支步骤失败遵守 failure_strategy）
         │     │
-        │     ├── 4. 处理执行结果
+        │     ├── 5. 处理执行结果
         │     │     ├── 成功 → 记录输出到 output_key，继续下一步
         │     │     └── 失败 →
         │     │           ├── failure_strategy=stop → 中止，查找 on_error 处理步骤
         │     │           └── failure_strategy=continue → 记录失败，继续下一步
         │     │
-        │     └── 5. 保存步骤状态和实例状态到磁盘
+        │     └── 6. 保存步骤状态和实例状态到磁盘
         │
         ├── 所有步骤完成
         │     ├── 无失败 → 实例状态: completed
@@ -165,8 +168,10 @@ ExecuteWithRetry()
   │     ├── 中止后续步骤执行
   │     ├── 查找是否有 when="on_error" 的步骤
   │     │     ├── 有 → 执行错误处理步骤
+  │     │     │     ├── 处理步骤成功 → 实例状态: completed
+  │     │     │     └── 处理步骤失败 → 实例状态: failed
   │     │     └── 无 → 实例标记为 failed
-  │     └── 实例状态: failed
+  │     └── （不再继续主循环中的后续步骤）
   │
   └── failure_strategy = "continue"
         ├── 记录该步骤为 failed
@@ -194,12 +199,14 @@ StopInstance(instanceID)
 
 工作流是由一组有序步骤组成的可执行单元。每个工作流包含：
 
-- **名称**：唯一标识符，用于引用和管理
+- **名称**：唯一标识符，用于引用和管理，仅允许英文字母、数字、连字符和下划线（`a-zA-Z0-9_-`）
 - **描述**：工作流用途说明
 - **触发器**：定义工作流何时自动执行（手动/Cron/事件）
 - **变量**：工作流级变量，避免在步骤中重复写相同的值（如路径、URL 等）
 - **步骤**：按顺序执行的操作序列
 - **配置**：失败策略（stop/continue）等全局选项
+
+> **名称规则说明**：工作流名称限制为 `a-zA-Z0-9_-`，因为名称直接用作 YAML 文件名，非 ASCII 或特殊字符会导致文件系统问题。`enabled`（启用状态）是运行时属性，不会序列化到 YAML 定义中，而是通过 `.disabled` 标记文件管理（详见文件存储）。
 
 ### 变量（Vars）
 
@@ -225,6 +232,7 @@ steps:
 - 模板解析时，`{{.vars.key}}` 会被替换为变量定义中的值
 - 变量值支持模板引用（如引用前序步骤的输出），但通常用于静态值
 - 变量可在 `prompt`、`args`、`when` 字段中使用
+- 保存工作流时会校验变量引用，如果 `{{.vars.key}}` 中的 key 未在 `vars` 中定义，将报错
 
 ### 步骤（Step）
 
@@ -233,17 +241,58 @@ steps:
 | 动作类型 | 说明 | 关键参数 |
 |---------|------|---------|
 | `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板） |
-| `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数） |
+| `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数，必填参数不能为空） |
 | `parallel` | 并行执行多个子步骤 | `parallel`（子步骤列表） |
 | `if` | 条件判断，执行 true 或 false 分支 | `when`（条件表达式）、`if_true`/`if_false`（分支步骤） |
 
-每个步骤支持以下可选配置：
+每个步骤支持以下配置：
 
-- **when**：条件表达式，满足时才执行该步骤
-- **retry**：最大重试次数（默认 0）
-- **retry_delay**：重试间隔（秒）
-- **timeout**：超时时间（秒）
+- **id**：步骤唯一标识，仅允许英文字母、数字和下划线（`a-zA-Z0-9_`），用于模板引用 `{{.step_id.key}}` 和条件判断
+- **name**：步骤显示名称（可选），支持中文等任意字符，用于 UI 展示和通知，不填写时显示 id。可在模板中通过 `{{.self.name}}` 引用自身名称，避免在 `args` 中重复硬编码
+- **enabled**：是否启用（可选），默认启用。设为 `false` 时跳过该步骤（状态标记为 skipped）
+- **when**：执行前条件表达式，满足时才执行该步骤（空条件等同于 `on_success`）
+- **delay**：步骤执行前的等待时间，如 `"5s"`、`"1m"`，等待期间支持取消
+- **retry**：重试配置，结构化格式（默认不重试）
+  - `max_attempts`：最大重试次数
+  - `delay`：重试间隔，如 `"10s"`
+- **timeout**：超时时间（可选），如 `"30s"`、`"5m"`。**默认 30 分钟**，不设置或为空时使用默认值；最小值 1 秒
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
+
+> **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
+
+### 工作目录（Workdir）
+
+工作目录用于指定 `tool_call` 步骤执行命令时的默认目录，避免在每个步骤的 `args` 中重复设置 `cwd`。在 `config` 中设置后，引擎会自动将 workdir 注入到所有未显式设置 `cwd` 的 `tool_call` 步骤的参数中。
+
+```yaml
+config:
+  workdir: "/root/.picoclaw/workspace/my-project"
+```
+
+**优先级**：步骤 `args` 中显式设置的 `cwd` > 工作流 `config.workdir`。如果步骤的 `args` 中已设置了 `cwd`，则不会注入 workdir，尊重步骤的显式配置。
+
+**模板引用**：workdir 支持模板变量，可以使用 `{{.vars.key}}` 等模板语法：
+
+```yaml
+vars:
+  project_dir: "/root/.picoclaw/workspace/my-project"
+
+config:
+  workdir: "{{.vars.project_dir}}"
+```
+
+**特殊步骤**：如果某个 `tool_call` 步骤需要不同的工作目录，直接在 `args` 中设置 `cwd` 即可：
+
+```yaml
+steps:
+  - id: git_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "git status"
+      cwd: "/path/to/other-project"
+```
 
 ### 触发器（Trigger）
 
@@ -251,21 +300,77 @@ steps:
 
 - **manual**：仅手动触发（默认）
 - **cron**：按 Cron 表达式定时触发，如 `0 9 * * *`（每天 9 点）
+- **at**：在指定时间一次性触发，如 `2025-05-15 09:00:00`
+- **interval**：按固定间隔重复触发，如 `30m`（每 30 分钟）、`1h`（每小时）
 - **event**：监听事件总线上的特定事件类型触发
 
-Cron 触发器的工作方式：
-- Service 启动后，以 30 秒为周期检查所有已启用工作流的 cron 表达式
+#### Cron 触发器
+- Service 启动后，以 10 秒为周期检查所有已启用工作流的 cron 表达式
 - 使用 `gronx` 库判断 cron 表达式是否到期
 - 同一工作流同时只允许一个实例运行（防重复触发）
+- 支持时区设置（`tz` 字段）
 
-事件触发器的工作方式：
+#### At 触发器（一次性）
+- 在指定的日期时间执行一次
+- 时间格式：`2025-05-15 09:00:00` 或 `2025-05-15 09:00`
+- 支持时区设置（`tz` 字段）
+- 执行后自动标记为已完成，不会重复触发
+
+#### Interval 触发器（间隔）
+- 按固定时间间隔重复执行
+- 格式：Go 语言 duration 格式，如 `30m`（30分钟）、`1h`（1小时）、`2h30m`（2小时30分钟）
+- 支持时区设置（`tz` 字段）
+- 首次触发在间隔时间后，之后按间隔周期执行
+
+#### 事件触发器
+
+事件触发器监听系统事件总线，当特定事件发生时自动触发工作流执行。
+
+**基本特性：**
 - 通过 `EventBus.Channel().SubscribeChan()` 订阅事件流
 - 匹配 `Event.Kind` 与 `Trigger.Event` 字段
 - 同样遵循单实例运行约束
 
+**标准事件类型：**
+
+| 事件类型 | 说明 | 常用场景 |
+|---------|------|---------|
+| `agent.tool.exec_start` | 工具开始执行 | 记录工具调用日志 |
+| `agent.tool.exec_end` | 工具执行完成 | 分析工具执行结果 |
+| `agent.tool.exec_error` | 工具执行错误 | 错误处理和告警 |
+| `agent.prompt.start` | Agent 开始处理提示词 | 记录对话开始 |
+| `agent.prompt.end` | Agent 完成提示词处理 | 记录对话结束 |
+| `agent.response` | Agent 产生响应 | 响应后处理 |
+| `workflow.instance.start` | 工作流实例开始 | 工作流联动 |
+| `workflow.instance.complete` | 工作流实例完成 | 工作流联动 |
+| `workflow.instance.error` | 工作流实例错误 | 错误处理 |
+| `system.startup` | 系统启动 | 初始化任务 |
+| `system.shutdown` | 系统关闭 | 清理任务 |
+
+**事件过滤条件：**
+- 支持通过 `event_filters` 字段对事件内容进行过滤
+- 例如：只响应特定工具的完成事件 `{ "tool": "git_commit" }`
+
+**事件变量映射：**
+- 事件数据自动映射为工作流变量，可在步骤中通过 `{{.vars.event_xxx}}` 引用
+- 默认提供的变量：
+  - `event_kind` - 事件类型
+  - `event_time` - 事件发生时间
+  - `event_tool` - 工具名称（工具事件）
+  - `event_result` - 执行结果（完成事件）
+  - `event_error` - 错误信息（错误事件）
+
+**示例配置：**
+```yaml
+triggers:
+  - event: "agent.tool.exec_end"
+    event_filters:
+      tool: "git_commit"  # 只响应 git_commit 工具的完成事件
+```
+
 ### 条件表达式
 
-步骤的 `when` 字段支持以下条件：
+步骤的 `when` 字段是**执行前条件**——在步骤执行前求值，条件不满足则跳过该步骤。
 
 | 表达式 | 含义 | 示例 |
 |--------|------|------|
@@ -291,10 +396,66 @@ Cron 触发器的工作方式：
 ```
 
 模板解析逻辑（`conditions.go`）：
-1. 正则匹配 `{{.step_id.key}}` 或 `{{.vars.key}}` 模式
-2. 在已完成步骤的输出数据中查找对应值（`vars` 作为特殊步骤 ID，存储工作流变量）
+1. 正则匹配 `{{.step_id.key}}`、`{{.vars.key}}`、`{{.self.key}}` 或 `{{.fn.xxx}}` 模式
+2. 在已完成步骤的输出数据中查找对应值（`vars` 作为特殊步骤 ID，存储工作流变量；`self` 引用当前步骤自身属性；`fn` 调用内置模板函数）
 3. 替换模板为实际输出内容
 4. 同时应用于 `prompt`、`args`、`when` 字段
+
+**自身属性引用（`self`）**：
+
+步骤可在模板中通过 `{{.self.name}}` 和 `{{.self.id}}` 引用自身属性（仅支持这两个字段），避免重复硬编码：
+
+```yaml
+steps:
+  - id: search_maoming
+    name: 茂名
+    action: tool_call
+    tool: web_search
+    args:
+      query: "{{.self.name}} 新闻 {{.vars.date}}"
+```
+
+**模板函数（`fn`）**：
+
+模板引用支持内置函数，通过 `{{.fn.函数名}}` 或 `{{.fn.函数名 "参数"}}` 的语法在步骤执行时动态获取值。适用于在 prompt 或 args 中插入当前时间、日期、环境变量等动态内容，无需额外步骤获取。
+
+| 函数 | 语法 | 说明 | 示例输出 |
+|------|------|---------|---------|
+| `{{.fn.now}}` | 当前 UTC 时间 | `2026-05-13 08:30:00` |
+| `{{.fn.now_tz "Asia/Shanghai"}}` | 指定时区的当前时间 | `2026-05-13 16:30:00` |
+| `{{.fn.date}}` | 当前 UTC 日期 | `2026-05-13` |
+| `{{.fn.date_tz "Asia/Shanghai"}}` | 指定时区的当前日期 | `2026-05-13` |
+| `{{.fn.unix}}` | 当前 Unix 时间戳 | `1747170600` |
+| `{{.fn.env "HOME"}}` | 获取环境变量值 | `/root` |
+
+模板函数在步骤执行时实时求值，适用于 `prompt`、`args` 和 `when` 字段。例如：
+
+```yaml
+vars:
+  tz: "Asia/Shanghai"
+
+steps:
+  - id: today
+    action: agent_prompt
+    prompt: "今天是 {{.fn.date_tz "Asia/Shanghai"}}，请生成今日简报"
+    output_key: result
+```
+
+> **模板函数 vs 工具调用**：模板函数直接在模板解析阶段求值，无需额外步骤，输出简洁（如 `2026-05-13`）。相比之下，通过 `tool_call` 调用 `get_current_time` 等工具会产生额外步骤，且输出包含前缀描述（如 `Current time (Asia/Shanghai): 2026-05-13`），需要额外处理才能提取日期部分。推荐在只需要日期/时间值时使用模板函数。
+
+> **模板引用校验**：保存工作流时会自动校验所有模板引用，包括：
+> - `{{.vars.key}}` 中的 key 必须在 `vars` 中定义
+> - `{{.step_id.key}}` 中的 step_id 必须是已定义 `output_key` 的步骤，且 key 必须等于该步骤的 `output_key` 值
+> - `{{.self.key}}` 中的 key 仅支持 `id` 和 `name`
+> - `{{.fn.xxx}}` 中的函数名必须是支持的模板函数（now、now_tz、date、date_tz、unix、env）
+> - 引用不存在的变量、步骤、输出键或函数名将报错，防止运行时静默保留原文
+
+> **工具参数校验**：保存工作流时会自动校验 `tool_call` 步骤的必填参数，包括：
+> - 通过工具注册表查询工具的参数 Schema（内置工具和 MCP 工具均支持）
+> - 缺少必填参数（`required` 字段声明的参数）将报错
+> - 参数值为空（空字符串、null）等同于缺少该参数，也会报错
+> - 引用了不存在的工具名将报错（MCP 工具仅在服务器连接时才参与校验，未连接时跳过）
+> - 前端和后端均会执行此校验，双重保障
 
 ### 实例状态机
 
@@ -323,14 +484,38 @@ Cron 触发器的工作方式：
                                  └──────────┘
 ```
 
-## YAML 定义格式
+每个步骤（包括 parallel 子步骤和 if 分支子步骤）也有独立的 `StepState` 追踪：
+`pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`。
+
+`StepState` 包含以下字段：
+- **Name**：步骤显示名称
+- **Status**：当前状态
+- **StartedAt** / **FinishedAt**：开始和结束时间
+- **Attempts**：执行尝试次数（首次执行为 1，重试后递增）
+- **Error**：失败时的错误信息
+- **ResolvedInput**：渲染后的输入参数（包含 Prompt 和 Args），用于在实例详情中展示模板变量替换后的实际值
+
+未执行的 if 分支子步骤自动标记为 `skipped`。
+
+> **failureStrategy 在嵌套步骤中的行为**：`failure_strategy` 不仅作用于顶级步骤，也作用于 if 分支步骤和 parallel 子步骤。当 `failure_strategy=continue` 时，if 分支或 parallel 子步骤的失败不会中断工作流执行，而是记录警告日志并继续。
+
+### 实时事件流（SSE）
+
+工作流引擎将状态变更事件发布到事件总线（`pkg/events`），可通过 SSE 实时推送到 UI：
+
+- `workflow.instance.start` — 实例开始执行
+- `workflow.instance.complete` — 实例执行结束（成功/失败/取消）
+- `workflow.step.start` — 步骤开始执行
+- `workflow.step.complete` — 步骤执行结束（成功/失败）
+
+SSE 端点（`GET /api/workflows/{name}/instances/{id}/stream`）以 Server-Sent Events 格式推送这些事件。
+前端对运行中的实例自动连接 SSE 流，无需轮询即可获得实时步骤进度和日志更新。
 
 工作流定义存放在 `workspace/workflows/` 目录下，每个工作流一个 YAML 文件：
 
 ```yaml
 name: morning-briefing
 description: 每日早间简报工作流
-enabled: true
 
 triggers:
   - cron: "0 8 * * *"
@@ -341,21 +526,25 @@ vars:
 
 config:
   failure_strategy: stop  # stop 或 continue
+  workdir: "/root/.picoclaw/workspace/news"  # 可选，tool_call 步骤的默认工作目录
   notify_channel: telegram  # 可选，默认通知频道
   notify_chat_id: "-100xxx" # 可选，默认通知聊天 ID
 
 steps:
   - id: fetch_weather
+    name: 获取天气
     action: agent_prompt
     prompt: "查询今天{{.vars.city}}的天气预报"
     output_key: weather
 
   - id: fetch_news
+    name: 获取新闻
     action: agent_prompt
     prompt: "获取今日科技新闻摘要"
     output_key: news
 
   - id: summarize
+    name: 生成简报
     action: agent_prompt
     prompt: "根据天气信息 {{.fetch_weather.weather}} 和新闻 {{.fetch_news.news}}，生成今日简报，保存到 {{.vars.output_dir}}"
     when: "on_success"
@@ -372,17 +561,21 @@ steps:
 
 ```yaml
 steps:
-  - id: step_id           # 必填，步骤唯一标识，用于条件引用和数据传递
+  - id: step_id           # 必填，步骤唯一标识，仅允许 a-zA-Z0-9_，用于条件引用和数据传递
+    name: 步骤名称        # 可选，步骤显示名称，支持中文等任意字符，不填时显示 id
     action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if
+    enabled: true          # 可选，是否启用（默认 true），false 时跳过该步骤
     prompt: "..."          # agent_prompt 必填，提示词模板，支持 {{.step_id.key}} 引用
     tool: tool_name        # tool_call 必填，已注册的工具名称
-    args:                  # tool_call 可选，工具参数，值支持模板引用
+    args:                  # tool_call 可选，工具参数，值支持模板引用；必填参数的值不能为空
       key: value
     parallel:              # parallel 必填，子步骤列表
       - id: sub1
         action: agent_prompt
         prompt: "..."
-    when: "on_error"       # if 必填/其他可选，条件表达式
+    when: "on_error"       # if 必填/其他可选，执行前条件表达式
+    delay: 5s              # 可选，步骤执行前的等待时间（如 5s、1m30s）
+    timeout: 30m           # 可选，超时时间（默认 30m），如 60s、5m
     if_true:               # if 可选，条件为 true 时执行的步骤
       - id: handle_success
         action: agent_prompt
@@ -395,7 +588,6 @@ steps:
     retry:                 # 可选，重试配置
       max_attempts: 3
       delay: 10s
-    timeout: 60s           # 可选，超时时间
 ```
 
 ### if 条件步骤
@@ -429,12 +621,19 @@ steps:
 - `on_success`：上一步成功时走 `if_true`，失败时走 `if_false`
 - `{{.step_id.key}} == value`：指定步骤输出等于某值时走 `if_true`
 
+> **if 步骤的事件与通知**：`if` 步骤也会触发 `workflow.step.start` 和 `workflow.step.complete` SSE 事件，以及 `onStepStart`/`onStepComplete` 通知回调（与 agent_prompt/tool_call 步骤一致）。
+
 ### 可视化编辑器
 
 工作流编辑页面提供基于 Sequential Workflow Designer 的可视化编辑器，支持：
 - 从工具箱拖拽步骤到画布（每种步骤类型显示说明文字）
-- 点击步骤在右侧面板编辑属性
+- 点击步骤在右侧面板编辑属性（ID 字段仅允许输入字母、数字和下划线，名称字段支持任意字符；重试配置仅对 agent_prompt 和 tool_call 步骤显示）
 - 步骤类型拖出后固定（Agent 提示 / 工具调用 / 并行 / If 条件）
+- 从工具箱拖拽步骤时自动按类型分配 ID（如 `prompt_1`、`tool_1`、`prompt_2`、`if_1`）
+- 保存前前端校验，支持 i18n 错误提示（递归校验子步骤、嵌套 ID 唯一性检查、模板引用校验、tool_call 必填参数校验）
+- 必填参数以红色边框标记，value placeholder 带 `*` 前缀提示
+- 条件选项使用 i18n 本地化（"上一步成功时执行"/"上一步出错时执行"/"自定义条件"）
+- 编辑变量时 key 重复警告
 - 并行步骤以分支形式并排显示，支持动态增删分支
 - if 步骤显示为菱形，带 true/false 分支线
 - 自动保存为 YAML 定义
@@ -454,21 +653,25 @@ steps:
 | 方法 | 路径 | 说明 | 依赖 |
 |------|------|------|------|
 | GET | `/api/workflows` | 列出所有工作流 | 仅文件系统 |
-| POST | `/api/workflows` | 创建工作流 | 仅文件系统 |
+| POST | `/api/workflows` | 创建工作流（默认禁用，重名返回 409） | 仅文件系统 |
 | GET | `/api/workflows/{name}` | 获取工作流详情 | 仅文件系统 |
 | PUT | `/api/workflows/{name}` | 更新工作流 | 仅文件系统 |
 | DELETE | `/api/workflows/{name}` | 删除工作流 | 仅文件系统 |
-| POST | `/api/workflows/{name}/run` | 手动触发执行（无频道绑定） | 需 Gateway 运行 |
+| POST | `/api/workflows/{name}/run` | 手动触发执行（回退到已绑定频道发送通知） | 需 Gateway 运行 |
 | POST | `/api/workflows/{name}/stop` | 停止所有运行中实例 | 需 Gateway 运行 |
 | POST | `/api/workflows/{name}/toggle` | 启用/禁用 | 仅文件系统 |
 | GET | `/api/workflows/{name}/instances` | 查询执行历史（按时间倒序） | 需 Gateway 运行 |
 | GET | `/api/workflows/{name}/instances/{id}` | 查询实例详情 | 需 Gateway 运行 |
+| GET | `/api/workflows/{name}/instances/{id}/stream` | SSE 实时推送实例状态变更 | 需 Gateway 运行 |
 | DELETE | `/api/workflows/{name}/instances/{id}` | 删除执行记录 | 需 Gateway 运行 |
 
 > CRUD 操作通过临时创建 PersistStore 读写文件，不依赖 Gateway 进程。
 > 执行/停止/实例查询/删除操作通过反向代理转发到 Gateway 进程的内部 API（`/internal/workflow/*`），Gateway 不可用时部分操作可降级为文件系统直读。
 
 ### 创建工作流示例
+
+> 通过 REST API 创建的工作流默认为**禁用状态**，确认定义无误后使用 toggle 接口启用。
+> Web UI 中运行/停止/禁用操作均需确认后才会执行。
 
 ```bash
 curl -X POST http://localhost:3000/api/workflows \
@@ -509,7 +712,7 @@ Agent 可通过 `workflow` 工具管理工作流：
 |------|------|---------|
 | `list` | 列出所有工作流 | - |
 | `show` | 查看工作流详情 | `name` |
-| `run` | 触发执行（自动绑定当前频道） | `name` |
+| `run` | 触发执行（自动传递当前频道用于通知） | `name` |
 | `stop` | 停止实例 | `instance_id` |
 | `create` | 创建工作流 | `name`, `steps_yaml` |
 | `delete` | 删除工作流 | `name` |
@@ -538,7 +741,7 @@ Agent：→ workflow action=bind name=morning-briefing
 | 命令 | 说明 |
 |------|------|
 | `/workflow list` | 列出所有工作流 |
-| `/workflow run <name>` | 触发执行（自动绑定当前频道） |
+| `/workflow run <name>` | 触发执行（自动传递当前频道用于通知） |
 | `/workflow show <name>` | 查看工作流详情 |
 | `/workflow bind <name>` | 绑定当前频道用于通知 |
 | `/workflow unbind <name>` | 移除频道绑定 |
@@ -559,15 +762,41 @@ Agent：→ workflow action=bind name=morning-briefing
 
 | 路径 | 说明 |
 |------|------|
-| `workspace/workflows/{name}.yml` | 工作流定义文件（YAML 格式） |
-| `workspace/workflows/{name}.yml.disabled` | 禁用标记（文件存在即表示禁用） |
-| `workspace/workflows/.state/{name}_{instanceID}.json` | 实例状态文件（JSON 格式，原子写入） |
+| `workspace/workflows/{name}.yml` | 工作流定义文件（YAML 格式，所有平台区分大小写） |
+| `workspace/workflows/{name}.disabled` | 禁用标记（文件存在即表示禁用） |
+| `workspace/state/workflows/{name}_{instanceID}.json` | 实例状态文件（JSON 格式，原子写入） |
 
 持久化机制（`persist.go`）：
 - 定义文件使用 YAML 格式，便于人工阅读和编辑
-- 实例状态文件存储在 `.state/` 子目录中，通过 `fileutil.WriteFileAtomic` 原子写入，防止写入中断导致数据损坏
-- 禁用功能通过创建/删除 `.disabled` 后缀文件实现，无需修改 YAML 内容
+- 实例状态文件存储在 `state/workflows/` 目录中，通过 `fileutil.WriteFileAtomic` 原子写入，防止写入中断导致数据损坏
+- `enabled` 字段是运行时状态（`yaml:"-"` 标签），不会序列化到 YAML 文件中；禁用功能通过创建/删除 `.disabled` 后缀文件来持久化状态
+- 文件名保留大小写；`MyWorkflow` 和 `myworkflow` 视为不同工作流
 - 文件名使用 `sanitizeName()` 处理，确保安全
+
+### 工作流状态字段
+
+工作流定义文件（YAML）支持以下运行时状态字段，用于追踪工作流执行历史：
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| `created_at` | string | 创建时间（ISO 8601 格式） |
+| `updated_at` | string | 最后更新时间（ISO 8601 格式） |
+| `last_run_at` | string | 上次运行时间（ISO 8601 格式），工作流执行完成后自动更新 |
+| `last_run_status` | string | 上次运行状态：`running` / `success` / `failed`，工作流执行完成后自动更新 |
+
+这些字段由系统自动维护：
+- `created_at` / `updated_at`：创建和更新工作流时自动设置
+- `last_run_at` / `last_run_status`：工作流实例执行完成后，根据实例状态自动更新
+
+示例：
+```yaml
+name: morning-briefing
+description: 每日早间简报
+created_at: 2025-05-13T08:00:00Z
+updated_at: 2025-05-13T10:30:00Z
+last_run_at: 2025-05-13T10:00:00Z
+last_run_status: success
+```
 
 ## 执行结果与通知
 
@@ -592,13 +821,22 @@ Agent：→ workflow action=bind name=morning-briefing
 
 通知通过 Engine 的四个回调实现（`onStart`、`onStepStart`、`onStepComplete`、`onComplete`），在 Gateway 的 `setupWorkflowService()` 中注册，通过 `msgBus.PublishOutbound` 发送到绑定的频道。
 
-**绑定方式（按优先级排列）**：
+**通知顺序保证**：
 
-1. **`/workflow bind <name>`** — 斜杠命令，绑定当前聊天频道
-2. **`workflow action=bind name=xxx`** — LLM 工具，从对话上下文绑定
-3. **`/workflow run <name>`** — 执行命令时自动绑定当前频道
-4. **`workflow action=run name=xxx`** — 执行工具时自动从对话上下文绑定
-5. **配置 `notify_channel`/`notify_chat_id`** — YAML 定义中的默认通知频道
+为确保通知按正确顺序到达客户端，引擎采用以下机制：
+1. 所有通知通过 `msgBus.PublishOutbound` 发送，进入消息总线的 worker queue，保证 FIFO 顺序
+2. 通知消息标记 `message_kind=workflow_notification`，绕过 `preSend` 中的 `streamActive` 和 `placeholder` 检查，确保始终作为新消息发送
+3. `onStart` 回调在启动异步执行前同步发送开始通知，确保"工作流开始"通知先于步骤通知进入消息管线
+
+**通知目标优先级**：
+
+引擎按以下优先级确定每次执行的通知频道：
+
+1. **运行时频道** — 从聊天上下文触发时（`/workflow run`、`workflow action=run`），当前频道/chatID 传递给实例，用于发送通知
+2. **持久绑定** — 无聊天上下文触发时（Web UI、cron、事件），引擎回退到通过 `/workflow bind` 或 `workflow action=bind` 设置的频道
+3. **YAML 配置回退** — 如果以上均不可用，引擎回退到工作流配置中的 `notify_channel`/`notify_chat_id`
+
+> **注意**：`/workflow bind` 和 `workflow action=bind` 将频道持久化到工作流定义中，后续的 cron/事件触发也会发送通知到该频道。`/workflow run` 和 `workflow action=run` 只将频道传递给当次执行，不会更新持久绑定。
 
 频道绑定与 Cron 工具采用相同模式：`ToolChannel(ctx)`/`ToolChatID(ctx)` 从执行上下文提取频道信息。工作流开始、步骤开始、步骤完成和结束时，分别通过 `onStart`、`onStepStart`、`onStepComplete`、`onComplete` 回调经 `msgBus.PublishOutbound` 发送通知到绑定的频道。
 
@@ -654,10 +892,10 @@ steps:
 | 执行历史查询 | ✅ 已支持 | 通过 REST API、斜杠命令或 LLM 工具 |
 | 频道推送通知 | ✅ 已支持 | 四阶段通知：开始/步骤开始/步骤输出/完成 |
 | 执行日志 | ✅ 已支持 | 存储在实例中，通过 API 和 UI 查看 |
+| 执行日志（实时） | ✅ 已支持 | SSE 流式推送 `/api/workflows/{name}/instances/{id}/stream`，UI 自动更新 |
+| 子步骤状态追踪 | ✅ 已支持 | parallel/if 子步骤拥有独立的 StepState |
 | UI 执行历史 | ✅ 已支持 | 工作流卡片历史按钮，详情页执行日志卡片，支持删除记录 |
 | 实例删除 | ✅ 已支持 | DELETE API + UI 删除按钮 |
-| 执行日志（实时） | ❌ 未实现 | 需要增加日志流式输出（SSE） |
-| Webhook 回调 | ❌ 未实现 | 需要增加 webhook 步骤类型 |
 
 ## 与 CronService 的对比
 

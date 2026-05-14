@@ -41,6 +41,7 @@ export function DeleteDialog({
             {t(
               "pages.workflows.delete_description",
               `Are you sure you want to delete "${workflow.name}"? This action cannot be undone.`,
+              { name: workflow.name },
             )}
           </DialogDescription>
         </DialogHeader>

@@ -18,8 +18,8 @@ type mockBus struct {
 func newMockBus() *mockBus {
 	return &mockBus{
 		ch: &mockEventChannel{
-			sub: &mockSubscription{done: make(chan struct{})},
-			ch:  make(chan runtimeevents.Event, 16),
+			subs: make(map[string]*mockSubscription),
+			chs:  make(map[string]chan runtimeevents.Event),
 		},
 	}
 }
@@ -36,8 +36,9 @@ func (m *mockBus) Close() error                        { return nil }
 func (m *mockBus) Stats() runtimeevents.Stats          { return runtimeevents.Stats{} }
 
 type mockEventChannel struct {
-	sub *mockSubscription
-	ch  chan runtimeevents.Event
+	subs map[string]*mockSubscription
+	chs  map[string]chan runtimeevents.Event
+	mu   sync.Mutex
 }
 
 func (m *mockEventChannel) Filter(_ runtimeevents.Filter) runtimeevents.EventChannel     { return m }
@@ -48,17 +49,27 @@ func (m *mockEventChannel) Scope(_ runtimeevents.ScopeFilter) runtimeevents.Even
 
 func (m *mockEventChannel) Subscribe(
 	_ context.Context,
-	_ runtimeevents.SubscribeOptions,
+	opts runtimeevents.SubscribeOptions,
 	_ runtimeevents.Handler,
 ) (runtimeevents.Subscription, error) {
-	return m.sub, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sub := &mockSubscription{done: make(chan struct{})}
+	m.subs[opts.Name] = sub
+	return sub, nil
 }
 
 func (m *mockEventChannel) SubscribeChan(
 	_ context.Context,
-	_ runtimeevents.SubscribeOptions,
+	opts runtimeevents.SubscribeOptions,
 ) (runtimeevents.Subscription, <-chan runtimeevents.Event, error) {
-	return m.sub, m.ch, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	sub := &mockSubscription{done: make(chan struct{})}
+	ch := make(chan runtimeevents.Event, 16)
+	m.subs[opts.Name] = sub
+	m.chs[opts.Name] = ch
+	return sub, ch, nil
 }
 
 func (m *mockEventChannel) SubscribeOnce(
@@ -66,16 +77,38 @@ func (m *mockEventChannel) SubscribeOnce(
 	_ runtimeevents.SubscribeOptions,
 	_ runtimeevents.Handler,
 ) (runtimeevents.Subscription, error) {
-	return m.sub, nil
+	return &mockSubscription{done: make(chan struct{})}, nil
+}
+
+// PublishToAll 发送事件到所有订阅的 channel（用于测试）
+func (m *mockEventChannel) PublishToAll(evt runtimeevents.Event) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for _, ch := range m.chs {
+		select {
+		case ch <- evt:
+		default:
+		}
+	}
 }
 
 type mockSubscription struct {
-	done chan struct{}
+	done   chan struct{}
+	closed bool
+	mu     sync.Mutex
 }
 
-func (m *mockSubscription) ID() uint64            { return 1 }
-func (m *mockSubscription) Name() string          { return "mock" }
-func (m *mockSubscription) Close() error          { close(m.done); return nil }
+func (m *mockSubscription) ID() uint64   { return 1 }
+func (m *mockSubscription) Name() string { return "mock" }
+func (m *mockSubscription) Close() error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if !m.closed {
+		close(m.done)
+		m.closed = true
+	}
+	return nil
+}
 func (m *mockSubscription) Done() <-chan struct{} { return m.done }
 func (m *mockSubscription) Stats() runtimeevents.SubscriberStats {
 	return runtimeevents.SubscriberStats{}
@@ -164,7 +197,7 @@ func TestService_StartWithEventBus(t *testing.T) {
 	}
 
 	// 发布事件
-	mbus.ch.ch <- runtimeevents.Event{Kind: "test.event"}
+	mbus.ch.PublishToAll(runtimeevents.Event{Kind: "test.event"})
 }
 
 func TestService_Reload(t *testing.T) {
@@ -215,8 +248,8 @@ func TestService_CreateWorkflow(t *testing.T) {
 	if loaded.Vars["key"] != "value" {
 		t.Fatalf("Vars[key] = %q, want %q", loaded.Vars["key"], "value")
 	}
-	if !loaded.Enabled {
-		t.Fatal("workflow should be enabled by default")
+	if loaded.Enabled {
+		t.Fatal("workflow should be disabled by default when created via web")
 	}
 }
 
@@ -612,7 +645,7 @@ func TestService_CheckEventTriggers(t *testing.T) {
 	defer svc.Stop()
 
 	// 发送匹配的事件
-	mbus.ch.ch <- runtimeevents.Event{Kind: "agent.tool.exec_end"}
+	mbus.ch.PublishToAll(runtimeevents.Event{Kind: "agent.tool.exec_end"})
 
 	waitFor(t, 3*time.Second, func() bool {
 		mu.Lock()
@@ -681,9 +714,11 @@ func TestDescribeTriggerType(t *testing.T) {
 		want     string
 	}{
 		{"empty", nil, "manual"},
-		{"cron", []Trigger{{Cron: "0 8 * * *"}}, "cron:0 8 * * *"},
-		{"event", []Trigger{{Event: "tool.end"}}, "event:tool.end"},
-		{"both", []Trigger{{Cron: "0 8 * * *"}, {Event: "tool.end"}}, "cron:0 8 * * *"},
+		{"cron", []Trigger{{Cron: "0 8 * * *"}}, "cron"},
+		{"event", []Trigger{{Event: "tool.end"}}, "event"},
+		{"both", []Trigger{{Cron: "0 8 * * *"}, {Event: "tool.end"}}, "cron, event"},
+		{"multiple_cron", []Trigger{{Cron: "0 8 * * *"}, {Cron: "0 12 * * *"}}, "cron, cron"},
+		{"manual", []Trigger{{}}, "manual"},
 	}
 
 	for _, tt := range tests {
@@ -717,5 +752,148 @@ func TestService_GetWorkflow_NotFound(t *testing.T) {
 	_, ok := svc.GetWorkflow("nonexistent")
 	if ok {
 		t.Fatal("expected false for nonexistent workflow")
+	}
+}
+
+// TestService_BindChannel_ReadsFreshFromDisk 验证 BindChannel 不会用过期内存数据覆写磁盘。
+// 模拟场景：Web UI 修改了工作流步骤，然后用户执行 /workflow bind。
+func TestService_BindChannel_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	// 1. 创建工作流
+	wf := &Workflow{
+		Name:  "fresh-test",
+		Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old prompt"}},
+		Vars:  map[string]string{"key": "old"},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 2. 模拟外部修改磁盘（如 Web UI）：绕过 Service 直接修改磁盘
+	externalWf, _ := svc.store.LoadSingleWorkflow("fresh-test")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new prompt"}}
+	externalWf.Vars = map[string]string{"key": "new", "extra": "added"}
+	svc.store.SaveWorkflow(externalWf)
+
+	// 3. 内存中的 s.workflows 仍是旧数据，执行 BindChannel
+	if err := svc.BindChannel("fresh-test", "telegram", "-100"); err != nil {
+		t.Fatalf("BindChannel() error: %v", err)
+	}
+
+	// 4. 从磁盘验证：步骤和变量应保留外部修改，不被旧内存数据覆盖
+	diskWf, err := svc.store.LoadSingleWorkflow("fresh-test")
+	if err != nil {
+		t.Fatalf("LoadSingleWorkflow() error: %v", err)
+	}
+	if diskWf.Steps[0].Prompt != "new prompt" {
+		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new prompt")
+	}
+	if diskWf.Vars["key"] != "new" {
+		t.Fatalf("Vars[key] = %q, want %q (external change preserved)", diskWf.Vars["key"], "new")
+	}
+	if diskWf.Vars["extra"] != "added" {
+		t.Fatalf("Vars[extra] = %q, want %q (external addition preserved)", diskWf.Vars["extra"], "added")
+	}
+	if diskWf.Config.NotifyChannel != "telegram" {
+		t.Fatalf("NotifyChannel = %q, want %q (bind applied)", diskWf.Config.NotifyChannel, "telegram")
+	}
+}
+
+// TestService_UnbindChannel_ReadsFreshFromDisk 验证 UnbindChannel 同样读取最新磁盘数据。
+func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	wf := &Workflow{
+		Name:   "unbind-fresh",
+		Steps:  []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old"}},
+		Config: WorkflowConfig{NotifyChannel: "telegram", NotifyChatID: "-100"},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改
+	externalWf, _ := svc.store.LoadSingleWorkflow("unbind-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// UnbindChannel 应基于最新磁盘数据操作
+	if err := svc.UnbindChannel("unbind-fresh"); err != nil {
+		t.Fatalf("UnbindChannel() error: %v", err)
+	}
+
+	diskWf, _ := svc.store.LoadSingleWorkflow("unbind-fresh")
+	if diskWf.Steps[0].Prompt != "new" {
+		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new")
+	}
+	if diskWf.Config.NotifyChannel != "" {
+		t.Fatalf("NotifyChannel = %q, want empty (unbind applied)", diskWf.Config.NotifyChannel)
+	}
+}
+
+// TestService_RunWorkflow_ReadsFreshFromDisk 验证 RunWorkflow 执行最新步骤定义。
+func TestService_RunWorkflow_ReadsFreshFromDisk(t *testing.T) {
+	svc, executor := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	var mu sync.Mutex
+	var executedPrompt string
+	executor.AgentPromptFunc = func(ctx context.Context, prompt string) (string, error) {
+		mu.Lock()
+		executedPrompt = prompt
+		mu.Unlock()
+		return "result", nil
+	}
+
+	wf := &Workflow{Name: "run-fresh", Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old prompt"}}}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改磁盘
+	externalWf, _ := svc.store.LoadSingleWorkflow("run-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new prompt"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// RunWorkflow 应执行最新步骤
+	svc.RunWorkflow(context.Background(), "run-fresh", "", "")
+
+	// 等待引擎完成
+	svc.engine.WaitRunning()
+
+	mu.Lock()
+	got := executedPrompt
+	mu.Unlock()
+	if got != "new prompt" {
+		t.Fatalf("executed prompt = %q, want %q (fresh from disk)", got, "new prompt")
+	}
+}
+
+// TestService_SetEnabled_ReadsFreshFromDisk 验证 SetEnabled 同步最新磁盘数据到内存。
+func TestService_SetEnabled_ReadsFreshFromDisk(t *testing.T) {
+	svc, _ := setupTestService(t)
+	svc.Start()
+	defer svc.Stop()
+
+	wf := &Workflow{
+		Name:  "enable-fresh",
+		Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old"}},
+	}
+	svc.CreateWorkflow(wf)
+
+	// 模拟外部修改
+	externalWf, _ := svc.store.LoadSingleWorkflow("enable-fresh")
+	externalWf.Steps = []Step{{ID: "s1", Action: "agent_prompt", Prompt: "new"}}
+	svc.store.SaveWorkflow(externalWf)
+
+	// SetEnabled 应从磁盘同步最新数据
+	svc.SetEnabled("enable-fresh", true)
+
+	loaded, _ := svc.GetWorkflow("enable-fresh")
+	if loaded.Steps[0].Prompt != "new" {
+		t.Fatalf("in-memory Steps[0].Prompt = %q, want %q (synced from disk)", loaded.Steps[0].Prompt, "new")
+	}
+	if !loaded.Enabled {
+		t.Fatal("in-memory Enabled = false, want true")
 	}
 }

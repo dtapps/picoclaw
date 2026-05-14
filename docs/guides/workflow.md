@@ -10,7 +10,7 @@ The Workflow Engine is a declarative multi-step task orchestration system for pi
 2. **Reliable Execution**: Steps support retry, timeout, and error handling with automatic on_error fallback steps
 3. **Condition Control**: Branch logic via `when` condition expressions — no hardcoded flow needed
 4. **Data Passing**: Steps pass results via `output_key` + template syntax `{{.step_id.key}}`, and reference variables via `{{.vars.key}}`, decoupling step dependencies
-5. **Multiple Triggers**: Cron scheduling, event-driven, and manual trigger modes
+5. **Multiple Triggers**: Cron scheduling, one-time execution (At), interval execution (Interval), event-driven, and manual trigger modes
 6. **System Integration**: Reuses AgentLoop's SubTurn for prompts, ToolRegistry for tool calls, and EventBus for event monitoring
 
 ## System Architecture
@@ -25,7 +25,7 @@ The Workflow Engine is a declarative multi-step task orchestration system for pi
 ├─────────────────────────────────────────────────┤
 │               Service Layer                      │  Lifecycle management, trigger scheduling
 ├──────────┬──────────┬───────────────────────────┤
-│  Engine  │ Persist  │  Triggers (Cron/Event/Manual) │  Core engine + persistence
+│  Engine  │ Persist  │  Triggers (Cron/At/Interval/Event/Manual) │  Core engine + persistence
 ├──────────┴──────────┴───────────────────────────┤
 │              StepExecutor                        │  Step executor (retry/timeout)
 ├────────────────────┬────────────────────────────┤
@@ -114,22 +114,25 @@ RunWorkflow()
         │     │     ├── Condition not met → skip step (skipped)
         │     │     └── Condition met → proceed
         │     │
-        │     ├── 2. Template resolution: ResolveStepTemplates(prompt/args, completed outputs)
-        │     │     └── Replace {{.step_id.output_key}} with actual values
-        │     │
-        │     ├── 3. Execute step: ExecuteWithRetry()
+  │     ├── 2. Template resolution: ResolveStepTemplates(prompt/args, completed outputs)
+  │     │     └── Replace {{.step_id.output_key}} with actual values
+  │     │
+  │     ├── 3. Delay: if step.delay is set, wait for the specified duration
+  │     │     └── Cancelled during wait → step state: cancelled
+  │     │
+        │     ├── 4. Execute step: ExecuteWithRetry()
         │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
-        │     │     ├── parallel    → goroutine concurrent sub-step execution
-        │     │     └── if          → evaluate when condition, execute if_true or if_false branch
+        │     │     ├── parallel    → goroutine concurrent sub-step execution (sub-step failures respect failure_strategy)
+        │     │     └── if          → evaluate when condition, execute if_true or if_false branch (branch step failures respect failure_strategy)
         │     │
-        │     ├── 4. Process result
+        │     ├── 5. Process result
         │     │     ├── Success → record output to output_key, continue
         │     │     └── Failure →
         │     │           ├── failure_strategy=stop → abort, find on_error handler
         │     │           └── failure_strategy=continue → record failure, continue
         │     │
-        │     └── 5. Save step state and instance state to disk
+        │     └── 6. Save step state and instance state to disk
         │
         ├── All steps done
         │     ├── No failures → instance state: completed
@@ -165,8 +168,10 @@ Step execution fails
   │     ├── Abort subsequent steps
   │     ├── Find steps with when="on_error"
   │     │     ├── Found → execute error handler step
+  │     │     │     ├── Handler succeeds → instance state: completed
+  │     │     │     └── Handler fails → instance state: failed
   │     │     └── Not found → instance marked as failed
-  │     └── Instance state: failed
+  │     └── (does not continue the main step loop)
   │
   └── failure_strategy = "continue"
         ├── Record step as failed
@@ -194,12 +199,14 @@ StopInstance(instanceID)
 
 A workflow is an executable unit composed of an ordered set of steps. Each workflow contains:
 
-- **Name**: Unique identifier for reference and management
+- **Name**: Unique identifier for reference and management, restricted to `a-zA-Z0-9_-` only
 - **Description**: Purpose description
 - **Triggers**: Define when the workflow auto-executes (manual/cron/event)
 - **Vars**: Workflow-level variables to avoid repeating the same values (e.g., paths, URLs) across steps
 - **Steps**: Ordered sequence of actions
 - **Config**: Global options like failure strategy (stop/continue)
+
+> **Name Rules**: Workflow names are restricted to `a-zA-Z0-9_-` because they are used as YAML file names. Non-ASCII or special characters would cause file system issues. The `enabled` state is a runtime property not stored in the YAML definition — it is managed via a `.disabled` marker file (see File Storage).
 
 ### Variables (Vars)
 
@@ -225,6 +232,7 @@ steps:
 - During template resolution, `{{.vars.key}}` is replaced with the defined variable value
 - Variable values support template references (e.g., referencing previous step outputs), but are typically used for static values
 - Variables can be used in `prompt`, `args`, and `when` fields
+- Template references are validated on save: if a `{{.vars.key}}` references a key not defined in `vars`, an error is raised
 
 ### Step
 
@@ -233,17 +241,58 @@ A step is the basic execution unit, supporting four action types:
 | Action Type | Description | Key Parameters |
 |-------------|-------------|----------------|
 | `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template) |
-| `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters) |
+| `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters; required params must not be empty) |
 | `parallel` | Execute sub-steps concurrently | `parallel` (sub-step list) |
 | `if` | Conditional branch — execute true or false branch | `when` (condition), `if_true`/`if_false` (branch steps) |
 
-Each step supports optional configuration:
+Each step supports the following configuration:
 
-- **when**: Condition expression; step executes only when satisfied
-- **retry**: Maximum retry count (default: 0)
-- **retry_delay**: Retry interval in seconds
-- **timeout**: Timeout in seconds
+- **id**: Unique step identifier, restricted to `a-zA-Z0-9_` only, used for template references `{{.step_id.key}}` and condition evaluation
+- **name**: Display name for the step (optional), supports any characters including CJK, used for UI display and notifications; falls back to id when not set. Can be referenced via `{{.self.name}}` in templates to avoid hardcoding the name in `args`
+- **enabled**: Whether the step is enabled (optional; defaults to `true`). When set to `false`, the step is skipped (status marked as `skipped`)
+- **when**: Pre-execution condition expression; step executes only when satisfied (empty condition is equivalent to `on_success`)
+- **delay**: Wait duration before executing the step, e.g., `"5s"`, `"1m"`; supports cancellation during the wait period
+- **retry**: Retry configuration in structured format (default: no retry)
+  - `max_attempts`: Maximum retry count
+  - `delay`: Retry interval, e.g., `"10s"`
+- **timeout**: Timeout duration (optional), e.g., `"30s"`, `"5m"`. **Defaults to 30 minutes** when omitted or empty; minimum value is 1 second
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
+
+> **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
+
+### Working Directory (Workdir)
+
+The working directory specifies the default directory for command execution in `tool_call` steps, avoiding the need to set `cwd` in each step's `args`. When set in `config`, the engine automatically injects workdir into the arguments of all `tool_call` steps that don't explicitly set `cwd`.
+
+```yaml
+config:
+  workdir: "/root/.picoclaw/workspace/my-project"
+```
+
+**Priority**: Explicit `cwd` in step `args` > Workflow `config.workdir`. If `cwd` is already set in a step's `args`, workdir will not be injected, respecting the step's explicit configuration.
+
+**Template References**: workdir supports template variables — you can use template syntax like `{{.vars.key}}`:
+
+```yaml
+vars:
+  project_dir: "/root/.picoclaw/workspace/my-project"
+
+config:
+  workdir: "{{.vars.project_dir}}"
+```
+
+**Per-step override**: If a specific `tool_call` step needs a different working directory, simply set `cwd` in its `args`:
+
+```yaml
+steps:
+  - id: git_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "git status"
+      cwd: "/path/to/other-project"
+```
 
 ### Trigger
 
@@ -251,21 +300,77 @@ Triggers determine when a workflow auto-executes:
 
 - **manual**: Manual trigger only (default)
 - **cron**: Scheduled via cron expression, e.g., `0 9 * * *` (daily at 9am)
+- **at**: One-time trigger at specified datetime, e.g., `2025-05-15 09:00:00`
+- **interval**: Repeated trigger at fixed intervals, e.g., `30m` (every 30 minutes), `1h` (every hour)
 - **event**: Triggered by listening for specific event types on the event bus
 
-Cron trigger behavior:
-- After Service starts, checks all enabled workflows' cron expressions every 30 seconds
+#### Cron Trigger
+- After Service starts, checks all enabled workflows' cron expressions every 10 seconds
 - Uses `gronx` library to determine if a cron expression is due
 - Only one instance of a workflow can run at a time (dedup)
+- Supports timezone setting (`tz` field)
 
-Event trigger behavior:
+#### At Trigger (One-time)
+- Executes once at the specified date and time
+- Time format: `2025-05-15 09:00:00` or `2025-05-15 09:00`
+- Supports timezone setting (`tz` field)
+- Automatically marked as completed after execution, won't trigger again
+
+#### Interval Trigger
+- Repeatedly executes at fixed time intervals
+- Format: Go duration format, e.g., `30m` (30 minutes), `1h` (1 hour), `2h30m` (2 hours 30 minutes)
+- Supports timezone setting (`tz` field)
+- First trigger occurs after the interval, then repeats at the interval period
+
+#### Event Trigger
+
+The event trigger listens to the system event bus and automatically triggers workflow execution when specific events occur.
+
+**Basic Features:**
 - Subscribes to event stream via `EventBus.Channel().SubscribeChan()`
 - Matches `Event.Kind` against `Trigger.Event`
 - Also enforces single-instance running constraint
 
+**Standard Event Types:**
+
+| Event Type | Description | Common Use Cases |
+|------------|-------------|------------------|
+| `agent.tool.exec_start` | Tool starts execution | Log tool invocations |
+| `agent.tool.exec_end` | Tool execution completed | Analyze tool execution results |
+| `agent.tool.exec_error` | Tool execution error | Error handling and alerting |
+| `agent.prompt.start` | Agent starts processing prompt | Log conversation start |
+| `agent.prompt.end` | Agent finishes processing prompt | Log conversation end |
+| `agent.response` | Agent generates response | Post-response processing |
+| `workflow.instance.start` | Workflow instance starts | Workflow chaining |
+| `workflow.instance.complete` | Workflow instance completed | Workflow chaining |
+| `workflow.instance.error` | Workflow instance error | Error handling |
+| `system.startup` | System startup | Initialization tasks |
+| `system.shutdown` | System shutdown | Cleanup tasks |
+
+**Event Filters:**
+- Supports filtering event content via the `event_filters` field
+- Example: Only respond to completion events for a specific tool `{ "tool": "git_commit" }`
+
+**Event Variable Mapping:**
+- Event data is automatically mapped to workflow variables, accessible via `{{.vars.event_xxx}}` in steps
+- Default variables provided:
+  - `event_kind` - Event type
+  - `event_time` - Event occurrence time
+  - `event_tool` - Tool name (tool events)
+  - `event_result` - Execution result (completion events)
+  - `event_error` - Error message (error events)
+
+**Example Configuration:**
+```yaml
+triggers:
+  - event: "agent.tool.exec_end"
+    event_filters:
+      tool: "git_commit"  # Only respond to git_commit tool completion events
+```
+
 ### Condition Expressions
 
-The `when` field supports:
+The `when` field is a **pre-execution condition** — evaluated before the step runs; if not satisfied, the step is skipped.
 
 | Expression | Meaning | Example |
 |------------|---------|---------|
@@ -291,10 +396,66 @@ Step A (fetch_weather)                  Step B (summarize)
 ```
 
 Template resolution logic (`conditions.go`):
-1. Regex match `{{.step_id.key}}` or `{{.vars.key}}` pattern
-2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables)
+1. Regex match `{{.step_id.key}}`, `{{.vars.key}}`, `{{.self.key}}`, or `{{.fn.xxx}}` pattern
+2. Look up corresponding value in completed steps' output data (`vars` is a special step ID storing workflow variables; `self` references the current step's own properties; `fn` invokes built-in template functions)
 3. Replace template with actual output content
 4. Applied to `prompt`, `args`, and `when` fields
+
+**Self-property references (`self`)**:
+
+A step can reference its own properties via `{{.self.name}}` and `{{.self.id}}` in templates (only these two fields are supported), avoiding duplicate hardcoding:
+
+```yaml
+steps:
+  - id: search_maoming
+    name: Maoming
+    action: tool_call
+    tool: web_search
+    args:
+      query: "{{.self.name}} news {{.vars.date}}"
+```
+
+**Template Functions (`fn`)**:
+
+Template references support built-in functions via `{{.fn.function_name}}` or `{{.fn.function_name "argument"}}` syntax. These are evaluated at step execution time to dynamically insert values such as the current time, date, or environment variables — without requiring an extra step.
+
+| Function | Syntax | Description | Example Output |
+|----------|--------|-------------|----------------|
+| `{{.fn.now}}` | Current UTC time | `2026-05-13 08:30:00` |
+| `{{.fn.now_tz "Asia/Shanghai"}}` | Current time in specified timezone | `2026-05-13 16:30:00` |
+| `{{.fn.date}}` | Current UTC date | `2026-05-13` |
+| `{{.fn.date_tz "Asia/Shanghai"}}` | Current date in specified timezone | `2026-05-13` |
+| `{{.fn.unix}}` | Current Unix timestamp | `1747170600` |
+| `{{.fn.env "HOME"}}` | Get environment variable value | `/root` |
+
+Template functions are evaluated in real time at step execution and can be used in `prompt`, `args`, and `when` fields. For example:
+
+```yaml
+vars:
+  tz: "Asia/Shanghai"
+
+steps:
+  - id: today
+    action: agent_prompt
+    prompt: "Today is {{.fn.date_tz "Asia/Shanghai"}}, please generate a daily briefing"
+    output_key: result
+```
+
+> **Template Functions vs Tool Calls**: Template functions are evaluated directly during template resolution — no extra step needed, and the output is concise (e.g., `2026-05-13`). In contrast, calling tools like `get_current_time` via `tool_call` creates an additional step and produces verbose output with prefixes (e.g., `Current time (Asia/Shanghai): 2026-05-13`), requiring extra processing to extract the date. Use template functions when you only need the date/time value.
+
+> **Template reference validation**: All template references are validated when saving a workflow:
+> - `{{.vars.key}}` — the key must be defined in `vars`
+> - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
+> - `{{.self.key}}` — the key only supports `id` and `name`
+> - `{{.fn.xxx}}` — the function name must be a supported template function (now, now_tz, date, date_tz, unix, env)
+> - Referencing non-existent variables, steps, output keys, or functions will raise an error, preventing silent template passthrough at runtime
+
+> **Tool parameter validation**: Required parameters for `tool_call` steps are validated when saving a workflow:
+> - The tool's parameter schema is queried from the tool registry (supports both built-in and MCP tools)
+> - Missing required parameters (declared in the `required` field) will raise an error
+> - Empty parameter values (empty string, null) are treated as missing and will also raise an error
+> - Referencing a non-existent tool name will raise an error (MCP tools only participate in validation when their server is connected; otherwise skipped)
+> - Both frontend and backend perform this validation for double protection
 
 ### Instance State Machine
 
@@ -323,14 +484,40 @@ Template resolution logic (`conditions.go`):
                                  └──────────┘
 ```
 
-## YAML Definition Format
+Each step (including parallel sub-steps and if branch sub-steps) also has its own `StepState` tracking:
+`pending` → `running` → `completed` / `failed` / `skipped` / `cancelled`.
+
+`StepState` contains the following fields:
+- **Name**: Step display name
+- **Status**: Current state
+- **StartedAt** / **FinishedAt**: Start and finish timestamps
+- **Attempts**: Execution attempt count (1 on first execution, increments on retry)
+- **Error**: Error message on failure
+- **ResolvedInput**: Resolved input parameters (containing Prompt and Args), used to display the actual values after template variable substitution in instance details
+
+Unexecuted if-branch sub-steps are automatically marked as `skipped`.
+
+> **failureStrategy in nested steps**: The `failure_strategy` setting applies not only to top-level steps but also to if branch steps and parallel sub-steps. When `failure_strategy=continue`, failures in if branches or parallel sub-steps do not halt workflow execution — instead, a warning log is recorded and execution continues.
+
+### Real-time Event Streaming (SSE)
+
+The workflow engine publishes state change events to the event bus (`pkg/events`), which can be consumed
+via SSE for real-time UI updates:
+
+- `workflow.instance.start` — instance begins execution
+- `workflow.instance.complete` — instance finishes (success/failure/cancel)
+- `workflow.step.start` — step begins execution
+- `workflow.step.complete` — step finishes (success/failure)
+
+The SSE endpoint (`GET /api/workflows/{name}/instances/{id}/stream`) delivers these events as
+Server-Sent Events. The frontend automatically connects to this stream for running instances,
+providing live step progress and log updates without polling.
 
 Workflow definitions are stored in `workspace/workflows/`, one YAML file per workflow:
 
 ```yaml
 name: morning-briefing
 description: Daily morning briefing workflow
-enabled: true
 
 triggers:
   - cron: "0 8 * * *"
@@ -341,21 +528,25 @@ vars:
 
 config:
   failure_strategy: stop  # stop or continue
+  workdir: "/root/.picoclaw/workspace/news"  # optional, default working directory for tool_call steps
   notify_channel: telegram  # optional, default notification channel
   notify_chat_id: "-100xxx" # optional, default notification chat ID
 
 steps:
   - id: fetch_weather
+    name: Fetch Weather
     action: agent_prompt
     prompt: "Check today's weather forecast for {{.vars.city}}"
     output_key: weather
 
   - id: fetch_news
+    name: Fetch News
     action: agent_prompt
     prompt: "Get today's tech news summary"
     output_key: news
 
   - id: summarize
+    name: Generate Briefing
     action: agent_prompt
     prompt: "Generate a daily briefing based on weather {{.fetch_weather.weather}} and news {{.fetch_news.news}}, save to {{.vars.output_dir}}"
     when: "on_success"
@@ -372,17 +563,21 @@ steps:
 
 ```yaml
 steps:
-  - id: step_id           # Required, unique step identifier for condition references and data passing
+  - id: step_id           # Required, unique step identifier (a-zA-Z0-9_ only), for condition references and data passing
+    name: Display Name    # Optional, display name supporting any characters; shown in UI and notifications, falls back to id
     action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
+    enabled: true          # Optional, whether enabled (default true); false skips this step (status = skipped)
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
     tool: tool_name        # Required for tool_call, registered tool name
-    args:                  # Optional for tool_call, tool parameters (values support template references)
+    args:                  # Optional for tool_call, tool parameters (values support template references; required param values must not be empty)
       key: value
     parallel:              # Required for parallel, sub-step list
       - id: sub1
         action: agent_prompt
         prompt: "..."
-    when: "on_error"       # Required for if / optional for others, condition expression
+    when: "on_error"       # Required for if / optional for others, pre-execution condition expression
+    delay: 5s              # Optional, wait duration before step execution (e.g. 5s, 1m30s)
+    timeout: 30m           # Optional, timeout duration (default 30m), e.g. 60s, 5m
     if_true:               # Optional for if, steps to execute when condition is true
       - id: handle_success
         action: agent_prompt
@@ -395,7 +590,6 @@ steps:
     retry:                 # Optional, retry configuration
       max_attempts: 3
       delay: 10s
-    timeout: 60s           # Optional, timeout duration
 ```
 
 ### if Conditional Step
@@ -429,12 +623,19 @@ The `when` condition for `if` steps supports:
 - `on_success`: Takes `if_true` branch when previous step succeeded, `if_false` when failed
 - `{{.step_id.key}} == value`: Takes `if_true` branch when a specific step output equals a value
 
+> **if step events and notifications**: `if` steps also emit `workflow.step.start` and `workflow.step.complete` SSE events, and trigger `onStepStart`/`onStepComplete` notification callbacks (consistent with agent_prompt/tool_call steps).
+
 ### Visual Editor
 
 The workflow editor page provides a visual editor based on Sequential Workflow Designer, supporting:
 - Drag steps from the toolbox onto the canvas (each step type shows a description)
-- Click a step to edit its properties in the right panel
+- Click a step to edit its properties in the right panel (ID field accepts only alphanumeric characters and underscores; Name field accepts any characters; retry configuration is shown only for agent_prompt and tool_call steps)
 - Step types are fixed after dragging (Agent Prompt / Tool Call / Parallel / If)
+- Auto-assigned step IDs by type when dragging from toolbox (e.g., `prompt_1`, `tool_1`, `prompt_2`, `if_1`)
+- Frontend validation before saving with i18n error messages (recursive sub-step validation, nested ID uniqueness check, template reference validation, tool_call required parameter validation)
+- Required parameters marked with red border and `*` prefix in value placeholder
+- Condition options are localized via i18n ("Run when previous step succeeded"/"Run when previous step failed"/"Custom Condition")
+- Variable key duplicate warning when editing vars
 - Parallel steps display branches side by side; branches can be added or removed dynamically
 - if steps render as diamonds with true/false branch lines
 - Automatic save to YAML definition
@@ -454,21 +655,25 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 | Method | Path | Description | Dependency |
 |--------|------|-------------|------------|
 | GET | `/api/workflows` | List all workflows | File system only |
-| POST | `/api/workflows` | Create a workflow | File system only |
+| POST | `/api/workflows` | Create a workflow (default disabled, 409 on duplicate name) | File system only |
 | GET | `/api/workflows/{name}` | Get workflow details | File system only |
 | PUT | `/api/workflows/{name}` | Update a workflow | File system only |
 | DELETE | `/api/workflows/{name}` | Delete a workflow | File system only |
-| POST | `/api/workflows/{name}/run` | Trigger execution (no channel binding) | Requires Gateway running |
+| POST | `/api/workflows/{name}/run` | Trigger execution (falls back to bound channel for notifications) | Requires Gateway running |
 | POST | `/api/workflows/{name}/stop` | Stop all running instances | Requires Gateway running |
 | POST | `/api/workflows/{name}/toggle` | Enable/disable | File system only |
 | GET | `/api/workflows/{name}/instances` | List execution history (sorted by time descending) | Requires Gateway running |
 | GET | `/api/workflows/{name}/instances/{id}` | Get instance details | Requires Gateway running |
+| GET | `/api/workflows/{name}/instances/{id}/stream` | SSE stream for real-time instance updates | Requires Gateway running |
 | DELETE | `/api/workflows/{name}/instances/{id}` | Delete execution record | Requires Gateway running |
 
 > CRUD operations use a temporary PersistStore to read/write files, independent of the Gateway process.
 > Run/stop/instance/delete operations are proxied to the Gateway's internal API (`/internal/workflow/*`); some operations can fall back to direct file system access when the Gateway is unavailable.
 
 ### Create Workflow Example
+
+> Workflows created via REST API default to **disabled**. Use the toggle endpoint to enable after confirming the definition.
+> In the Web UI, Run/Stop/Disable actions require confirmation before execution.
 
 ```bash
 curl -X POST http://localhost:3000/api/workflows \
@@ -509,7 +714,7 @@ The agent can manage workflows via the `workflow` tool:
 |--------|-------------|---------------------|
 | `list` | List all workflows | - |
 | `show` | View workflow details | `name` |
-| `run` | Trigger execution (auto-binds current channel) | `name` |
+| `run` | Trigger execution (auto-passes current channel for notifications) | `name` |
 | `stop` | Stop an instance | `instance_id` |
 | `create` | Create a workflow | `name`, `steps_yaml` |
 | `delete` | Delete a workflow | `name` |
@@ -538,7 +743,7 @@ Workflows can also be managed via the `/workflow` slash command in any chat chan
 | Command | Description |
 |---------|-------------|
 | `/workflow list` | List all workflows |
-| `/workflow run <name>` | Trigger a workflow (auto-binds current channel) |
+| `/workflow run <name>` | Trigger a workflow (auto-passes current channel for notifications) |
 | `/workflow show <name>` | View workflow details |
 | `/workflow bind <name>` | Bind current channel for notifications |
 | `/workflow unbind <name>` | Remove channel binding |
@@ -559,15 +764,41 @@ Usage example:
 
 | Path | Description |
 |------|-------------|
-| `workspace/workflows/{name}.yml` | Workflow definition file (YAML) |
-| `workspace/workflows/{name}.yml.disabled` | Disable marker (presence = disabled) |
-| `workspace/workflows/.state/{name}_{instanceID}.json` | Instance state file (JSON, atomic writes) |
+| `workspace/workflows/{name}.yml` | Workflow definition file (YAML, case-sensitive on all platforms) |
+| `workspace/workflows/{name}.disabled` | Disable marker (presence = disabled) |
+| `workspace/state/workflows/{name}_{instanceID}.json` | Instance state file (JSON, atomic writes) |
 
 Persistence mechanism (`persist.go`):
 - Definition files use YAML format for human readability and editing
-- Instance state files are stored in `.state/` subdirectory, written atomically via `fileutil.WriteFileAtomic` to prevent corruption from interrupted writes
-- Disable feature uses create/delete of `.disabled` suffix file, no YAML modification needed
+- Instance state files are stored in `state/workflows/` directory, written atomically via `fileutil.WriteFileAtomic` to prevent corruption from interrupted writes
+- The `enabled` field is a runtime state (`yaml:"-"` tag) not serialized to the YAML file; disable feature uses create/delete of `.disabled` suffix file to persist the state
+- File names preserve case sensitivity; `MyWorkflow` and `myworkflow` are treated as different workflows
 - File names processed through `sanitizeName()` for safety
+
+### Workflow State Fields
+
+The workflow definition file (YAML) supports the following runtime state fields for tracking execution history:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `created_at` | string | Creation time (ISO 8601 format) |
+| `updated_at` | string | Last update time (ISO 8601 format) |
+| `last_run_at` | string | Last run time (ISO 8601 format), automatically updated after workflow execution completes |
+| `last_run_status` | string | Last run status: `running` / `success` / `failed`, automatically updated after workflow execution completes |
+
+These fields are automatically maintained by the system:
+- `created_at` / `updated_at`: Automatically set when creating or updating a workflow
+- `last_run_at` / `last_run_status`: Automatically updated based on instance status after workflow execution completes
+
+Example:
+```yaml
+name: morning-briefing
+description: Daily morning briefing
+created_at: 2025-05-13T08:00:00Z
+updated_at: 2025-05-13T10:30:00Z
+last_run_at: 2025-05-13T10:00:00Z
+last_run_status: success
+```
 
 ## Execution Results & Notifications
 
@@ -592,13 +823,22 @@ Workflows support four-phase automatic channel notification:
 
 Notifications are implemented via four Engine callbacks (`onStart`, `onStepStart`, `onStepComplete`, `onComplete`) registered in Gateway's `setupWorkflowService()`, sent via `msgBus.PublishOutbound`.
 
-**Binding methods (in priority order)**:
+**Notification ordering guarantee**:
 
-1. **`/workflow bind <name>`** — Slash command, binds the current chat channel
-2. **`workflow action=bind name=xxx`** — LLM tool, binds from conversation context
-3. **`/workflow run <name>`** — Run command auto-binds the current channel
-4. **`workflow action=run name=xxx`** — Run tool auto-binds from conversation context
-5. **Config `notify_channel`/`notify_chat_id`** — Fallback default channel in YAML definition
+To ensure notifications arrive in the correct order, the engine uses the following mechanism:
+1. All notifications are sent via `msgBus.PublishOutbound`, entering the message bus worker queue to guarantee FIFO order
+2. Notification messages are tagged with `message_kind=workflow_notification`, bypassing `streamActive` and `placeholder` checks in `preSend`, ensuring they are always sent as new messages
+3. The `onStart` callback synchronously sends the start notification before launching async execution, ensuring the "workflow started" notification enters the message pipeline before step notifications
+
+**Notification target priority**:
+
+The engine determines the notification channel for each execution using this priority:
+
+1. **Run-time channel** — When triggered from a chat context (`/workflow run`, `workflow action=run`), the current channel/chatID is passed to the instance and used for notifications
+2. **Persistent binding** — When triggered without a chat context (Web UI, cron, event), the engine falls back to the channel set via `/workflow bind` or `workflow action=bind`
+3. **YAML config fallback** — If neither is available, the engine falls back to `notify_channel`/`notify_chat_id` from the workflow config
+
+> **Note**: `/workflow bind` and `workflow action=bind` persist the channel into the workflow definition, so future cron/event-triggered runs also send notifications there. `/workflow run` and `workflow action=run` only pass the channel for that specific execution — they do NOT update the persistent binding.
 
 Channel binding follows the same pattern as the Cron tool: `ToolChannel(ctx)` / `ToolChatID(ctx)` extract channel info from the execution context. When a workflow starts, a step begins, a step completes, or the workflow finishes, the `onStart`, `onStepStart`, `onStepComplete`, and `onComplete` callbacks send notifications to the bound channel via `msgBus.PublishOutbound`.
 
@@ -654,10 +894,10 @@ Each workflow instance records structured execution logs with timestamps, step I
 | Execution history query | ✅ Supported | Via REST API, slash command, or LLM tool |
 | Channel push notification | ✅ Supported | Four-phase notification: start / step start / step output / completion |
 | Execution logs | ✅ Supported | Stored in instance, viewable via API and UI |
+| Execution logs (realtime) | ✅ Supported | SSE streaming at `/api/workflows/{name}/instances/{id}/stream`, auto-updates UI |
+| Sub-step state tracking | ✅ Supported | parallel/if sub-steps have independent StepStates |
 | UI execution history | ✅ Supported | History button on workflow card, execution logs in detail page, delete records |
 | Instance deletion | ✅ Supported | DELETE API + UI delete button |
-| Execution logs (realtime) | ❌ Not implemented | Need streaming log output (SSE) |
-| Webhook callback | ❌ Not implemented | Need to add `webhook` step type |
 
 ## Comparison with CronService
 

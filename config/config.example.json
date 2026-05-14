@@ -32,6 +32,15 @@
       }
     }
   },
+  "evolution": {
+    "enabled": false,
+    "mode": "observe",
+    "state_dir": "",
+    "min_task_count": 2,
+    "min_success_ratio": 0.7,
+    "cold_path_trigger": "after_turn",
+    "cold_path_times": []
+  },
   "model_list": [
     {
       "model_name": "gpt-5.4",
@@ -320,6 +329,12 @@
         "enabled": false,
         "max_results": 5
       },
+      "gemini": {
+        "enabled": false,
+        "api_key": "",
+        "model": "gemini-2.5-flash",
+        "max_results": 5
+      },
       "perplexity": {
         "enabled": false,
         "api_key": "pplx-xxx",
@@ -552,5 +567,13 @@
     "port": 18790,
     "hot_reload": false,
     "log_level": "fatal"
+  },
+  "tracing": {
+    "_comment": "请求追踪：将上下文字段映射为自定义 HTTP 请求头，发给 LLM 时自动携带",
+    "enabled": false,
+    "headers": {
+      "AH-Thread-Id": "session_key",
+      "AH-Trace-Id": "turn_id"
+    }
   }
 }

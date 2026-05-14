@@ -14,22 +14,37 @@ export const COMPONENT_SWITCH = "switch"
 
 // --- 模型转换：Workflow ↔ SWD Definition ---
 
+/** 触发器配置 */
+export interface TriggerConfig {
+  type: "manual" | "cron" | "at" | "interval" | "event"
+  cron?: string
+  at?: string
+  interval?: string
+  event?: string
+  event_filters?: Record<string, string>
+  event_mapping?: Record<string, string>
+  tz?: string
+}
+
 /** 将我们的 Workflow 转换为 SWD Definition */
 export function workflowToDefinition(wf: Workflow): Definition {
-  let triggerType = "manual"
-  let cronExpr = ""
-  let eventKind = ""
-  let triggerTZ = ""
+  const triggers: TriggerConfig[] = []
 
   for (const t of wf.triggers || []) {
     if (t.cron) {
-      triggerType = "cron"
-      cronExpr = t.cron
-      triggerTZ = t.tz || ""
+      triggers.push({ type: "cron", cron: t.cron, tz: t.tz || "" })
+    } else if (t.at) {
+      triggers.push({ type: "at", at: t.at, tz: t.tz || "" })
+    } else if (t.interval) {
+      triggers.push({ type: "interval", interval: t.interval, tz: t.tz || "" })
     } else if (t.event) {
-      triggerType = "event"
-      eventKind = t.event
+      triggers.push({ type: "event", event: t.event })
     }
+  }
+
+  // 如果没有触发器，默认添加一个手动触发器
+  if (triggers.length === 0) {
+    triggers.push({ type: "manual" })
   }
 
   const sequence: Step[] = (wf.steps || []).map((s) =>
@@ -40,11 +55,9 @@ export function workflowToDefinition(wf: Workflow): Definition {
     properties: {
       name: wf.name,
       description: wf.description,
-      triggerType,
-      cronExpr,
-      eventKind,
-      triggerTZ,
+      triggers,
       failureStrategy: wf.config?.failure_strategy || "stop",
+      workdir: wf.config?.workdir || "",
       vars: wf.vars || {},
     },
     sequence,
@@ -53,16 +66,23 @@ export function workflowToDefinition(wf: Workflow): Definition {
 
 /** 单个 Step 转换为 SWD Step */
 function stepToSwd(s: WorkflowStep): Step {
+  const displayName = s.name || s.id
+  const stepId = s.id
+
   // if 步骤使用 BranchedStep 格式
   if (s.action === "if") {
     return {
-      id: s.id,
+      id: stepId,
       componentType: COMPONENT_SWITCH,
       type: "if",
-      name: s.id,
+      name: displayName,
       properties: {
+        stepId,
         action: "if",
         when: s.when || "",
+        delay: s.delay || "",
+        timeout: s.timeout || "",
+        enabled: s.enabled ?? true,
       },
       branches: {
         true: (s.if_true || []).map(stepToSwd),
@@ -79,31 +99,40 @@ function stepToSwd(s: WorkflowStep): Step {
       branches[`step_${i}`] = [stepToSwd(sub)]
     })
     return {
-      id: s.id,
+      id: stepId,
       componentType: COMPONENT_SWITCH,
       type: "parallel",
-      name: s.id,
+      name: displayName,
       properties: {
+        stepId,
         action: "parallel",
         when: s.when || "",
+        delay: s.delay || "",
         output_key: s.output_key || "",
+        timeout: s.timeout || "",
+        enabled: s.enabled ?? true,
       },
       branches,
     } as BranchedStep
   }
 
   return {
-    id: s.id,
+    id: stepId,
     componentType: COMPONENT_TASK,
     type: s.action,
-    name: s.id,
+    name: displayName,
     properties: {
+      stepId,
       action: s.action,
       prompt: s.prompt || "",
       tool: s.tool || "",
+      args: s.args ? JSON.stringify(s.args) : "",
+      retry: s.retry ? JSON.stringify(s.retry) : "",
       when: s.when || "",
+      delay: s.delay || "",
       output_key: s.output_key || "",
       timeout: s.timeout || "",
+      enabled: s.enabled ?? true,
     },
   }
 }
@@ -119,11 +148,20 @@ export function definitionToWorkflow(def: Definition): {
 } {
   const props = def.properties
 
+  // 从 triggers 数组转换
   const triggers: Trigger[] = []
-  if (props.triggerType === "cron" && props.cronExpr) {
-    triggers.push({ cron: props.cronExpr as string, tz: (props.triggerTZ as string) || undefined })
-  } else if (props.triggerType === "event" && props.eventKind) {
-    triggers.push({ event: props.eventKind as string })
+  const triggerConfigs = (props.triggers as TriggerConfig[]) || []
+  for (const t of triggerConfigs) {
+    if (t.type === "cron" && t.cron) {
+      // 始终包含 tz 字段，即使为空字符串
+      triggers.push({ cron: t.cron, tz: t.tz })
+    } else if (t.type === "at" && t.at) {
+      triggers.push({ at: t.at, tz: t.tz })
+    } else if (t.type === "interval" && t.interval) {
+      triggers.push({ interval: t.interval, tz: t.tz })
+    } else if (t.type === "event" && t.event) {
+      triggers.push({ event: t.event })
+    }
   }
 
   // Extract vars from properties, filter out placeholder/empty keys for saving
@@ -144,19 +182,30 @@ export function definitionToWorkflow(def: Definition): {
     triggers,
     vars,
     steps,
-    config: { failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop" },
+    config: {
+      failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop",
+      workdir: (props.workdir as string) || undefined,
+    },
   }
 }
 
 /** SWD Step 转换为我们的 Step */
 function swdToStep(s: Step): WorkflowStep {
+  // stepId 存在 properties 中，是实际的后端 ID；s.name 是显示名称
+  const stepId = ((s.properties.stepId as string) || s.name).replace(/[^a-zA-Z0-9_]/g, "_")
+  const displayName = s.name !== stepId ? s.name : undefined
+
   // BranchedStep（if 条件）
-  if (s.componentType === COMPONENT_SWITCH && "branches" in s) {
+  if (s.componentType === COMPONENT_SWITCH && s.type === "if" && "branches" in s) {
     const branched = s as BranchedStep
     return {
-      id: s.name,
+      id: stepId,
+      name: displayName,
       action: "if",
-      when: (s.properties.when as string) || "",
+      when: (s.properties.when as string) || undefined,
+      delay: (s.properties.delay as string) || undefined,
+      timeout: (s.properties.timeout as string) || undefined,
+      enabled: s.properties.enabled === false ? false : undefined,
       if_true: (branched.branches.true || []).map(swdToStep),
       if_false: (branched.branches.false || []).map(swdToStep),
     }
@@ -169,10 +218,13 @@ function swdToStep(s: Step): WorkflowStep {
       .flat()
       .map(swdToStep)
     return {
-      id: s.name,
+      id: stepId,
+      name: displayName,
       action: "parallel",
       when: (s.properties.when as string) || undefined,
-      output_key: (s.properties.output_key as string) || undefined,
+      delay: (s.properties.delay as string) || undefined,
+      timeout: (s.properties.timeout as string) || undefined,
+      enabled: s.properties.enabled === false ? false : undefined,
       parallel: parallelSteps,
     }
   }
@@ -180,14 +232,46 @@ function swdToStep(s: Step): WorkflowStep {
   // 普通任务步骤
   const sp = s.properties
   const action = (sp.action || s.type) as WorkflowStep["action"]
+
+  // 解析 args: 从 SWD properties 中读取 JSON 字符串并还原为对象
+  let args: Record<string, unknown> | undefined
+  if (action === "tool_call" && sp.args) {
+    try {
+      const parsed = JSON.parse(sp.args as string)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        args = parsed as Record<string, unknown>
+      }
+    } catch {
+      // 如果不是有效 JSON，忽略
+    }
+  }
+
+  // 解析 retry
+  let retry: { max_attempts: number; delay: string } | undefined
+  if (sp.retry) {
+    try {
+      const parsed = JSON.parse(sp.retry as string)
+      if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed) && typeof parsed.max_attempts === "number") {
+        retry = parsed as { max_attempts: number; delay: string }
+      }
+    } catch {
+      // 如果不是有效 JSON，忽略
+    }
+  }
+
   return {
-    id: s.name,
+    id: stepId,
+    name: displayName,
     action,
     prompt: action === "agent_prompt" ? (sp.prompt as string) : undefined,
     tool: action === "tool_call" ? (sp.tool as string) : undefined,
+    args,
+    retry,
     when: (sp.when as string) || undefined,
+    delay: (sp.delay as string) || undefined,
     output_key: (sp.output_key as string) || undefined,
     timeout: (sp.timeout as string) || undefined,
+    enabled: sp.enabled === false ? false : undefined,
   }
 }
 
@@ -197,11 +281,9 @@ export function createEmptyDefinition(): Definition {
     properties: {
       name: "",
       description: "",
-      triggerType: "manual",
-      cronExpr: "",
-      eventKind: "",
-      triggerTZ: "",
+      triggers: [{ type: "manual" }],
       failureStrategy: "stop",
+      workdir: "",
       vars: {},
     },
     sequence: [],

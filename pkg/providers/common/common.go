@@ -335,13 +335,13 @@ func NormalizeInlineToolCalls(resp *LLMResponse) {
 		return
 	}
 	if len(resp.ToolCalls) > 0 {
-		log.Printf("common: NormalizeInlineToolCalls 跳过：响应已有 %d 个标准 tool_calls", len(resp.ToolCalls))
+		// log.Printf("common: NormalizeInlineToolCalls 跳过：响应已有 %d 个标准 tool_calls", len(resp.ToolCalls))
 		return
 	}
 
 	extracted, cleanedContent := ExtractInlineToolCalls(resp.Content)
 	if len(extracted) == 0 {
-		log.Printf("common: NormalizeInlineToolCalls 未提取到内联工具调用，content 长度=%d", len(resp.Content))
+		// log.Printf("common: NormalizeInlineToolCalls 未提取到内联工具调用，content 长度=%d", len(resp.Content))
 		return
 	}
 

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sipeed/picoclaw/pkg/workflow"
 	"github.com/sipeed/picoclaw/web/backend/launcherconfig"
 )
 
@@ -25,6 +26,11 @@ type Handler struct {
 	weixinFlows          map[string]*weixinFlow
 	wecomMu              sync.Mutex
 	wecomFlows           map[string]*wecomFlow
+
+	// 缓存的工作流持久化存储实例（懒初始化，避免每次请求重复读配置文件）
+	workflowStoreOnce sync.Once
+	workflowStore     *workflow.PersistStore
+	workflowStoreErr  error
 }
 
 // NewHandler creates an instance of the API handler.

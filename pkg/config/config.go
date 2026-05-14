@@ -33,26 +33,149 @@ func init() {
 // Config is the current config structure with version support.
 type Config struct {
 	// Config schema version for migration.
-	Version   int             `json:"version"      yaml:"-"`
-	Isolation IsolationConfig `json:"isolation"    yaml:"-"`
-	Agents    AgentsConfig    `json:"agents"       yaml:"-"`
-	Session   SessionConfig   `json:"session"      yaml:"-"`
-	Channels  ChannelsConfig  `json:"channel_list" yaml:"channel_list"`
-	ModelList SecureModelList `json:"model_list"   yaml:"model_list"` // New model-centric provider configuration
-	Gateway   GatewayConfig   `json:"gateway"      yaml:"-"`
-	Events    EventsConfig    `json:"events"       yaml:"-"`
-	Hooks     HooksConfig     `json:"hooks"        yaml:"-"`
-	Tools     ToolsConfig     `json:"tools"        yaml:",inline"`
-	Heartbeat HeartbeatConfig `json:"heartbeat"    yaml:"-"`
-	Devices   DevicesConfig   `json:"devices"      yaml:"-"`
-	Voice     VoiceConfig     `json:"voice"        yaml:"-"`
+	Version   int             `json:"version"             yaml:"-"`
+	Isolation IsolationConfig `json:"isolation" yaml:"-"`
+	Agents    AgentsConfig    `json:"agents"              yaml:"-"`
+	Session   SessionConfig   `json:"session"   yaml:"-"`
+	Evolution EvolutionConfig `json:"evolution" yaml:"-"`
+	Channels  ChannelsConfig  `json:"channel_list"        yaml:"channel_list"`
+	ModelList SecureModelList `json:"model_list"          yaml:"model_list"` // New model-centric provider configuration
+	Gateway   GatewayConfig   `json:"gateway"             yaml:"-"`
+	Events    EventsConfig    `json:"events"    yaml:"-"`
+	Hooks     HooksConfig     `json:"hooks"     yaml:"-"`
+	Tools     ToolsConfig     `json:"tools"               yaml:",inline"`
+	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
+	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
+	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
 	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
 	EnvVars EnvVarsConfig `json:"env_vars" yaml:"-"`
+	// Tracing 配置请求追踪，将上下文字段映射为自定义 HTTP 请求头
+	Tracing TracingConfig `json:"tracing" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info" yaml:"-"`
 
 	// cache for sensitive values and compiled regex (computed once)
 	sensitiveCache *SensitiveDataCache
+}
+
+type EvolutionConfig struct {
+	Enabled         bool     `json:"enabled,omitempty"`
+	Mode            string   `json:"mode,omitempty"`
+	StateDir        string   `json:"state_dir,omitempty"`
+	MinTaskCount    int      `json:"min_task_count,omitempty"`
+	MinSuccessRatio float64  `json:"min_success_ratio,omitempty"`
+	ColdPathTrigger string   `json:"cold_path_trigger,omitempty"`
+	ColdPathTimes   []string `json:"cold_path_times,omitempty"`
+	// Deprecated: use MinTaskCount.
+	MinCaseCount int `json:"min_case_count,omitempty"`
+	// Deprecated: use MinSuccessRatio.
+	MinSuccessRate float64 `json:"min_success_rate,omitempty"`
+}
+
+func (c EvolutionConfig) MarshalJSON() ([]byte, error) {
+	out := struct {
+		Enabled         bool     `json:"enabled,omitempty"`
+		Mode            string   `json:"mode,omitempty"`
+		StateDir        string   `json:"state_dir,omitempty"`
+		MinTaskCount    int      `json:"min_task_count,omitempty"`
+		MinSuccessRatio float64  `json:"min_success_ratio,omitempty"`
+		ColdPathTrigger string   `json:"cold_path_trigger,omitempty"`
+		ColdPathTimes   []string `json:"cold_path_times,omitempty"`
+	}{
+		Enabled:         c.Enabled,
+		Mode:            c.Mode,
+		StateDir:        c.StateDir,
+		MinTaskCount:    c.EffectiveMinTaskCount(),
+		MinSuccessRatio: c.EffectiveMinSuccessRatio(),
+		ColdPathTrigger: strings.TrimSpace(c.ColdPathTrigger),
+		ColdPathTimes:   c.EffectiveColdPathTimes(),
+	}
+	if !out.Enabled {
+		out.Mode = ""
+		out.ColdPathTrigger = ""
+		out.ColdPathTimes = nil
+	}
+	return json.Marshal(out)
+}
+
+func (c EvolutionConfig) EffectiveMode() string {
+	if !c.Enabled {
+		return ""
+	}
+	switch strings.ToLower(strings.TrimSpace(c.Mode)) {
+	case "draft":
+		return "draft"
+	case "apply":
+		return "apply"
+	case "", "observe":
+		return "observe"
+	default:
+		return "observe"
+	}
+}
+
+func (c EvolutionConfig) RunsColdPathAutomatically() bool {
+	return c.RunsColdPathAfterTurn() || c.RunsColdPathScheduled()
+}
+
+func (c EvolutionConfig) ColdPathTriggerMode() string {
+	if c.EffectiveMode() != "draft" && c.EffectiveMode() != "apply" {
+		return ""
+	}
+	switch strings.ToLower(strings.TrimSpace(c.ColdPathTrigger)) {
+	case "", "after_turn":
+		return "after_turn"
+	case "scheduled":
+		return "scheduled"
+	case "manual", "none", "off":
+		return "manual"
+	default:
+		return "after_turn"
+	}
+}
+
+func (c EvolutionConfig) RunsColdPathAfterTurn() bool {
+	return c.ColdPathTriggerMode() == "after_turn"
+}
+
+func (c EvolutionConfig) RunsColdPathScheduled() bool {
+	return c.ColdPathTriggerMode() == "scheduled"
+}
+
+func (c EvolutionConfig) EffectiveMinTaskCount() int {
+	if c.MinTaskCount > 0 {
+		return c.MinTaskCount
+	}
+	if c.MinCaseCount > 0 {
+		return c.MinCaseCount
+	}
+	return 2
+}
+
+func (c EvolutionConfig) EffectiveMinSuccessRatio() float64 {
+	if c.MinSuccessRatio > 0 {
+		return c.MinSuccessRatio
+	}
+	if c.MinSuccessRate > 0 {
+		return c.MinSuccessRate
+	}
+	return 0.7
+}
+
+func (c EvolutionConfig) EffectiveColdPathTimes() []string {
+	out := make([]string, 0, len(c.ColdPathTimes))
+	for _, value := range c.ColdPathTimes {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		out = append(out, value)
+	}
+	return out
+}
+
+func (c EvolutionConfig) AutoAppliesDrafts() bool {
+	return c.EffectiveMode() == "apply"
 }
 
 // IsolationConfig controls subprocess isolation for commands started by PicoClaw.
@@ -122,6 +245,37 @@ type BuildInfo struct {
 	GitCommit string `json:"git_commit"`
 	BuildTime string `json:"build_time"`
 	GoVersion string `json:"go_version"`
+}
+
+// TracingConfig 配置请求追踪功能，将上下文字段映射为自定义 HTTP 请求头。
+// 启用后，PicoClaw 会在发给 LLM 的 HTTP 请求中自动携带用户配置的追踪请求头。
+//
+// 配置示例（兼容 AxonHub）：
+//
+//	"tracing": {
+//	  "enabled": true,
+//	  "headers": {
+//	    "AH-Thread-Id": "session_key",
+//	    "AH-Trace-Id":  "turn_id"
+//	  }
+//	}
+//
+// 支持的上下文字段名：
+//   - session_key: 会话标识（对应完整对话会话）
+//   - turn_id:     轮次标识（对应一次用户消息+所有 agent 请求）
+//   - agent_id:    Agent 标识
+type TracingConfig struct {
+	// Enabled 是否启用请求追踪
+	Enabled bool `json:"enabled,omitempty"`
+	// Headers 是 HTTP 请求头到上下文字段的映射。
+	// key = 请求头名称（如 "X-Thread-Id"），value = 上下文字段名（如 "session_key"）。
+	// 只有配置了映射的请求头才会被注入，未配置的不受影响。
+	Headers map[string]string `json:"headers,omitempty"`
+}
+
+// IsEnabled 当 enabled 为 true 且 headers 非空时视为启用
+func (t TracingConfig) IsEnabled() bool {
+	return t.Enabled && len(t.Headers) > 0
 }
 
 // MarshalJSON implements custom JSON marshaling for Config
@@ -416,11 +570,12 @@ type WhatsAppSettings struct {
 }
 
 type TelegramSettings struct {
-	Token         SecureString    `json:"token,omitzero"  yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
-	BaseURL       string          `json:"base_url"        yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
-	Proxy         string          `json:"proxy"           yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
-	Streaming     StreamingConfig `json:"streaming"       yaml:"-"`
-	UseMarkdownV2 bool            `json:"use_markdown_v2" yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
+	Token             SecureString    `json:"token,omitzero"       yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
+	BaseURL           string          `json:"base_url"             yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
+	Proxy             string          `json:"proxy"                yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
+	Streaming         StreamingConfig `json:"streaming"  yaml:"-"`
+	UseMarkdownV2     bool            `json:"use_markdown_v2"      yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
+	MediaGroupDelayMS int             `json:"media_group_delay_ms" yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_MEDIA_GROUP_DELAY_MS"`
 }
 
 type FeishuSettings struct {
@@ -597,6 +752,18 @@ type MQTTSettings struct {
 	QoS         int          `json:"qos,omitempty"          yaml:"-"                  env:"PICOCLAW_CHANNELS_MQTT_QOS"`
 }
 
+// SlackWebhookSettings configures the output-only Slack webhook channel.
+type SlackWebhookSettings struct {
+	Webhooks map[string]SlackWebhookTarget `json:"webhooks" yaml:"webhooks,omitempty"`
+}
+
+// SlackWebhookTarget represents a single Slack Incoming Webhook destination.
+type SlackWebhookTarget struct {
+	WebhookURL SecureString `json:"webhook_url,omitzero" yaml:"webhook_url,omitempty"`
+	Username   string       `json:"username,omitempty"   yaml:"-"`
+	IconEmoji  string       `json:"icon_emoji,omitempty" yaml:"-"`
+}
+
 type WeiboSettings struct {
 	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_APP_ID"`
 	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_WEIBO_APP_SECRET"`
@@ -705,6 +872,21 @@ func (c *ModelConfig) Validate() error {
 	if _, err := providercommon.NormalizeToolSchemaTransform(c.ToolSchemaTransform); err != nil {
 		return err
 	}
+
+	// Reject whitespace in model identifier
+	if strings.ContainsAny(c.Model, " \t\n\r") {
+		return fmt.Errorf("model identifier contains whitespace")
+	}
+
+	// Reject leading slash
+	if strings.HasPrefix(c.Model, "/") {
+		return fmt.Errorf("model identifier must not start with /")
+	}
+
+	// Reject consecutive slashes
+	if strings.Contains(c.Model, "//") {
+		return fmt.Errorf("model identifier must not contain //")
+	}
 	return nil
 }
 
@@ -789,6 +971,13 @@ type SogouConfig struct {
 	MaxResults int  `json:"max_results" env:"PICOCLAW_TOOLS_WEB_SOGOU_MAX_RESULTS"`
 }
 
+type GeminiSearchConfig struct {
+	Enabled    bool         `json:"enabled"          yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_GEMINI_ENABLED"`
+	APIKey     SecureString `json:"api_key,omitzero" yaml:"api_key,omitempty" env:"PICOCLAW_TOOLS_WEB_GEMINI_API_KEY"`
+	Model      string       `json:"model"            yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_GEMINI_MODEL"`
+	MaxResults int          `json:"max_results"      yaml:"-"                 env:"PICOCLAW_TOOLS_WEB_GEMINI_MAX_RESULTS"`
+}
+
 type PerplexityConfig struct {
 	Enabled    bool          `json:"enabled"           yaml:"-"                  env:"PICOCLAW_TOOLS_WEB_PERPLEXITY_ENABLED"`
 	APIKeys    SecureStrings `json:"api_keys,omitzero" yaml:"api_keys,omitempty" env:"PICOCLAW_TOOLS_WEB_PERPLEXITY_API_KEYS"`
@@ -832,16 +1021,17 @@ type BaiduSearchConfig struct {
 }
 
 type WebToolsConfig struct {
-	ToolConfig  `                  yaml:"-"                      envPrefix:"PICOCLAW_TOOLS_WEB_"`
-	Brave       BraveConfig       `yaml:"brave,omitempty"                                        json:"brave"`
-	Tavily      TavilyConfig      `yaml:"tavily,omitempty"                                       json:"tavily"`
-	Sogou       SogouConfig       `yaml:"-"                                                      json:"sogou"`
-	DuckDuckGo  DuckDuckGoConfig  `yaml:"-"                                                      json:"duckduckgo"`
-	Perplexity  PerplexityConfig  `yaml:"perplexity,omitempty"                                   json:"perplexity"`
-	SearXNG     SearXNGConfig     `yaml:"-"                                                      json:"searxng"`
-	GLMSearch   GLMSearchConfig   `yaml:"glm_search,omitempty"                                   json:"glm_search"`
-	BaiduSearch BaiduSearchConfig `yaml:"baidu_search,omitempty"                                 json:"baidu_search"`
-	Provider    string            `yaml:"-"                                                      json:"provider,omitempty" env:"PICOCLAW_TOOLS_WEB_PROVIDER"`
+	ToolConfig  `                   yaml:"-"                      envPrefix:"PICOCLAW_TOOLS_WEB_"`
+	Brave       BraveConfig        `yaml:"brave,omitempty"                                        json:"brave"`
+	Tavily      TavilyConfig       `yaml:"tavily,omitempty"                                       json:"tavily"`
+	Sogou       SogouConfig        `yaml:"-"                                                      json:"sogou"`
+	DuckDuckGo  DuckDuckGoConfig   `yaml:"-"                                                      json:"duckduckgo"`
+	Gemini      GeminiSearchConfig `yaml:"gemini,omitempty"                                       json:"gemini"`
+	Perplexity  PerplexityConfig   `yaml:"perplexity,omitempty"                                   json:"perplexity"`
+	SearXNG     SearXNGConfig      `yaml:"-"                                                      json:"searxng"`
+	GLMSearch   GLMSearchConfig    `yaml:"glm_search,omitempty"                                   json:"glm_search"`
+	BaiduSearch BaiduSearchConfig  `yaml:"baidu_search,omitempty"                                 json:"baidu_search"`
+	Provider    string             `yaml:"-"                                                      json:"provider,omitempty" env:"PICOCLAW_TOOLS_WEB_PROVIDER"`
 	// PreferNative controls whether to use provider-native web search when
 	// the active LLM supports it (e.g. OpenAI web_search_preview). When true,
 	// the client-side web_search tool is hidden to avoid duplicate search surfaces,

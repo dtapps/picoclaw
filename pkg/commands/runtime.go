@@ -50,6 +50,7 @@ type WorkflowInfo struct {
 	TriggerType string
 	StepCount   int
 	Vars        map[string]string
+	Triggers    []string // 格式化的触发器详情列表
 }
 
 // WorkflowInstanceInfo 是用于命令输出的工作流实例摘要视图。
@@ -93,4 +94,14 @@ type Runtime struct {
 	WorkflowEnable    func(name string, enabled bool) error
 	WorkflowInstances func(name string) ([]WorkflowInstanceInfo, error)
 	WorkflowStop      func(instanceID string) error
+	WorkflowCronList  func() []CronTaskInfo
+}
+
+// CronTaskInfo 表示一个待执行的调度任务。
+type CronTaskInfo struct {
+	WorkflowName string `json:"workflow_name"`
+	TriggerType  string `json:"trigger_type"` // cron, at, interval
+	Schedule     string `json:"schedule"`     // cron 表达式、at 时间或 interval 值
+	Timezone     string `json:"timezone"`
+	NextRun      string `json:"next_run"`
 }

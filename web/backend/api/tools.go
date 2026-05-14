@@ -16,15 +16,17 @@ type toolCatalogEntry struct {
 	Description string
 	Category    string
 	ConfigKey   string
+	Parameters  map[string]any // JSON Schema
 }
 
 type toolSupportItem struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Category    string `json:"category"`
-	ConfigKey   string `json:"config_key"`
-	Status      string `json:"status"`
-	ReasonCode  string `json:"reason_code,omitempty"`
+	Name        string         `json:"name"`
+	Description string         `json:"description"`
+	Category    string         `json:"category"`
+	ConfigKey   string         `json:"config_key"`
+	Status      string         `json:"status"`
+	ReasonCode  string         `json:"reason_code,omitempty"`
+	Parameters  map[string]any `json:"parameters,omitempty"`
 }
 
 type toolSupportResponse struct {
@@ -49,6 +51,7 @@ type webSearchProviderConfig struct {
 	BaseURL    string   `json:"base_url,omitempty"`
 	APIKey     string   `json:"api_key,omitempty"`
 	APIKeys    []string `json:"api_keys,omitempty"`
+	Model      string   `json:"model,omitempty"`
 	APIKeySet  bool     `json:"api_key_set,omitempty"`
 }
 
@@ -74,132 +77,374 @@ var toolCatalog = []toolCatalogEntry{
 		Description: "Read file content from the workspace or explicitly allowed paths.",
 		Category:    "filesystem",
 		ConfigKey:   "read_file",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path":   map[string]any{"type": "string", "description": "Path to the file to read."},
+				"offset": map[string]any{"type": "integer", "description": "Byte offset to start reading from."},
+				"length": map[string]any{"type": "integer", "description": "Maximum number of bytes to read."},
+			},
+			"required": []string{"path"},
+		},
 	},
 	{
 		Name:        "write_file",
 		Description: "Create or overwrite files within the writable workspace scope.",
 		Category:    "filesystem",
 		ConfigKey:   "write_file",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path":    map[string]any{"type": "string", "description": "Path to the file to write"},
+				"content": map[string]any{"type": "string", "description": "Content to write to the file"},
+				"overwrite": map[string]any{
+					"type":        "boolean",
+					"description": "Must be true to overwrite an existing file.",
+				},
+			},
+			"required": []string{"path", "content"},
+		},
 	},
 	{
 		Name:        "list_dir",
 		Description: "Inspect directories and enumerate files available to the agent.",
 		Category:    "filesystem",
 		ConfigKey:   "list_dir",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path": map[string]any{"type": "string", "description": "Path to list"},
+			},
+			"required": []string{"path"},
+		},
 	},
 	{
 		Name:        "edit_file",
 		Description: "Apply targeted edits to existing files without rewriting everything.",
 		Category:    "filesystem",
 		ConfigKey:   "edit_file",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path":     map[string]any{"type": "string", "description": "The file path to edit"},
+				"old_text": map[string]any{"type": "string", "description": "The exact text to find and replace"},
+				"new_text": map[string]any{"type": "string", "description": "The text to replace with"},
+			},
+			"required": []string{"path", "old_text", "new_text"},
+		},
 	},
 	{
 		Name:        "append_file",
 		Description: "Append content to the end of an existing file.",
 		Category:    "filesystem",
 		ConfigKey:   "append_file",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path":    map[string]any{"type": "string", "description": "The file path to append to"},
+				"content": map[string]any{"type": "string", "description": "The content to append"},
+			},
+			"required": []string{"path", "content"},
+		},
 	},
 	{
 		Name:        "exec",
 		Description: "Run shell commands inside the configured workspace sandbox.",
 		Category:    "filesystem",
 		ConfigKey:   "exec",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Action: run, list, poll, read, write, kill, send-keys",
+					"enum":        []string{"run", "list", "poll", "read", "write", "kill", "send-keys"},
+				},
+				"command": map[string]any{
+					"type":        "string",
+					"description": "Shell command to execute (required for run)",
+				},
+				"sessionId": map[string]any{
+					"type":        "string",
+					"description": "Session ID (required for poll/read/write/kill/send-keys)",
+				},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "cron",
 		Description: "Schedule one-time or recurring reminders, jobs, and shell commands.",
 		Category:    "automation",
 		ConfigKey:   "cron",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Action: add, list, remove, enable, disable",
+					"enum":        []string{"add", "list", "remove", "enable", "disable"},
+				},
+				"message": map[string]any{"type": "string", "description": "The reminder/task message"},
+				"cron":    map[string]any{"type": "string", "description": "Cron expression (e.g., '0 9 * * *')"},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "web_search",
 		Description: "Search the web using the configured providers.",
 		Category:    "web",
 		ConfigKey:   "web",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{"type": "string", "description": "Search query"},
+				"count": map[string]any{"type": "integer", "description": "Number of results (default: 10)"},
+			},
+			"required": []string{"query"},
+		},
 	},
 	{
 		Name:        "web_fetch",
 		Description: "Fetch and summarize the contents of a webpage.",
 		Category:    "web",
 		ConfigKey:   "web_fetch",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"url":      map[string]any{"type": "string", "description": "URL to fetch"},
+				"maxChars": map[string]any{"type": "integer", "description": "Maximum characters to extract"},
+			},
+			"required": []string{"url"},
+		},
 	},
 	{
 		Name:        "message",
 		Description: "Send a follow-up message back to the active user or chat.",
 		Category:    "communication",
 		ConfigKey:   "message",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"content": map[string]any{"type": "string", "description": "The message content to send"},
+				"channel": map[string]any{"type": "string", "description": "Target channel (telegram, whatsapp, etc.)"},
+				"chat_id": map[string]any{"type": "string", "description": "Target chat/user ID"},
+			},
+			"required": []string{"content"},
+		},
 	},
 	{
 		Name:        "send_file",
 		Description: "Send an outbound file or media attachment to the active chat.",
 		Category:    "communication",
 		ConfigKey:   "send_file",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"path":     map[string]any{"type": "string", "description": "Path to the local file"},
+				"filename": map[string]any{"type": "string", "description": "Optional display filename"},
+			},
+			"required": []string{"path"},
+		},
 	},
 	{
 		Name:        "find_skills",
 		Description: "Search external skill registries for installable skills.",
 		Category:    "skills",
 		ConfigKey:   "find_skills",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{
+					"type":        "string",
+					"description": "Search query describing the desired skill capability",
+				},
+				"limit": map[string]any{
+					"type":        "integer",
+					"description": "Maximum number of results (1-20, default 5)",
+				},
+			},
+			"required": []string{"query"},
+		},
 	},
 	{
 		Name:        "install_skill",
 		Description: "Install a skill into the current workspace from a registry.",
 		Category:    "skills",
 		ConfigKey:   "install_skill",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"slug":    map[string]any{"type": "string", "description": "The unique slug of the skill to install"},
+				"version": map[string]any{"type": "string", "description": "Specific version to install (optional)"},
+			},
+			"required": []string{"slug"},
+		},
 	},
 	{
 		Name:        "spawn",
 		Description: "Launch a background subagent for long-running or delegated work.",
 		Category:    "agents",
 		ConfigKey:   "spawn",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"task":     map[string]any{"type": "string", "description": "The task for subagent to complete"},
+				"label":    map[string]any{"type": "string", "description": "Optional short label for the task"},
+				"agent_id": map[string]any{"type": "string", "description": "Optional target agent ID"},
+			},
+			"required": []string{"task"},
+		},
 	},
 	{
 		Name:        "spawn_status",
 		Description: "Query the status of spawned subagents.",
 		Category:    "agents",
 		ConfigKey:   "spawn_status",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"task_id": map[string]any{
+					"type":        "string",
+					"description": "Optional task ID to inspect a specific subagent",
+				},
+			},
+		},
 	},
 	{
 		Name:        "i2c",
 		Description: "Interact with I2C hardware devices exposed on the host.",
 		Category:    "hardware",
 		ConfigKey:   "i2c",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Action: detect, scan, read, write",
+					"enum":        []string{"detect", "scan", "read", "write"},
+				},
+				"bus":     map[string]any{"type": "string", "description": "I2C bus number"},
+				"address": map[string]any{"type": "integer", "description": "7-bit I2C device address"},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "spi",
 		Description: "Interact with SPI hardware devices exposed on the host.",
 		Category:    "hardware",
 		ConfigKey:   "spi",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Action: list, transfer, read",
+					"enum":        []string{"list", "transfer", "read"},
+				},
+				"device": map[string]any{"type": "string", "description": "SPI device identifier"},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "serial",
 		Description: "Interact with serial ports exposed on the host.",
 		Category:    "hardware",
 		ConfigKey:   "serial",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "Action: list, read, write",
+					"enum":        []string{"list", "read", "write"},
+				},
+				"port": map[string]any{"type": "string", "description": "Serial port path"},
+				"baud": map[string]any{"type": "integer", "description": "Baud rate (default: 115200)"},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "get_current_time",
 		Description: "Get the current time, date, or both in various formats and timezones.",
 		Category:    "utility",
 		ConfigKey:   "get_current_time",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"format": map[string]any{
+					"type":        "string",
+					"description": "Output format: iso, time, date, datetime, unix",
+					"enum":        []string{"iso", "time", "date", "datetime", "unix"},
+				},
+				"timezone": map[string]any{"type": "string", "description": "Timezone name (e.g., Asia/Shanghai)"},
+			},
+		},
 	},
 	{
 		Name:        "browser_ext",
 		Description: "Control the user's browser via the browser extension (click, type, navigate, etc.).",
 		Category:    "browser",
 		ConfigKey:   "browser_ext",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"action": map[string]any{
+					"type":        "string",
+					"description": "The browser action to execute",
+					"enum": []string{
+						"navigate",
+						"get_page_info",
+						"click",
+						"type",
+						"fill",
+						"scroll",
+						"screenshot",
+						"get_text",
+						"select_option",
+						"hover",
+						"focus",
+						"clear",
+					},
+				},
+				"url":      map[string]any{"type": "string", "description": "URL to navigate to"},
+				"selector": map[string]any{"type": "string", "description": "CSS selector of the target element"},
+			},
+			"required": []string{"action"},
+		},
 	},
 	{
 		Name:        "tool_search_tool_regex",
 		Description: "Discover hidden MCP tools by regex search when tool discovery is enabled.",
 		Category:    "discovery",
 		ConfigKey:   "mcp.discovery.use_regex",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"pattern": map[string]any{
+					"type":        "string",
+					"description": "Regex pattern to match tool name or description",
+				},
+			},
+			"required": []string{"pattern"},
+		},
 	},
 	{
 		Name:        "tool_search_tool_bm25",
 		Description: "Discover hidden MCP tools by semantic ranking when tool discovery is enabled.",
 		Category:    "discovery",
 		ConfigKey:   "mcp.discovery.use_bm25",
+		Parameters: map[string]any{
+			"type": "object",
+			"properties": map[string]any{
+				"query": map[string]any{"type": "string", "description": "Search query"},
+			},
+			"required": []string{"query"},
+		},
 	},
 }
 
@@ -307,6 +552,7 @@ func buildToolSupport(cfg *config.Config) []toolSupportItem {
 			ConfigKey:   entry.ConfigKey,
 			Status:      status,
 			ReasonCode:  reasonCode,
+			Parameters:  entry.Parameters,
 		})
 	}
 	return items
@@ -471,6 +717,14 @@ func (h *Handler) handleUpdateWebSearchConfig(w http.ResponseWriter, r *http.Req
 		cfg.Tools.Web.DuckDuckGo.Enabled = settings.Enabled
 		cfg.Tools.Web.DuckDuckGo.MaxResults = settings.MaxResults
 	}
+	if settings, ok := req.Settings["gemini"]; ok {
+		cfg.Tools.Web.Gemini.Enabled = settings.Enabled
+		cfg.Tools.Web.Gemini.MaxResults = settings.MaxResults
+		cfg.Tools.Web.Gemini.Model = strings.TrimSpace(settings.Model)
+		if key := strings.TrimSpace(settings.APIKey); key != "" {
+			cfg.Tools.Web.Gemini.APIKey = *config.NewSecureString(key)
+		}
+	}
 	if settings, ok := req.Settings["brave"]; ok {
 		cfg.Tools.Web.Brave.Enabled = settings.Enabled
 		cfg.Tools.Web.Brave.MaxResults = settings.MaxResults
@@ -530,7 +784,7 @@ func normalizeWebSearchProvider(provider string) string {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case "", "auto":
 		return "auto"
-	case "sogou", "brave", "tavily", "duckduckgo", "perplexity", "searxng", "glm_search", "baidu_search":
+	case "sogou", "brave", "tavily", "duckduckgo", "gemini", "perplexity", "searxng", "glm_search", "baidu_search":
 		return strings.ToLower(strings.TrimSpace(provider))
 	default:
 		return ""
@@ -573,6 +827,12 @@ func buildWebSearchConfigResponse(cfg *config.Config) webSearchConfigResponse {
 		"duckduckgo": {
 			Enabled:    cfg.Tools.Web.DuckDuckGo.Enabled,
 			MaxResults: cfg.Tools.Web.DuckDuckGo.MaxResults,
+		},
+		"gemini": {
+			Enabled:    cfg.Tools.Web.Gemini.Enabled,
+			MaxResults: cfg.Tools.Web.Gemini.MaxResults,
+			Model:      cfg.Tools.Web.Gemini.Model,
+			APIKeySet:  cfg.Tools.Web.Gemini.APIKey.String() != "",
 		},
 		"brave": {
 			Enabled:    cfg.Tools.Web.Brave.Enabled,
@@ -628,6 +888,13 @@ func buildWebSearchConfigResponse(cfg *config.Config) webSearchConfigResponse {
 			Label:      "DuckDuckGo",
 			Configured: picotools.WebSearchProviderReady(opts, "duckduckgo"),
 			Current:    current == "duckduckgo",
+		},
+		{
+			ID:           "gemini",
+			Label:        "Gemini (Google Search)",
+			Configured:   picotools.WebSearchProviderReady(opts, "gemini"),
+			Current:      current == "gemini",
+			RequiresAuth: true,
 		},
 		{
 			ID:           "brave",

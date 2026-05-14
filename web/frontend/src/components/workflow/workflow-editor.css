@@ -89,6 +89,61 @@
   margin-top: 0;
 }
 
+/* 步骤启用开关 — 覆盖 sqd-editor-field 的默认纵向布局 */
+.sqd-editor .sqd-editor-field.sqd-step-toggle {
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.sqd-step-toggle__label {
+  margin: 0;
+}
+
+.sqd-step-toggle__control {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1;
+}
+
+.sqd-step-toggle__switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--muted, #888);
+  cursor: pointer;
+  padding: 0;
+  transition: background-color 0.2s ease;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.sqd-step-toggle__switch--on {
+  background: var(--primary, #3b82f6);
+}
+
+.sqd-step-toggle__switch::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  transition: left 0.2s ease;
+}
+
+.sqd-step-toggle__switch--on::before {
+  left: 18px;
+}
+
 /* 工具箱步骤描述 — 显示在步骤标签下方 */
 .sqd-toolbox {
   width: 200px !important;

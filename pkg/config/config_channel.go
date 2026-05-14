@@ -36,6 +36,7 @@ const (
 	ChannelWhatsAppNative = "whatsapp_native"
 	ChannelTeamsWebHook   = "teams_webhook"
 	ChannelMQTT           = "mqtt"
+	ChannelSlackWebHook   = "slack_webhook"
 	ChannelWeibo          = "weibo"
 	ChannelYuanbao        = "yuanbao"
 )
@@ -642,6 +643,7 @@ var channelSettingsFactory = map[string]any{
 	ChannelWhatsAppNative: (WhatsAppSettings{}),
 	ChannelTeamsWebHook:   (TeamsWebhookSettings{}),
 	ChannelMQTT:           (MQTTSettings{}),
+	ChannelSlackWebHook:   (SlackWebhookSettings{}),
 	ChannelWeibo:          (WeiboSettings{}),
 	ChannelYuanbao:        (YuanbaoSettings{}),
 }
