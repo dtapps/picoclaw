@@ -5,7 +5,7 @@ import {
   IconSettings,
   IconStar,
 } from "@tabler/icons-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type ComponentType } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
