@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"strings"
 	"sync"
 	"time"
@@ -963,12 +964,8 @@ func (s *Service) checkEventTriggers(evt runtimeevents.Event) {
 
 			// 合并事件变量到工作流变量
 			mergedVars := make(map[string]string)
-			for k, v := range wf.Vars {
-				mergedVars[k] = v
-			}
-			for k, v := range eventVars {
-				mergedVars[k] = v
-			}
+			maps.Copy(mergedVars, wf.Vars)
+			maps.Copy(mergedVars, eventVars)
 
 			// 创建工作流副本，包含事件变量
 			wfCopy := *wf

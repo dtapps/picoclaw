@@ -26,15 +26,15 @@ import (
 // Workflow 表示一个声明式工作流定义。
 // 工作流由名称、描述、触发器列表、步骤列表和变量组成，以 YAML 文件存储在 workspace/workflows/ 目录下。
 type Workflow struct {
-	Name        string            `yaml:"name"                 json:"name"`             // 工作流名称，全局唯一标识
-	Description string            `yaml:"description"          json:"description"`      // 工作流描述
-	Triggers    []Trigger         `yaml:"triggers"             json:"triggers"`         // 触发器列表
-	Vars        map[string]string `yaml:"vars,omitempty"       json:"vars,omitempty"`   // 全局变量，可在步骤中通过 {{.vars.key}} 引用
-	Steps       []Step            `yaml:"steps"                json:"steps"`            // 步骤列表，按顺序执行
-	Config      WorkflowConfig    `yaml:"config,omitempty"     json:"config,omitempty"` // 全局配置
-	Enabled     bool              `yaml:"-"                    json:"enabled"`          // 是否启用（运行时状态，不序列化到 YAML）
-	CreatedAt   time.Time         `yaml:"created_at,omitempty" json:"createdAt"`        // 创建时间
-	UpdatedAt   time.Time         `yaml:"updated_at,omitempty" json:"updatedAt"`        // 更新时间
+	Name        string            `yaml:"name"                 json:"name"`           // 工作流名称，全局唯一标识
+	Description string            `yaml:"description"          json:"description"`    // 工作流描述
+	Triggers    []Trigger         `yaml:"triggers"             json:"triggers"`       // 触发器列表
+	Vars        map[string]string `yaml:"vars,omitempty"       json:"vars,omitempty"` // 全局变量，可在步骤中通过 {{.vars.key}} 引用
+	Steps       []Step            `yaml:"steps"                json:"steps"`          // 步骤列表，按顺序执行
+	Config      WorkflowConfig    `yaml:"config,omitempty"     json:"config"`         // 全局配置
+	Enabled     bool              `yaml:"-"                    json:"enabled"`        // 是否启用（运行时状态，不序列化到 YAML）
+	CreatedAt   time.Time         `yaml:"created_at,omitempty" json:"createdAt"`      // 创建时间
+	UpdatedAt   time.Time         `yaml:"updated_at,omitempty" json:"updatedAt"`      // 更新时间
 
 	// 运行时状态字段
 	NextRunAt     *time.Time `yaml:"-"                         json:"nextRunAt,omitempty"`     // 下次运行时间（动态计算）

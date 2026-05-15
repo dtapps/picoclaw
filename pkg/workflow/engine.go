@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"maps"
+	"strings"
 	"sync"
 	"time"
 
@@ -551,9 +553,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	if step.Action == "tool_call" || step.Action == "agent_prompt" {
 		inst.mu.Lock()
 		outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs)+1)
-		for k, v := range inst.StepOutputs {
-			outputsSnapshot[k] = v
-		}
+		maps.Copy(outputsSnapshot, inst.StepOutputs)
 		inst.mu.Unlock()
 		// 添加 self 变量
 		selfOutput := map[string]any{"id": step.ID}
@@ -571,9 +571,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 			if wd, ok := WorkdirFromCtx(ctx); ok && wd != "" {
 				inst.mu.Lock()
 				snapshot := make(map[string]map[string]any, len(inst.StepOutputs)+1)
-				for k, v := range inst.StepOutputs {
-					snapshot[k] = v
-				}
+				maps.Copy(snapshot, inst.StepOutputs)
 				inst.mu.Unlock()
 				selfOutput := map[string]any{"id": step.ID}
 				if step.Name != "" {
@@ -614,9 +612,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 		// 快照 stepOutputs 避免并行子步骤写入时的 map 数据竞争
 		inst.mu.Lock()
 		outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs))
-		for k, v := range inst.StepOutputs {
-			outputsSnapshot[k] = v
-		}
+		maps.Copy(outputsSnapshot, inst.StepOutputs)
 		inst.mu.Unlock()
 		result = e.executor.ExecuteWithRetry(ctx, step, outputsSnapshot)
 	}
@@ -684,9 +680,7 @@ func (e *Engine) executeIfInEngine(ctx context.Context, step Step, inst *Workflo
 	outputsSnapshot := make(map[string]map[string]any, len(inst.StepOutputs))
 	for k, v := range inst.StepOutputs {
 		cp := make(map[string]any, len(v))
-		for k2, v2 := range v {
-			cp[k2] = v2
-		}
+		maps.Copy(cp, v)
 		outputsSnapshot[k] = cp
 	}
 	// 对于 on_success/on_error 条件，需要前一个步骤的状态
@@ -799,18 +793,18 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 	}
 
 	// 合并输出
-	var combined string
+	var combined strings.Builder
 	for _, subStep := range subSteps {
 		key := subStep.OutputKey
 		if key == "" {
 			key = "result"
 		}
 		if v, ok := outputs[key]; ok {
-			combined += fmt.Sprintf("[%s] %s\n", key, valueToString(v))
+			combined.WriteString(fmt.Sprintf("[%s] %s\n", key, valueToString(v)))
 		}
 	}
 
-	return StepResult{Output: combined}
+	return StepResult{Output: combined.String()}
 }
 
 // tryErrorHandlers 在步骤失败后查找并执行 on_error 处理步骤。

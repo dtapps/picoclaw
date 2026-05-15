@@ -3,6 +3,8 @@ package workflow
 import (
 	"context"
 	"fmt"
+	"maps"
+	"strings"
 	"time"
 
 	"github.com/sipeed/picoclaw/pkg/logger"
@@ -40,9 +42,7 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 
 	// 构建包含 self 属性的模板输出映射（不修改共享的 stepOutputs，避免并行步骤数据竞争）
 	localOutputs := make(map[string]map[string]any, len(stepOutputs)+1)
-	for k, v := range stepOutputs {
-		localOutputs[k] = v
-	}
+	maps.Copy(localOutputs, stepOutputs)
 	selfOutput := map[string]any{"id": step.ID}
 	if step.Name != "" {
 		selfOutput["name"] = step.Name
@@ -170,16 +170,16 @@ func (se *StepExecutor) executeParallel(
 	}
 
 	// 合并输出
-	var combined string
+	var combined strings.Builder
 	for _, step := range steps {
 		if step.OutputKey != "" {
 			if v, ok := outputs[step.OutputKey]; ok {
-				combined += fmt.Sprintf("[%s] %s\n", step.OutputKey, valueToString(v))
+				combined.WriteString(fmt.Sprintf("[%s] %s\n", step.OutputKey, valueToString(v)))
 			}
 		}
 	}
 
-	return StepResult{Output: combined}
+	return StepResult{Output: combined.String()}
 }
 
 // ExecuteWithRetry 执行步骤，支持可选的重试逻辑。
