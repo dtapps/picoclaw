@@ -100,6 +100,15 @@ other = "显示当前会话上下文和令牌使用情况"
 description = "Context 命令用法"
 other = "/context"
 
+[commands_context_response]
+description = "Context 命令响应消息"
+other = """会话 ID: {{.SessionID}}
+上下文窗口: {{.ContextWindow}}
+最大上下文: {{.MaxContext}}
+剩余: {{.Remaining}}
+
+注意：上下文会自动管理。"""
+
 [commands_context_no_session]
 description = "Context 命令无会话消息"
 other = "没有活动的会话上下文。"
@@ -112,6 +121,20 @@ other = """上下文使用情况
 压缩阈值：{{.CompressAtTokens}} 令牌
 压缩进度：{{.CompressionPercent}}%
 剩余：~{{.Remaining}} 令牌"""
+
+[commands_models_description]
+description = "Models 命令描述"
+other = "列出可用模型和当前配置"
+
+[commands_models_usage]
+description = "Models 命令用法"
+other = "/models"
+
+[commands_models_response]
+description = "Models 命令响应消息"
+other = """当前模型: {{.CurrentModel}}
+可用模型:
+{{.Models}}"""
 
 [commands_btw_description]
 description = "BTW 命令描述"
@@ -192,6 +215,10 @@ other = "当前频道：{{.Channel}}"
 [commands_list_description]
 description = "List 命令描述"
 other = "列出可用选项"
+
+[commands_list_usage]
+description = "List 命令用法"
+other = "/list <models|channels|skills>"
 
 [commands_list_models_description]
 description = "List models 子命令描述"
@@ -707,28 +734,28 @@ other = "- 组件技能内容可用，但无法提取简洁的指导。"
 
 [learning_trace_replacements]
 description = "学习痕迹替换"
-other = """## Learned Shortcut Update | ## Shortcut Update
-## Learned Evolution | ## Usage Notes
-## Learned Pattern | ## Usage Pattern
-## Learned Context | ## Procedure Notes
-## Source Evidence | ## Validation
-## Source Skills | ## Procedure Details
-### Source Skills | ### Procedure Details
-## Learned Shortcut | ## Shortcut
-### Learned Shortcut | ### Shortcut
-Learned workflow for  | Workflow for 
-learned workflow for  | workflow for 
-from learned pattern:  | for: 
-Learned task: | Task:
-learned task: | task:
-Learned pattern: | Pattern:
-learned pattern: | pattern:
-Learned from | Based on
-learned from | based on
-Source evidence | Validation
-source evidence | validation
-task records | validated examples
-Task records | Validated examples"""
+other = """## 学习到的快捷方式更新 | ## 快捷方式更新
+## 学习到的演进 | ## 使用说明
+## 学习到的模式 | ## 使用模式
+## 学习到的上下文 | ## 流程说明
+## 来源证据 | ## 验证
+## 来源技能 | ## 流程详情
+### 来源技能 | ### 流程详情
+## 学习到的快捷方式 | ## 快捷方式
+### 学习到的快捷方式 | ### 快捷方式
+学习到的  工作流 | 工作流
+学习到的  工作流 | 工作流
+从学习到的模式：  | 用途：
+学习到的任务：| 任务：
+学习到的任务：| 任务：
+学习到的模式：| 模式：
+学习到的模式：| 模式：
+学习自 | 基于
+学习自 | 基于
+来源证据 | 验证
+来源证据 | 验证
+任务记录 | 验证示例
+任务记录 | 验证示例"""
 
 [llm_draft_system_prompt]
 description = "LLM 草稿系统提示"
@@ -786,6 +813,14 @@ target_skill_name, draft_type, change_kind, human_summary, body_or_patch。
 [pattern_cluster_system_prompt]
 description = "模式聚类系统提示"
 other = "按任务含义对代理任务记录进行聚类。返回一个 JSON 对象，包含 clusters:[{label,summary,task_record_ids,cluster_reason}]。不要使用 markdown 代码块。"
+
+[pattern_cluster_system_prompt_with_evidence]
+description = "带证据的模式聚类系统提示"
+other = "按任务含义对代理任务记录进行聚类。返回一个 JSON 对象，包含 clusters:[{label,summary,task_record_ids,cluster_reason}]。不要使用 markdown 代码块。"
+
+[pattern_cluster_instruction]
+description = "模式聚类指令"
+other = "基于任务含义相似性合并这些现有聚类。"
 
 [pattern_cluster_grouping_prompt]
 description = "模式聚类分组提示"

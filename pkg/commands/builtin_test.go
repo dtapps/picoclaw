@@ -4,7 +4,14 @@ import (
 	"context"
 	"strings"
 	"testing"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
+
+func init() {
+	// 初始化 i18n 用于测试
+	_ = i18n.Init()
+}
 
 func findDefinitionByName(t *testing.T, defs []Definition, name string) Definition {
 	t.Helper()
@@ -378,7 +385,7 @@ func TestBuiltinBtwCommand_MissingQuestion(t *testing.T) {
 	if res.Outcome != OutcomeHandled {
 		t.Fatalf("/btw outcome=%v, want=%v", res.Outcome, OutcomeHandled)
 	}
-	if reply != "Usage: /btw <question>" {
+	if !strings.Contains(reply, "Usage: /btw") {
 		t.Fatalf("/btw reply=%q, want usage message", reply)
 	}
 }

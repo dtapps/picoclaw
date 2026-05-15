@@ -20,6 +20,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/media"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/routing"
@@ -27,6 +28,11 @@ import (
 	"github.com/sipeed/picoclaw/pkg/tools"
 	"github.com/sipeed/picoclaw/pkg/utils"
 )
+
+func init() {
+	// 初始化 i18n 用于测试
+	_ = i18n.Init()
+}
 
 type fakeChannel struct{ id string }
 
@@ -2785,7 +2791,7 @@ func TestProcessMessage_SwitchModelShowModelConsistency(t *testing.T) {
 		ChatID:   "chat1",
 		Content:  "/switch model to deepseek",
 	})
-	if !strings.Contains(switchResp, "Switched model from local to deepseek") {
+	if !strings.Contains(switchResp, "Model switched from local to deepseek") {
 		t.Fatalf("unexpected /switch reply: %q", switchResp)
 	}
 
@@ -2937,7 +2943,7 @@ func TestProcessMessage_SwitchModelRoutesSubsequentRequestsToSelectedProvider(t 
 		ChatID:   "chat1",
 		Content:  "/switch model to deepseek",
 	})
-	if !strings.Contains(switchResp, "Switched model from local to deepseek") {
+	if !strings.Contains(switchResp, "Model switched from local to deepseek") {
 		t.Fatalf("unexpected /switch reply: %q", switchResp)
 	}
 

@@ -109,6 +109,16 @@ Remaining: {{.Remaining}}
 
 Note: Context is managed automatically."""
 
+[commands_context_no_session]
+description = "Context no session message"
+other = "No active session"
+
+[commands_context_stats]
+description = "Context stats message"
+other = """Session ID: {{.SessionID}}
+Messages: {{.MessageCount}}
+Tokens: {{.TokenCount}}"""
+
 [commands_models_description]
 description = "Models command description"
 other = "List available models and current configuration"
@@ -122,6 +132,50 @@ description = "Models command response message"
 other = """Current Model: {{.CurrentModel}}
 Available Models:
 {{.Models}}"""
+
+[commands_switch_description]
+description = "Switch command description"
+other = "Switch to a different model or channel"
+
+[commands_switch_model_description]
+description = "Switch model subcommand description"
+other = "Switch to a different model"
+
+[commands_switch_model_usage]
+description = "Switch model subcommand usage"
+other = "Usage: /switch model to <name>"
+
+[commands_switch_model_success]
+description = "Switch model success message"
+other = "Model switched from {{.OldModel}} to {{.NewModel}}"
+
+[commands_switch_channel_description]
+description = "Switch channel subcommand description"
+other = "Moved to /check channel"
+
+[commands_switch_channel_moved]
+description = "Switch channel moved message"
+other = "This command has been moved. Please use: /check channel <name>"
+
+[commands_show_description]
+description = "Show command description"
+other = "Show current configuration"
+
+[commands_show_model_description]
+description = "Show model subcommand description"
+other = "Current model and provider"
+
+[commands_show_model_response]
+description = "Show model response message"
+other = "Current Model: {{.Name}} (Provider: {{.Provider}})"
+
+[commands_show_channel_description]
+description = "Show channel subcommand description"
+other = "Current channel"
+
+[commands_show_channel_response]
+description = "Show channel response message"
+other = "Current Channel: {{.Channel}}"
 
 [commands_list_description]
 description = "List command description"
@@ -176,6 +230,38 @@ other = "Force a specific installed skill for one request"
 [commands_use_usage]
 description = "Use command usage"
 other = "/use <skill> [message]"
+
+[commands_btw_description]
+description = "Btw command description"
+other = "Ask a side question to the AI"
+
+[commands_btw_usage]
+description = "Btw command usage"
+other = "/btw <question>"
+
+[commands_btw_usage_example]
+description = "Btw usage example message"
+other = "Usage: /btw <question>\n\nExample: /btw what is the weather?"
+
+[commands_btw_empty_answer]
+description = "Btw empty answer message"
+other = "(no answer)"
+
+[commands_check_description]
+description = "Check command description"
+other = "Check channel status and availability"
+
+[commands_check_channel_description]
+description = "Check channel subcommand description"
+other = "Check if a channel is available and enabled"
+
+[commands_check_channel_usage]
+description = "Check channel usage message"
+other = "Usage: /check channel <name>"
+
+[commands_check_channel_success]
+description = "Check channel success message"
+other = "Channel '{{.Name}}' is available and enabled"
 
 [commands_exec_description]
 description = "Exec command description"
@@ -724,6 +810,14 @@ Matched skill content excerpts:
 [pattern_cluster_system_prompt]
 description = "Pattern cluster system prompt"
 other = "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+
+[pattern_cluster_system_prompt_with_evidence]
+description = "Pattern cluster system prompt with evidence"
+other = "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+
+[pattern_cluster_instruction]
+description = "Pattern cluster instruction"
+other = "Merge these existing clusters based on task meaning similarity."
 
 [pattern_cluster_grouping_prompt]
 description = "Pattern cluster grouping prompt"

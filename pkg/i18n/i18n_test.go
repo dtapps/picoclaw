@@ -65,7 +65,7 @@ func TestTf(t *testing.T) {
 		"OldModel": "gpt-3.5",
 		"NewModel": "gpt-4",
 	})
-	expected := "Switched model from gpt-3.5 to gpt-4"
+	expected := "Model switched from gpt-3.5 to gpt-4"
 	if result != expected {
 		t.Errorf("模板翻译失败: 期望 '%s', 得到 '%s'", expected, result)
 	}
