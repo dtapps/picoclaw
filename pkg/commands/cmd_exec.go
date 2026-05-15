@@ -3,13 +3,13 @@ package commands
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"os/exec"
 	"runtime"
 	"strings"
 	"time"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/isolation"
 )
 
@@ -33,22 +33,22 @@ type ExecSessionInfo struct {
 func execCommand() Definition {
 	return Definition{
 		Name:        "exec",
-		Description: "Execute shell commands in the host environment",
+		Description: i18n.T("commands_exec_description"),
 		SubCommands: []SubCommand{
 			{
 				Name:        "run",
-				Description: "Execute a command and return output",
+				Description: i18n.T("commands_exec_run_description"),
 				ArgsUsage:   "<command>",
 				Handler:     execRunHandler(),
 			},
 			{
 				Name:        "sessions",
-				Description: "List active exec sessions",
+				Description: i18n.T("commands_exec_sessions_description"),
 				Handler:     execSessionsHandler(),
 			},
 			{
 				Name:        "kill",
-				Description: "Kill a running exec session",
+				Description: i18n.T("commands_exec_kill_description"),
 				ArgsUsage:   "<session-id>",
 				Handler:     execKillHandler(),
 			},
@@ -61,13 +61,13 @@ func execRunHandler() Handler {
 		// Extract command from request text: /exec run <command>
 		command := extractCommandFromRequest(req.Text, 2) // Skip "exec" and "run"
 		if command == "" {
-			return req.Reply("Usage: /exec run <command>\n\nExample: /exec run ls -la")
+			return req.Reply(i18n.T("commands_exec_run_usage_example"))
 		}
 
 		// Check if exec is allowed from this channel
 		if rt != nil && rt.Config != nil {
 			if !isExecAllowedFromChannel(req.Channel, rt.Config) {
-				return req.Reply("Error: exec is restricted to internal channels only")
+				return req.Reply(i18n.T("commands_exec_run_restricted"))
 			}
 		}
 
@@ -84,9 +84,7 @@ func execSessionsHandler() Handler {
 	return func(ctx context.Context, req Request, rt *Runtime) error {
 		// For now, return a simple message
 		// In a full implementation, this would track background sessions
-		return req.Reply(
-			"Active exec sessions: (none)\n\nNote: Background sessions are not yet supported via commands.",
-		)
+		return req.Reply(i18n.T("commands_exec_sessions_response"))
 	}
 }
 
@@ -94,9 +92,9 @@ func execKillHandler() Handler {
 	return func(ctx context.Context, req Request, rt *Runtime) error {
 		sessionID := nthToken(req.Text, 2)
 		if sessionID == "" {
-			return req.Reply("Usage: /exec kill <session-id>")
+			return req.Reply(i18n.T("commands_exec_kill_usage"))
 		}
-		return req.Reply(fmt.Sprintf("Session %s: not found or already terminated", sessionID))
+		return req.Reply(i18n.Tf("commands_exec_kill_not_found", map[string]any{"ID": sessionID}))
 	}
 }
 
@@ -173,7 +171,7 @@ func executeCommand(ctx context.Context, command, cwd string, rt *Runtime) *Exec
 		return &ExecResult{
 			Output:   "",
 			ExitCode: -1,
-			Error:    fmt.Errorf("failed to start command: %w", startErr),
+			Error:    startErr,
 			Duration: time.Since(startTime),
 		}
 	}
@@ -215,20 +213,23 @@ func formatExecResult(result *ExecResult) string {
 
 	// Header with exit code and duration
 	sb.WriteString(
-		fmt.Sprintf("Exit Code: %d | Duration: %v\n", result.ExitCode, result.Duration.Round(time.Millisecond)),
+		i18n.Tf("commands_exec_result_exit_code", map[string]any{
+			"ExitCode": result.ExitCode,
+			"Duration": result.Duration.Round(time.Millisecond),
+		}) + "\n",
 	)
 	sb.WriteString(strings.Repeat("-", 40) + "\n")
 
 	// Output
 	if result.Output == "" {
-		sb.WriteString("(no output)")
+		sb.WriteString(i18n.T("commands_exec_result_no_output"))
 	} else {
 		sb.WriteString(result.Output)
 	}
 
 	// Error message if any
 	if result.Error != nil && result.ExitCode != 0 {
-		sb.WriteString(fmt.Sprintf("\n\n[Error: %v]", result.Error))
+		sb.WriteString("\n\n" + i18n.Tf("commands_exec_result_error", map[string]any{"Error": result.Error}))
 	}
 
 	return sb.String()

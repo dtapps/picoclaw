@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
@@ -940,115 +941,63 @@ func synthesizeCombinedSkillAppendBody(
 }
 
 func synthesizedStartHereLine(rule LearningRecord, target string) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) > 0 {
-		if isZh {
-			return fmt.Sprintf(
-				"对于类似 `%s` 的任务，从 `%s` 开始。",
-				strings.TrimSpace(rule.Summary),
-				strings.Join(rule.WinningPath, " -> "),
-			)
-		}
-		return fmt.Sprintf(
-			"Start with `%s` for tasks like `%s`.",
-			strings.Join(rule.WinningPath, " -> "),
-			strings.TrimSpace(rule.Summary),
-		)
+		return i18n.Tf("synth_start_here_path", map[string]any{
+			"Summary": strings.TrimSpace(rule.Summary),
+			"Path":    strings.Join(rule.WinningPath, " -> "),
+		})
 	}
 	if summary := strings.TrimSpace(rule.Summary); summary != "" {
-		if isZh {
-			return fmt.Sprintf("当任务匹配 `%s` 时，使用 `%s`.", summary, target)
-		}
-		return fmt.Sprintf("Use `%s` when the task matches `%s`.", target, summary)
+		return i18n.Tf("synth_start_here_summary", map[string]any{
+			"Target":  target,
+			"Summary": summary,
+		})
 	}
-	if isZh {
-		return fmt.Sprintf("将 `%s` 用于学习到的任务模式。", target)
-	}
-	return fmt.Sprintf("Use `%s` for the learned task pattern.", target)
+	return i18n.Tf("synth_start_here_pattern", map[string]any{
+		"Target": target,
+	})
 }
 
 func synthesizedCombinedStartHereLine(rule LearningRecord, target string) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
-	if isZh {
-		return fmt.Sprintf("当任务匹配 `%s` 时，直接使用 `%s`.", fallbackEvolutionSummary(rule), target)
-	}
-	return fmt.Sprintf("Use `%s` directly when the task matches `%s`.", target, fallbackEvolutionSummary(rule))
+	return i18n.Tf("synth_combined_start_here", map[string]any{
+		"Target":  target,
+		"Summary": fallbackEvolutionSummary(rule),
+	})
 }
 
 func synthesizedCombinedWhenToUseLine(rule LearningRecord, target string) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) == 0 {
-		if isZh {
-			return fmt.Sprintf("当学习到的任务模式再次出现时，使用 `%s`.", target)
-		}
-		return fmt.Sprintf("Use `%s` when the learned task pattern appears again.", target)
+		return i18n.Tf("synth_combined_when_to_use_no_path", map[string]any{
+			"Target": target,
+		})
 	}
-	if isZh {
-		return fmt.Sprintf(
-			"使用 `%s` 作为直接快捷方式，而不是逐步重放 `%s`.",
-			target,
-			strings.Join(rule.WinningPath, " -> "),
-		)
-	}
-	return fmt.Sprintf(
-		"Use `%s` as a direct shortcut instead of replaying `%s` step by step.",
-		target,
-		strings.Join(rule.WinningPath, " -> "),
-	)
+	return i18n.Tf("synth_combined_when_to_use_path", map[string]any{
+		"Target": target,
+		"Path":   strings.Join(rule.WinningPath, " -> "),
+	})
 }
 
 func synthesizedCombinedProcedure(matches []skills.SkillInfo, rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	components := synthesizedComponentBreakdown(matches)
 	if !strings.HasPrefix(strings.TrimSpace(components), "- `") {
 		if len(rule.WinningPath) == 0 {
-			if isZh {
-				return "直接使用学习到的快捷方式，并保持响应聚焦于请求的结果。"
-			}
-			return "Use the learned shortcut directly and keep the response focused on the requested result."
+			return i18n.T("synth_combined_procedure_no_path")
 		}
-		if isZh {
-			return fmt.Sprintf(
-				"应用记录的路径 `%s`，然后只返回必要的解释和最终结果。",
-				strings.Join(rule.WinningPath, " -> "),
-			)
-		}
-		return fmt.Sprintf(
-			"Apply the recorded path `%s`, then return the final result with only the necessary explanation.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("synth_combined_procedure_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	if isZh {
-		return "按照下面的源技能指导作为一个紧凑的流程执行，然后返回最终结果，无需重放不必要的发现步骤。"
-	}
-	return "Follow the source skill guidance below as one compact procedure, then return the final result without replaying unnecessary discovery steps."
+	return i18n.T("synth_combined_procedure_components")
 }
 
 func synthesizedExpectedResultLine(evidence DraftEvidence) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if excerpt := firstFinalOutputExcerpt(evidence, 360); excerpt != "" {
 		return excerpt
 	}
-	if isZh {
-		return "返回匹配任务的完成结果，无需重述无关的发现步骤。"
-	}
-	return "Return the completed result for the matched task without restating unrelated discovery steps."
+	return i18n.T("synth_expected_result")
 }
 
 func synthesizedEvidenceLine(rule LearningRecord, evidence DraftEvidence) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(evidence.TaskRecords) > 0 {
 		ids := make([]string, 0, len(evidence.TaskRecords))
 		for _, task := range evidence.TaskRecords {
@@ -1057,73 +1006,45 @@ func synthesizedEvidenceLine(rule LearningRecord, evidence DraftEvidence) string
 			}
 		}
 		if len(ids) > 0 {
-			if isZh {
-				return "从任务记录中学习: " + strings.Join(ids, ", ")
-			}
-			return "learned from task records: " + strings.Join(ids, ", ")
+			return i18n.Tf("synth_evidence_tasks", map[string]any{
+				"IDs": strings.Join(ids, ", "),
+			})
 		}
 	}
 	if len(rule.TaskRecordIDs) > 0 {
-		if isZh {
-			return "从任务记录中学习: " + strings.Join(rule.TaskRecordIDs, ", ")
-		}
-		return "learned from task records: " + strings.Join(rule.TaskRecordIDs, ", ")
+		return i18n.Tf("synth_evidence_rule", map[string]any{
+			"IDs": strings.Join(rule.TaskRecordIDs, ", "),
+		})
 	}
-	if isZh {
-		return "从模式记录中学习。"
-	}
-	return "learned from the pattern record."
+	return i18n.T("synth_evidence_pattern")
 }
 
 func synthesizedWrappedPathLine(rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) == 0 {
-		if isZh {
-			return "没有记录明确的包装路径。"
-		}
-		return "No explicit wrapped path was recorded."
+		return i18n.T("synth_wrapped_path_empty")
 	}
 	return strings.Join(rule.WinningPath, " -> ")
 }
 
 func synthesizedCombinedLearnedContent(body string, rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	content := strings.TrimSpace(stripSkillFrontmatter(body))
 	if content == "" {
-		if isZh {
-			return fmt.Sprintf(
-				"从 `%s` 学习; 当相同的任务模式再次出现时，直接使用此快捷方式。",
-				fallbackEvolutionSummary(rule),
-			)
-		}
-		return fmt.Sprintf(
-			"Learned from `%s`; use this shortcut directly when the same task pattern appears again.",
-			fallbackEvolutionSummary(rule),
-		)
+		return i18n.Tf("synth_combined_content_empty", map[string]any{
+			"Summary": fallbackEvolutionSummary(rule),
+		})
 	}
 	content = removeVerboseCombinedSections(content)
 	content = strings.Join(strings.Fields(content), " ")
 	if content == "" {
-		if isZh {
-			return fmt.Sprintf(
-				"从 `%s` 学习; 当相同的任务模式再次出现时，直接使用此快捷方式。",
-				fallbackEvolutionSummary(rule),
-			)
-		}
-		return fmt.Sprintf(
-			"Learned from `%s`; use this shortcut directly when the same task pattern appears again.",
-			fallbackEvolutionSummary(rule),
-		)
+		return i18n.Tf("synth_combined_content_empty", map[string]any{
+			"Summary": fallbackEvolutionSummary(rule),
+		})
 	}
 	content = trimAtReadableBoundary(content, 1200)
-	if isZh {
-		return "- 学习任务: " + fallbackEvolutionSummary(rule) + "\n- 可复用指导: " + content
-	}
-	return "- Learned task: " + fallbackEvolutionSummary(rule) + "\n- Reusable guidance: " + content
+	return i18n.Tf("synth_combined_content", map[string]any{
+		"Summary": fallbackEvolutionSummary(rule),
+		"Content": content,
+	})
 }
 
 func stripSkillFrontmatter(body string) string {
@@ -1165,50 +1086,36 @@ func removeVerboseCombinedSections(content string) string {
 }
 
 func fallbackEvolutionSummary(rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if summary := strings.TrimSpace(rule.Summary); summary != "" {
 		return summary
 	}
 	if len(rule.WinningPath) > 0 {
 		return strings.Join(rule.WinningPath, " -> ")
 	}
-	if isZh {
-		return "学习到的任务模式"
-	}
-	return "the learned task pattern"
+	return i18n.T("synth_fallback_summary")
 }
 
 func buildCombinedSkillHumanSummary(target string, rule LearningRecord, hasExisting bool) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	_ = hasExisting
 	summary := fallbackEvolutionSummary(rule)
 	if strings.TrimSpace(summary) == "" || summary == "the learned task pattern" {
 		summary = titleCaseSkillName(target)
 	}
-	if isZh {
-		return fmt.Sprintf("当任务需要此工作流时，使用此技能来 %s.", sentenceFragment(summary))
-	}
-	return fmt.Sprintf("Use this skill to %s when the task requires this workflow.", sentenceFragment(summary))
+	return i18n.Tf("synth_human_summary", map[string]any{
+		"Summary": sentenceFragment(summary),
+	})
 }
 
 func buildCombinedSkillAvoidPattern(target string, rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) == 0 {
-		if isZh {
-			return fmt.Sprintf("当相同的学习任务模式再次出现时，避免绕过 `%s`", target)
-		}
-		return fmt.Sprintf("avoid bypassing `%s` when the same learned task pattern appears again", target)
+		return i18n.Tf("synth_avoid_pattern_no_path", map[string]any{
+			"Target": target,
+		})
 	}
-	if isZh {
-		return fmt.Sprintf("在直接尝试 `%s` 之前，避免重放 %s", target, strings.Join(rule.WinningPath, " -> "))
-	}
-	return fmt.Sprintf("avoid replaying %s before trying `%s` directly", strings.Join(rule.WinningPath, " -> "), target)
+	return i18n.Tf("synth_avoid_pattern_path", map[string]any{
+		"Target": target,
+		"Path":   strings.Join(rule.WinningPath, " -> "),
+	})
 }
 
 func collectSkillRefs(matches []skills.SkillInfo) []string {

@@ -27,6 +27,7 @@ import (
 	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/status"
 	"github.com/sipeed/picoclaw/cmd/picoclaw/internal/version"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/updater"
 )
 
@@ -121,6 +122,11 @@ const (
 )
 
 func main() {
+	// 初始化国际化(i18n)
+	if initErr := i18n.Init(); initErr != nil {
+		fmt.Fprintf(os.Stderr, "警告: 初始化 i18n 失败: %v\n", initErr)
+	}
+
 	cliui.Init(earlyColorDisabled())
 
 	if earlyColorDisabled() {

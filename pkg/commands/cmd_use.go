@@ -1,9 +1,11 @@
 package commands
 
+import "github.com/sipeed/picoclaw/pkg/i18n"
+
 func useCommand() Definition {
 	return Definition{
 		Name:        "use",
-		Description: "Force a specific installed skill for one request",
-		Usage:       "/use <skill> [message]",
+		Description: i18n.T("commands_use_description"),
+		Usage:       i18n.T("commands_use_usage"),
 	}
 }

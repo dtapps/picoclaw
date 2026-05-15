@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
@@ -60,15 +61,9 @@ func readSkillBodyExcerpt(path string) string {
 }
 
 func summarizeMatchedSkillExcerpts(matches []skills.SkillInfo) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	excerpts := loadMatchedSkillExcerpts(matches)
 	if len(excerpts) == 0 {
-		if isZh {
-			return "无"
-		}
-		return "none"
+		return i18n.T("skill_content_none")
 	}
 
 	parts := make([]string, 0, len(excerpts))
@@ -83,15 +78,9 @@ func summarizeMatchedSkillExcerpts(matches []skills.SkillInfo) string {
 }
 
 func synthesizedComponentBreakdown(matches []skills.SkillInfo) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	excerpts := loadMatchedSkillExcerpts(matches)
 	if len(excerpts) == 0 {
-		if isZh {
-			return "- 生成此快捷方式时没有可用的组件技能内容。"
-		}
-		return "- No component skill content was available when this shortcut was generated."
+		return i18n.T("skill_content_no_component")
 	}
 
 	lines := make([]string, 0, len(excerpts))
@@ -103,10 +92,7 @@ func synthesizedComponentBreakdown(matches []skills.SkillInfo) string {
 		lines = append(lines, fmt.Sprintf("- `%s`: %s", excerpt.Name, guidance))
 	}
 	if len(lines) == 0 {
-		if isZh {
-			return "- 组件技能内容可用，但无法提取简洁的指导。"
-		}
-		return "- Component skill content was available, but no concise guidance could be extracted."
+		return i18n.T("skill_content_no_guidance")
 	}
 	return strings.Join(lines, "\n")
 }

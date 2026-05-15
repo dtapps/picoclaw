@@ -1,0 +1,1011 @@
+# English translations for PicoClaw
+
+[commands_common_unavailable]
+description = "Common unavailable message"
+other = "Command unavailable in current context."
+
+[commands_common_usage_prefix]
+description = "Common usage prefix"
+other = "Usage:"
+
+[commands_start_description]
+description = "Start command description"
+other = "Start the bot"
+
+[commands_start_usage]
+description = "Start command usage"
+other = "/start"
+
+[commands_start_response]
+description = "Start command response"
+other = "Hello! I am PicoClaw 🦞"
+
+[commands_help_description]
+description = "Help command description"
+other = "Show this help message"
+
+[commands_help_usage]
+description = "Help command usage"
+other = "/help"
+
+[commands_help_no_commands]
+description = "Help no commands message"
+other = "No commands available."
+
+[commands_help_no_description]
+description = "Help no description message"
+other = "No description"
+
+[commands_stop_description]
+description = "Stop command description"
+other = "Stop the current task"
+
+[commands_stop_usage]
+description = "Stop command usage"
+other = "/stop"
+
+[commands_stop_failed]
+description = "Stop command failed message"
+other = "Failed to stop task: {{.Error}}"
+
+[commands_stop_no_active]
+description = "Stop command no active task message"
+other = "No active task to stop."
+
+[commands_stop_success]
+description = "Stop command success message"
+other = 'Task stopped. "{{.TaskName}}" was canceled.'
+
+[commands_stop_success_generic]
+description = "Stop command success generic message"
+other = "Task stopped. Current task was canceled."
+
+[commands_clear_description]
+description = "Clear command description"
+other = "Clear the chat history"
+
+[commands_clear_usage]
+description = "Clear command usage"
+other = "/clear"
+
+[commands_clear_failed]
+description = "Clear command failed message"
+other = "Failed to clear chat history: {{.Error}}"
+
+[commands_clear_success]
+description = "Clear command success message"
+other = "Chat history cleared!"
+
+[commands_reload_description]
+description = "Reload command description"
+other = "Reload the configuration file"
+
+[commands_reload_usage]
+description = "Reload command usage"
+other = "/reload"
+
+[commands_reload_failed]
+description = "Reload command failed message"
+other = "Failed to reload configuration: {{.Error}}"
+
+[commands_reload_success]
+description = "Reload command success message"
+other = "Config reload triggered!"
+
+[commands_context_description]
+description = "Context command description"
+other = "Show current session context and token usage"
+
+[commands_context_usage]
+description = "Context command usage"
+other = "/context"
+
+[commands_context_response]
+description = "Context command response message"
+other = """Session ID: {{.SessionID}}
+Context window: {{.ContextWindow}}
+Max context: {{.MaxContext}}
+Remaining: {{.Remaining}}
+
+Note: Context is managed automatically."""
+
+[commands_context_no_session]
+description = "Context no session message"
+other = "No active session"
+
+[commands_context_stats]
+description = "Context stats message"
+other = """Session ID: {{.SessionID}}
+Messages: {{.MessageCount}}
+Tokens: {{.TokenCount}}"""
+
+[commands_models_description]
+description = "Models command description"
+other = "List available models and current configuration"
+
+[commands_models_usage]
+description = "Models command usage"
+other = "/models"
+
+[commands_models_response]
+description = "Models command response message"
+other = """Current Model: {{.CurrentModel}}
+Available Models:
+{{.Models}}"""
+
+[commands_switch_description]
+description = "Switch command description"
+other = "Switch to a different model or channel"
+
+[commands_switch_model_description]
+description = "Switch model subcommand description"
+other = "Switch to a different model"
+
+[commands_switch_model_usage]
+description = "Switch model subcommand usage"
+other = "Usage: /switch model to <name>"
+
+[commands_switch_model_success]
+description = "Switch model success message"
+other = "Model switched from {{.OldModel}} to {{.NewModel}}"
+
+[commands_switch_channel_description]
+description = "Switch channel subcommand description"
+other = "Moved to /check channel"
+
+[commands_switch_channel_moved]
+description = "Switch channel moved message"
+other = "This command has been moved. Please use: /check channel <name>"
+
+[commands_show_description]
+description = "Show command description"
+other = "Show current configuration"
+
+[commands_show_model_description]
+description = "Show model subcommand description"
+other = "Current model and provider"
+
+[commands_show_model_response]
+description = "Show model response message"
+other = "Current Model: {{.Name}} (Provider: {{.Provider}})"
+
+[commands_show_channel_description]
+description = "Show channel subcommand description"
+other = "Current channel"
+
+[commands_show_channel_response]
+description = "Show channel response message"
+other = "Current Channel: {{.Channel}}"
+
+[commands_list_description]
+description = "List command description"
+other = "List configured models, channels, or installed skills"
+
+[commands_list_usage]
+description = "List command usage"
+other = "/list <models|channels|skills>"
+
+[commands_list_models_description]
+description = "List models subcommand description"
+other = "Available models"
+
+[commands_list_models_response]
+description = "List models response message"
+other = """Configured Model: {{.Name}}
+Provider: {{.Provider}}
+
+To change models, update config.json"""
+
+[commands_list_channels_description]
+description = "List channels subcommand description"
+other = "Enabled channels"
+
+[commands_list_channels_none]
+description = "List channels none message"
+other = "No channels enabled"
+
+[commands_list_channels_response]
+description = "List channels response message"
+other = "Enabled Channels:\n- {{.Channels}}"
+
+[commands_list_skills_description]
+description = "List skills subcommand description"
+other = "Installed skills"
+
+[commands_list_skills_none]
+description = "List skills none message"
+other = "No installed skills"
+
+[commands_list_skills_response]
+description = "List skills response message"
+other = """Installed Skills:
+- {{.Skills}}
+
+Use /use <skill> <message> to force one for a single request, or /use <skill> to apply it to your next message."""
+
+[commands_use_description]
+description = "Use command description"
+other = "Force a specific installed skill for one request"
+
+[commands_use_usage]
+description = "Use command usage"
+other = "/use <skill> [message]"
+
+[commands_btw_description]
+description = "Btw command description"
+other = "Ask a side question to the AI"
+
+[commands_btw_usage]
+description = "Btw command usage"
+other = "/btw <question>"
+
+[commands_btw_usage_example]
+description = "Btw usage example message"
+other = "Usage: /btw <question>\n\nExample: /btw what is the weather?"
+
+[commands_btw_empty_answer]
+description = "Btw empty answer message"
+other = "(no answer)"
+
+[commands_check_description]
+description = "Check command description"
+other = "Check channel status and availability"
+
+[commands_check_channel_description]
+description = "Check channel subcommand description"
+other = "Check if a channel is available and enabled"
+
+[commands_check_channel_usage]
+description = "Check channel usage message"
+other = "Usage: /check channel <name>"
+
+[commands_check_channel_success]
+description = "Check channel success message"
+other = "Channel '{{.Name}}' is available and enabled"
+
+[commands_exec_description]
+description = "Exec command description"
+other = "Execute shell commands in the host environment"
+
+[commands_exec_run_description]
+description = "Exec run subcommand description"
+other = "Execute a command and return output"
+
+[commands_exec_run_usage]
+description = "Exec run subcommand usage"
+other = "/exec run <command>"
+
+[commands_exec_run_usage_example]
+description = "Exec run usage example"
+other = """Usage: /exec run <command>
+
+Example: /exec run ls -la"""
+
+[commands_exec_run_restricted]
+description = "Exec run restricted message"
+other = "Error: exec is restricted to internal channels only"
+
+[commands_exec_sessions_description]
+description = "Exec sessions subcommand description"
+other = "List active exec sessions"
+
+[commands_exec_sessions_response]
+description = "Exec sessions response message"
+other = """Active exec sessions: (none)
+
+Note: Background sessions are not yet supported via commands."""
+
+[commands_exec_kill_description]
+description = "Exec kill subcommand description"
+other = "Kill a running exec session"
+
+[commands_exec_kill_usage]
+description = "Exec kill subcommand usage"
+other = "Usage: /exec kill <session-id>"
+
+[commands_exec_kill_not_found]
+description = "Exec kill not found message"
+other = "Session {{.ID}}: not found or already terminated"
+
+[commands_exec_result_exit_code]
+description = "Exec result exit code message"
+other = "Exit Code: {{.ExitCode}} | Duration: {{.Duration}}"
+
+[commands_exec_result_no_output]
+description = "Exec result no output message"
+other = "(no output)"
+
+[commands_exec_result_error]
+description = "Exec result error message"
+other = "[Error: {{.Error}}]"
+
+[commands_subagents_description]
+description = "Subagents command description"
+other = "Show running subagents and task tree"
+
+[commands_subagents_not_supported]
+description = "Subagents not supported message"
+other = "Runtime does not support querying active turns."
+
+[commands_subagents_no_active]
+description = "Subagents no active message"
+other = "No active tasks running in this session."
+
+[commands_subagents_title]
+description = "Subagents title"
+other = "🤖 **Active Subagents Tree**"
+
+[commands_subagents_title_list]
+description = "Subagents title list"
+other = "🤖 **Active Subagents List**"
+
+[commands_workflow_description]
+description = "Workflow command description"
+other = "Manage declarative workflows: run, bind channels, list, and inspect"
+
+[commands_workflow_service_unavailable]
+description = "Workflow service unavailable message"
+other = "Workflow service not available"
+
+[commands_workflow_list_description]
+description = "Workflow list subcommand description"
+other = "List all workflows"
+
+[commands_workflow_list_none]
+description = "Workflow list none message"
+other = "No workflows defined"
+
+[commands_workflow_list_item]
+description = "Workflow list item message"
+other = "- {{.Name}} ({{.Status}}, {{.TriggerType}}, {{.StepCount}} steps)"
+
+[commands_workflow_run_description]
+description = "Workflow run subcommand description"
+other = "Trigger a workflow by name"
+
+[commands_workflow_run_usage]
+description = "Workflow run subcommand usage"
+other = "Usage: /workflow run <name>"
+
+[commands_workflow_run_error]
+description = "Workflow run error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_run_success]
+description = "Workflow run success message"
+other = "Workflow '{{.Name}}' triggered, instance: {{.InstanceID}}"
+
+[commands_workflow_run_success_with_channel]
+description = "Workflow run success with channel message"
+other = "Workflow '{{.Name}}' triggered, instance: {{.InstanceID}} (notifications → {{.Channel}})"
+
+[commands_workflow_show_description]
+description = "Workflow show subcommand description"
+other = "Show workflow details"
+
+[commands_workflow_show_usage]
+description = "Workflow show subcommand usage"
+other = "Usage: /workflow show <name>"
+
+[commands_workflow_show_error]
+description = "Workflow show error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_show_header]
+description = "Workflow show header message"
+other = """Workflow: {{.Name}}
+Description: {{.Description}}
+Enabled: {{.Enabled}}
+Triggers ({{.TriggerCount}}):"""
+
+[commands_workflow_show_trigger_item]
+description = "Workflow show trigger item message"
+other = "  {{.Trigger}}"
+
+[commands_workflow_show_steps_header]
+description = "Workflow show steps header message"
+other = "Steps ({{.StepCount}}):"
+
+[commands_workflow_show_step_item]
+description = "Workflow show step item message"
+other = "  {{.Index}}. {{.StepID}}"
+
+[commands_workflow_bind_description]
+description = "Workflow bind subcommand description"
+other = "Bind the current channel for completion notifications"
+
+[commands_workflow_bind_usage]
+description = "Workflow bind subcommand usage"
+other = "Usage: /workflow bind <name>"
+
+[commands_workflow_bind_no_context]
+description = "Workflow bind no context message"
+other = "Error: no session context (channel/chat_id not set)"
+
+[commands_workflow_bind_error]
+description = "Workflow bind error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_bind_success]
+description = "Workflow bind success message"
+other = "Workflow '{{.Name}}' bound to channel {{.Channel}} (chat_id: {{.ChatID}}). Completion notifications will be sent here."
+
+[commands_workflow_unbind_description]
+description = "Workflow unbind subcommand description"
+other = "Remove channel binding from a workflow"
+
+[commands_workflow_unbind_usage]
+description = "Workflow unbind subcommand usage"
+other = "Usage: /workflow unbind <name>"
+
+[commands_workflow_unbind_error]
+description = "Workflow unbind error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_unbind_success]
+description = "Workflow unbind success message"
+other = "Workflow '{{.Name}}' channel binding removed"
+
+[commands_workflow_enable_description]
+description = "Workflow enable subcommand description"
+other = "Enable a workflow"
+
+[commands_workflow_enable_usage]
+description = "Workflow enable subcommand usage"
+other = "Usage: /workflow enable <name>"
+
+[commands_workflow_enable_error]
+description = "Workflow enable error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_enable_success]
+description = "Workflow enable success message"
+other = "Workflow '{{.Name}}' enabled"
+
+[commands_workflow_disable_description]
+description = "Workflow disable subcommand description"
+other = "Disable a workflow"
+
+[commands_workflow_disable_usage]
+description = "Workflow disable subcommand usage"
+other = "Usage: /workflow disable <name>"
+
+[commands_workflow_disable_error]
+description = "Workflow disable error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_disable_success]
+description = "Workflow disable success message"
+other = "Workflow '{{.Name}}' disabled"
+
+[commands_workflow_instances_description]
+description = "Workflow instances subcommand description"
+other = "Show execution history for a workflow"
+
+[commands_workflow_instances_usage]
+description = "Workflow instances subcommand usage"
+other = "Usage: /workflow instances <name>"
+
+[commands_workflow_instances_error]
+description = "Workflow instances error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_instances_none]
+description = "Workflow instances none message"
+other = "No instances for workflow '{{.Name}}'"
+
+[commands_workflow_instances_header]
+description = "Workflow instances header message"
+other = "Instances for '{{.Name}}':"
+
+[commands_workflow_instances_item]
+description = "Workflow instances item message"
+other = "- {{.ID}} ({{.Status}}, {{.TriggerType}}, started: {{.StartedAt}})"
+
+[commands_workflow_instances_error_item]
+description = "Workflow instances error item message"
+other = "  error: {{.Error}}"
+
+[commands_workflow_stop_description]
+description = "Workflow stop subcommand description"
+other = "Stop a running workflow instance"
+
+[commands_workflow_stop_usage]
+description = "Workflow stop subcommand usage"
+other = "Usage: /workflow stop <instance-id>"
+
+[commands_workflow_stop_error]
+description = "Workflow stop error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_stop_success]
+description = "Workflow stop success message"
+other = "Instance '{{.InstanceID}}' stopped"
+
+[commands_workflow_cron_description]
+description = "Workflow cron subcommand description"
+other = "List upcoming cron tasks"
+
+[commands_workflow_cron_none]
+description = "Workflow cron none message"
+other = "No cron tasks scheduled"
+
+[commands_workflow_cron_header]
+description = "Workflow cron header message"
+other = "Upcoming Scheduled Tasks ({{.Count}}):"
+
+[commands_workflow_cron_item]
+description = "Workflow cron item message"
+other = "- {{.WorkflowName}} [{{.TriggerType}}]: {{.Schedule}} (tz: {{.Timezone}}) → {{.NextRun}}"
+
+# ============================================
+# Agent Prompt Content
+# ============================================
+
+[agent_identity]
+description = "Agent identity prompt"
+other = """# picoclaw 🦞 ({{.Version}})
+
+You are picoclaw, a helpful AI assistant.
+
+## Workspace
+Your workspace is at: {{.WorkspacePath}}
+- Memory: {{.WorkspacePath}}/memory/MEMORY.md
+- Daily Notes: {{.WorkspacePath}}/memory/YYYYMM/YYYYMMDD.md
+- Skills: {{.WorkspacePath}}/skills/{skill-name}/SKILL.md
+
+## Important Rules
+
+1. **ALWAYS use tools** - When you need to perform an action (schedule reminders, send messages, execute commands, etc.), you MUST call the appropriate tool. Do NOT just say you'll do it or pretend to do it.
+
+2. **Be helpful and accurate** - When using tools, briefly explain what you're doing.
+
+3. **Memory** - When interacting with me if something seems memorable, update {{.WorkspacePath}}/memory/MEMORY.md
+
+4. **Context summaries** - Conversation summaries provided as context are approximate references only. They may be incomplete or outdated. Always defer to explicit user instructions over summary content."""
+
+[agent_skill_catalog]
+description = "Agent skill catalog prompt"
+other = """# Skills
+
+The following skills extend your capabilities. To use a skill, read its SKILL.md file using the read_file tool.
+
+{{.SkillsSummary}}"""
+
+[agent_output_policy]
+description = "Agent output policy prompt"
+other = """# MULTI-MESSAGE OUTPUT
+You MUST frequently use <|[SPLIT]|> to break your responses into multiple short messages. NEVER output a single long wall of text. Actively split distinct concepts or parts. Example: Message part 1<|[SPLIT]|>Message part 2<|[SPLIT]|>Message part 3
+
+Each part separated by the marker will be sent as an independent message."""
+
+[heartbeat_check_prompt]
+description = "Heartbeat check prompt"
+other = """# Heartbeat Check
+
+Current time: {{.Now}}
+
+You are a proactive AI assistant. This is a scheduled heartbeat check.
+Review the following tasks and execute any necessary actions using available skills.
+If there is nothing that requires attention, respond ONLY with: HEARTBEAT_OK
+
+{{.Content}}
+"""
+
+[heartbeat_default_template]
+description = "Heartbeat default template"
+other = """# Heartbeat Check List
+
+This file contains tasks for the heartbeat service to check periodically.
+
+## Examples
+
+- Check for unread messages
+- Review upcoming calendar events
+- Check device status (e.g., MaixCam)
+
+## Instructions
+
+- Execute ALL tasks listed below. Do NOT skip any task.
+- For simple tasks (e.g., report current time), respond directly.
+- For complex tasks that may take time, use the spawn tool to create a subagent.
+- The spawn tool is async - subagent results will be sent to the user automatically.
+- After spawning a subagent, CONTINUE to process remaining tasks.
+- Only respond with HEARTBEAT_OK when ALL tasks are done AND nothing needs attention.
+
+---
+
+Add your heartbeat tasks below this line:
+"""
+
+[success_judge_system_prompt]
+description = "Success judge system prompt"
+other = "Return exactly one JSON object with fields success:boolean and reason:string. No markdown fences."
+
+[success_judge_prompt]
+description = "Success judge prompt"
+other = """Decide whether this agent task truly achieved the user's goal.
+Reject tasks that are only partial reasoning, only describe future steps, or obviously did not complete the requested outcome.
+Accept completed custom workspace skill/theorem tasks when the final output gives a concrete result or concrete completed procedure.
+
+Summary: {{.Summary}}
+Final output: {{.FinalOutput}}
+Used skills: {{.UsedSkillNames}}"""
+
+[success_judge_none]
+description = "Success judge none fallback"
+other = "none"
+
+[leaf_summary_prompt]
+description = "Leaf summary prompt"
+other = """You summarize a SEGMENT of a conversation for future model turns.
+Treat this as incremental memory compaction input, not a full-conversation summary.
+
+Normal summary policy:
+- Preserve key decisions, rationale, constraints, and active tasks.
+- Keep essential technical details needed to continue work safely.
+- Remove obvious repetition and conversational filler.
+
+Output requirements:
+- Plain text only.
+- No preamble, headings, or markdown formatting.
+- Track file operations (created, modified, deleted, renamed) with file paths and current status.
+- If no file operations appear, include exactly: "Files: none".
+- End with exactly: "Expand for details about: <comma-separated list of what was dropped or compressed>".
+- Target length: about {{.TargetTokens}} tokens or less.
+
+<previous_context>
+{{.Prev}}
+</previous_context>
+
+<conversation_segment>
+{{.SourceText}}
+</conversation_segment>"""
+
+[condensed_summary_prompt]
+description = "Condensed summary prompt"
+other = """You condense multiple summaries into a single higher-level summary.
+Preserve all important decisions, constraints, and outcomes.
+Merge overlapping topics. Keep technical details intact.
+
+Output requirements:
+- Plain text only.
+- No preamble, headings, or markdown formatting.
+- End with exactly: "Expand for details about: <comma-separated list>".
+- Target length: about {{.TargetTokens}} tokens or less.
+
+<summaries>
+{{.SourceText}}
+</summaries>"""
+
+[aggressive_leaf_summary_prompt]
+description = "Aggressive leaf summary prompt"
+other = """You summarize a SEGMENT of a conversation for future model turns.
+Aggressive summary policy:
+- Keep only durable facts and current task state.
+- Remove examples, repetition, and low-value narrative details.
+- Preserve explicit TODOs, blockers, decisions, and constraints.
+
+Output requirements:
+- Plain text only.
+- No preamble, headings, or markdown formatting.
+- Track file operations (created, modified, deleted, renamed) with file paths and current status.
+- If no file operations appear, include exactly: "Files: none".
+- End with exactly: "Expand for details about: <comma-separated list of what was dropped or compressed>".
+- Target length: about {{.TargetTokens}} tokens or less.
+
+<previous_context>
+{{.Prev}}
+</previous_context>
+
+<conversation_segment>
+{{.SourceText}}
+</conversation_segment>"""
+
+[skill_draft_instructions]
+description = "Skill draft instructions"
+other = """body_or_patch must contain the complete draft body or patch content as plain text.
+body_or_patch is an internal draft and review artifact, so it may include concise learning provenance, source task evidence, and source skill summaries when useful for human review.
+If change_kind is create, body_or_patch must be a complete SKILL.md file with exactly two parts: YAML frontmatter and a Markdown body.
+The YAML frontmatter must contain only name and description fields.
+The description field must and only describe what this skill can do and when to use it.
+The deployable Markdown body should only contain what the skill is useful for and how to use it.
+The Markdown body is loaded only after the skill triggers, so focus on concise usage guidance and the execution steps needed to complete the task.
+When describing an operation process in the body, do not use vague summaries; provide detailed step-by-step instructions for the exact operation or execution process.
+When creating a combined shortcut skill, summarize the functional purpose and result of the provided SKILL.md inputs; do not copy or directly include other skills' instructions.
+Extract only the necessary operations from source skills and evidence, such as formulas, ordered transformations, commands, inputs, outputs, and boundary conditions.
+The operational part of the generated skill must be directly usable by a future agent without reading the original task records or source skills.
+Keep operational instructions separable from audit/provenance notes because the final deployed SKILL.md will be rendered without learning traces."""
+
+[skill_content_none]
+description = "Skill content none fallback"
+other = "none"
+
+[skill_content_no_component]
+description = "Skill content no component fallback"
+other = "- No component skill content was available when this shortcut was generated."
+
+[skill_content_no_guidance]
+description = "Skill content no guidance fallback"
+other = "- Component skill content was available, but no concise guidance could be extracted."
+
+[learning_trace_replacements]
+description = "Learning trace replacements"
+other = """## Learned Shortcut Update | ## Shortcut Update
+## Learned Evolution | ## Usage Notes
+## Learned Pattern | ## Usage Pattern
+## Learned Context | ## Procedure Notes
+## Source Evidence | ## Validation
+## Source Skills | ## Procedure Details
+### Source Skills | ### Procedure Details
+## Learned Shortcut | ## Shortcut
+### Learned Shortcut | ### Shortcut
+Learned workflow for  | Workflow for 
+learned workflow for  | workflow for 
+from learned pattern:  | for: 
+Learned task: | Task:
+learned task: | task:
+Learned pattern: | Pattern:
+learned pattern: | pattern:
+Learned from | Based on
+learned from | based on
+Source evidence | Validation
+source evidence | validation
+task records | validated examples
+Task records | Validated examples"""
+
+[llm_draft_system_prompt]
+description = "LLM draft system prompt"
+other = "Return exactly one JSON object for a skill draft. Do not use markdown fences."
+
+[llm_draft_none]
+description = "LLM draft none fallback"
+other = "none"
+
+[llm_draft_evidence_labels]
+description = "LLM draft evidence labels"
+other = "id|summary|final_output_excerpt|used_skill_names|unknown|none"
+
+[llm_draft_combined_guidance]
+description = "LLM draft combined skill guidance"
+other = """This rule represents a stable multi-step successful path.
+Prefer creating a new combined shortcut skill instead of modifying one component skill.
+Suggested target skill name: {{.Target}}"""
+
+[llm_draft_single_guidance]
+description = "LLM draft single skill guidance"
+other = "Prefer updating an existing skill only when the learned pattern clearly belongs inside that single skill."
+
+[llm_draft_build_prompt]
+description = "LLM draft build prompt"
+other = """Generate a skill draft JSON object with these required string fields:
+target_skill_name, draft_type, change_kind, human_summary, body_or_patch.
+Optional array fields: intended_use_cases, preferred_entry_path, avoid_patterns.
+
+Allowed values:
+- draft_type: workflow | shortcut
+- change_kind: create | append | replace | merge
+- target_skill_name: lowercase hyphenated skill name that describes the functional purpose; it must not be numeric-only
+
+Rule summary: {{.Summary}}
+Winning path: {{.WinningPath}}
+Late-added successful skills: {{.LateAddedSkills}}
+Final snapshot trigger: {{.FinalSnapshotTrigger}}
+Event count: {{.EventCount}}
+Success rate: {{.SuccessRate}}
+Matched skill refs: {{.SkillMatches}}
+Matched skill names: {{.MatchedSkillNames}}
+Source task evidence:
+{{.TaskEvidence}}
+Matched skill content excerpts:
+{{.SkillExcerpts}}
+
+{{.CombinedGuidance}}
+{{.DraftInstructions}}"""
+
+# ============================================
+# Pattern Clusterer
+# ============================================
+
+[pattern_cluster_system_prompt]
+description = "Pattern cluster system prompt"
+other = "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+
+[pattern_cluster_system_prompt_with_evidence]
+description = "Pattern cluster system prompt with evidence"
+other = "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences."
+
+[pattern_cluster_instruction]
+description = "Pattern cluster instruction"
+other = "Merge these existing clusters based on task meaning similarity."
+
+[pattern_cluster_grouping_prompt]
+description = "Pattern cluster grouping prompt"
+other = """Group these agent task records by task meaning (NOT by exact string match).
+
+For each group:
+- label: short task type (e.g., "search", "refactor", "add-feature")
+- summary: 1-sentence description of the task
+- task_record_ids: list of IDs belonging to this group
+- cluster_reason: brief explanation of why these belong together
+
+Records:
+{{.Records}}"""
+
+[pattern_cluster_merge_prompt]
+description = "Pattern cluster merge prompt"
+other = """Merge these existing clusters based on task meaning similarity.
+
+Existing clusters:
+{{.Clusters}}
+
+New records to merge:
+{{.Records}}"""
+
+# ============================================
+# Drafts
+# ============================================
+
+[draft_human_summary_refresh]
+description = "Draft human summary refresh"
+other = "Refresh {{.Target}} with learned pattern: {{.Summary}}"
+
+[draft_human_summary_create]
+description = "Draft human summary create"
+other = "Create {{.Target}} from learned pattern: {{.Summary}}"
+
+[draft_skill_description]
+description = "Draft skill description"
+other = "Use this skill to {{.Summary}} when the task matches this workflow."
+
+[draft_skill_sections]
+description = "Draft skill sections (pipe-separated)"
+other = "## Start Here|## When To Use|## Learned Pattern|## Procedure|## Expected Result|## Source Skills|## Source Evidence"
+
+[draft_when_to_use_line]
+description = "Draft when to use line"
+other = "Use this skill when the task matches `{{.Summary}}`."
+
+[draft_learned_skill_title]
+description = "Draft learned skill title"
+other = "Learned Skill"
+
+[draft_start_here_path]
+description = "Draft start here with path"
+other = "Start with `{{.Path}}` before trying other paths."
+
+[draft_start_here_summary]
+description = "Draft start here with summary"
+other = "Start from the learned path for `{{.Summary}}`."
+
+[draft_learned_pattern_late]
+description = "Draft learned pattern late skills"
+other = "Late-added skill `{{.Skills}}` was repeatedly introduced immediately before success{{.Trigger}}."
+
+[draft_learned_pattern_path]
+description = "Draft learned pattern with path"
+other = "Prefer `{{.Path}}` because it was the most reliable recent path."
+
+[draft_learned_pattern_summary]
+description = "Draft learned pattern with summary"
+other = "Prefer the pattern summarized as `{{.Summary}}`."
+
+[draft_procedure_path]
+description = "Draft procedure with path"
+other = "Follow `{{.Path}}`, applying the concrete operation from each source skill, then return the final result directly."
+
+[draft_procedure_excerpt]
+description = "Draft procedure with excerpt"
+other = "Use the same operation demonstrated by the source task result: {{.Excerpt}}"
+
+[draft_procedure_summary]
+description = "Draft procedure with summary"
+other = "Solve tasks matching `{{.Summary}}` using the learned successful workflow, then return the final result directly."
+
+[draft_expected_result]
+description = "Draft expected result"
+other = "Return the completed result for the matched task without restating unrelated discovery steps."
+
+[draft_evidence_tasks]
+description = "Draft evidence from tasks"
+other = "Learned from task records: {{.IDs}}"
+
+[draft_evidence_rule]
+description = "Draft evidence from rule"
+other = "Learned from task records: {{.IDs}}"
+
+[draft_evidence_pattern]
+description = "Draft evidence from pattern"
+other = "Learned from the pattern record."
+
+[draft_trigger_suffix]
+description = "Draft trigger suffix"
+other = " during `{{.Trigger}}`"
+
+[draft_append_labels]
+description = "Draft append labels (pipe-separated)"
+other = "## Learned Evolution|Summary|Learned pattern|Procedure|Expected result|Evidence|### Source Skills"
+
+# ============================================
+# Runtime - Synthesized
+# ============================================
+
+[synth_start_here_path]
+description = "Synthesized start here with path"
+other = "Start with `{{.Path}}` for tasks like `{{.Summary}}`."
+
+[synth_start_here_summary]
+description = "Synthesized start here with summary"
+other = "Use `{{.Target}}` when the task matches `{{.Summary}}`."
+
+[synth_start_here_pattern]
+description = "Synthesized start here with pattern"
+other = "Use `{{.Target}}` for the learned task pattern."
+
+[synth_combined_start_here]
+description = "Synthesized combined start here"
+other = "Use `{{.Target}}` directly when the task matches `{{.Summary}}`."
+
+[synth_combined_when_to_use_no_path]
+description = "Synthesized combined when to use no path"
+other = "Use `{{.Target}}` when the learned task pattern appears again."
+
+[synth_combined_when_to_use_path]
+description = "Synthesized combined when to use with path"
+other = "Use `{{.Target}}` as a direct shortcut instead of replaying `{{.Path}}` step by step."
+
+[synth_combined_procedure_no_path]
+description = "Synthesized combined procedure no path"
+other = "Use the learned shortcut directly and keep the response focused on the requested result."
+
+[synth_combined_procedure_path]
+description = "Synthesized combined procedure with path"
+other = "Apply the recorded path `{{.Path}}`, then return the final result with only the necessary explanation."
+
+[synth_combined_procedure_components]
+description = "Synthesized combined procedure with components"
+other = "Follow the source skill guidance below as one compact procedure, then return the final result without replaying unnecessary discovery steps."
+
+[synth_expected_result]
+description = "Synthesized expected result"
+other = "Return the completed result for the matched task without restating unrelated discovery steps."
+
+[synth_evidence_tasks]
+description = "Synthesized evidence from tasks"
+other = "learned from task records: {{.IDs}}"
+
+[synth_evidence_rule]
+description = "Synthesized evidence from rule"
+other = "learned from task records: {{.IDs}}"
+
+[synth_evidence_pattern]
+description = "Synthesized evidence from pattern"
+other = "learned from the pattern record."
+
+[synth_wrapped_path_empty]
+description = "Synthesized wrapped path empty"
+other = "No explicit wrapped path was recorded."
+
+[synth_combined_content_empty]
+description = "Synthesized combined content empty"
+other = "Learned from `{{.Summary}}`; use this shortcut directly when the same task pattern appears again."
+
+[synth_combined_content]
+description = "Synthesized combined content"
+other = "- Learned task: {{.Summary}}\n- Reusable guidance: {{.Content}}"
+
+[synth_fallback_summary]
+description = "Synthesized fallback summary"
+other = "the learned task pattern"
+
+[synth_human_summary]
+description = "Synthesized human summary"
+other = "Use this skill to {{.Summary}} when the task requires this workflow."
+
+[synth_avoid_pattern_no_path]
+description = "Synthesized avoid pattern no path"
+other = "avoid bypassing `{{.Target}}` when the same learned task pattern appears again"
+
+[synth_avoid_pattern_path]
+description = "Synthesized avoid pattern with path"
+other = "avoid replaying {{.Path}} before trying `{{.Target}}` directly"
