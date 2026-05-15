@@ -207,7 +207,7 @@ func (c *SlackChannel) SendMedia(ctx context.Context, msg bus.OutboundMediaMessa
 		}
 	}
 
-	// UploadFileV2 does not expose the posted message timestamp in its
+	// UploadFile does not expose the posted message timestamp in its
 	// response; returning nil avoids conflating file IDs with message IDs.
 	return nil, nil
 }
