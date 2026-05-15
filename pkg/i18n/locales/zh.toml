@@ -1,0 +1,979 @@
+# 中文翻译文件 - PicoClaw
+
+[commands_common_unavailable]
+description = "通用不可用消息"
+other = "当前上下文中命令不可用。"
+
+[commands_common_usage_prefix]
+description = "通用用法前缀"
+other = "用法："
+
+[commands_start_description]
+description = "Start 命令描述"
+other = "启动机器人"
+
+[commands_start_usage]
+description = "Start 命令用法"
+other = "/start"
+
+[commands_start_response]
+description = "Start 命令响应"
+other = "你好！我是 PicoClaw 🦞"
+
+[commands_help_description]
+description = "Help 命令描述"
+other = "显示帮助信息"
+
+[commands_help_usage]
+description = "Help 命令用法"
+other = "/help"
+
+[commands_help_no_commands]
+description = "Help 无命令消息"
+other = "没有可用的命令。"
+
+[commands_help_no_description]
+description = "Help 无描述消息"
+other = "无描述"
+
+[commands_stop_description]
+description = "Stop 命令描述"
+other = "停止当前任务"
+
+[commands_stop_usage]
+description = "Stop 命令用法"
+other = "/stop"
+
+[commands_stop_failed]
+description = "Stop 命令失败消息"
+other = "停止任务失败：{{.Error}}"
+
+[commands_stop_no_active]
+description = "Stop 命令无活动任务消息"
+other = "没有活动的任务可停止。"
+
+[commands_stop_success]
+description = "Stop 命令成功消息"
+other = "任务已停止。\"{{.TaskName}}\" 已被取消。"
+
+[commands_stop_success_generic]
+description = "Stop 命令成功通用消息"
+other = "任务已停止。当前任务已被取消。"
+
+[commands_clear_description]
+description = "Clear 命令描述"
+other = "清除聊天历史"
+
+[commands_clear_usage]
+description = "Clear 命令用法"
+other = "/clear"
+
+[commands_clear_failed]
+description = "Clear 命令失败消息"
+other = "清除聊天历史失败：{{.Error}}"
+
+[commands_clear_success]
+description = "Clear 命令成功消息"
+other = "聊天历史已清除！"
+
+[commands_reload_description]
+description = "Reload 命令描述"
+other = "重新加载配置文件"
+
+[commands_reload_usage]
+description = "Reload 命令用法"
+other = "/reload"
+
+[commands_reload_failed]
+description = "Reload 命令失败消息"
+other = "重新加载配置失败：{{.Error}}"
+
+[commands_reload_success]
+description = "Reload 命令成功消息"
+other = "配置重载已触发！"
+
+[commands_context_description]
+description = "Context 命令描述"
+other = "显示当前会话上下文和令牌使用情况"
+
+[commands_context_usage]
+description = "Context 命令用法"
+other = "/context"
+
+[commands_context_no_session]
+description = "Context 命令无会话消息"
+other = "没有活动的会话上下文。"
+
+[commands_context_stats]
+description = "Context 命令统计消息"
+other = """上下文使用情况
+消息数：{{.MessageCount}}
+已用：~{{.UsedTokens}} / {{.TotalTokens}} 令牌 ({{.UsedPercent}}%)
+压缩阈值：{{.CompressAtTokens}} 令牌
+压缩进度：{{.CompressionPercent}}%
+剩余：~{{.Remaining}} 令牌"""
+
+[commands_btw_description]
+description = "BTW 命令描述"
+other = "提出一个旁路问题而不改变会话历史"
+
+[commands_btw_usage]
+description = "BTW 命令用法"
+other = "/btw <问题>"
+
+[commands_btw_empty_answer]
+description = "BTW 命令空响应消息"
+other = "模型返回了空响应。这可能表示提供商错误或令牌限制。"
+
+[commands_btw_usage_example]
+description = "BTW 命令用法示例"
+other = "用法：/btw <问题>"
+
+[commands_check_description]
+description = "Check 命令描述"
+other = "检查频道可用性"
+
+[commands_check_channel_description]
+description = "Check channel 子命令描述"
+other = "检查频道是否可用"
+
+[commands_check_channel_usage]
+description = "Check channel 子命令用法"
+other = "用法：/check channel <名称>"
+
+[commands_check_channel_success]
+description = "Check channel 成功消息"
+other = "频道 '{{.Name}}' 可用且已启用"
+
+[commands_switch_description]
+description = "Switch 命令描述"
+other = "切换模型"
+
+[commands_switch_model_description]
+description = "Switch model 子命令描述"
+other = "切换到不同的模型"
+
+[commands_switch_model_usage]
+description = "Switch model 子命令用法"
+other = "用法：/switch model to <名称>"
+
+[commands_switch_model_success]
+description = "Switch model 成功消息"
+other = "模型已从 {{.OldModel}} 切换到 {{.NewModel}}"
+
+[commands_switch_channel_description]
+description = "Switch channel 子命令描述"
+other = "已移动到 /check channel"
+
+[commands_switch_channel_moved]
+description = "Switch channel 已移动消息"
+other = "此命令已移动。请使用：/check channel <名称>"
+
+[commands_show_description]
+description = "Show 命令描述"
+other = "显示当前配置"
+
+[commands_show_model_description]
+description = "Show model 子命令描述"
+other = "当前模型和提供商"
+
+[commands_show_model_response]
+description = "Show model 响应消息"
+other = "当前模型：{{.Name}} (提供商：{{.Provider}})"
+
+[commands_show_channel_description]
+description = "Show channel 子命令描述"
+other = "当前频道"
+
+[commands_show_channel_response]
+description = "Show channel 响应消息"
+other = "当前频道：{{.Channel}}"
+
+[commands_list_description]
+description = "List 命令描述"
+other = "列出可用选项"
+
+[commands_list_models_description]
+description = "List models 子命令描述"
+other = "已配置的模型"
+
+[commands_list_models_response]
+description = "List models 响应消息"
+other = """已配置模型：{{.Name}}
+提供商：{{.Provider}}
+
+要更改模型，请更新 config.json"""
+
+[commands_list_channels_description]
+description = "List channels 子命令描述"
+other = "已启用的频道"
+
+[commands_list_channels_none]
+description = "List channels 无频道消息"
+other = "没有启用的频道"
+
+[commands_list_channels_response]
+description = "List channels 响应消息"
+other = "已启用频道：\n- {{.Channels}}"
+
+[commands_list_skills_description]
+description = "List skills 子命令描述"
+other = "已安装的技能"
+
+[commands_list_skills_none]
+description = "List skills 无技能消息"
+other = "没有安装的技能"
+
+[commands_list_skills_response]
+description = "List skills 响应消息"
+other = """已安装技能：
+- {{.Skills}}
+
+使用 /use <技能> <消息> 强制在单个请求中使用，或使用 /use <技能> 应用到您的下一条消息。"""
+
+[commands_use_description]
+description = "Use 命令描述"
+other = "为单个请求强制使用特定的已安装技能"
+
+[commands_use_usage]
+description = "Use 命令用法"
+other = "/use <技能> [消息]"
+
+[commands_exec_description]
+description = "Exec 命令描述"
+other = "在主机环境中执行 shell 命令"
+
+[commands_exec_run_description]
+description = "Exec run 子命令描述"
+other = "执行命令并返回输出"
+
+[commands_exec_run_usage]
+description = "Exec run 子命令用法"
+other = "/exec run <命令>"
+
+[commands_exec_run_usage_example]
+description = "Exec run 用法示例"
+other = """用法：/exec run <命令>
+
+示例：/exec run ls -la"""
+
+[commands_exec_run_restricted]
+description = "Exec run 受限消息"
+other = "错误：exec 仅限于内部频道使用"
+
+[commands_exec_sessions_description]
+description = "Exec sessions 子命令描述"
+other = "列出活动的 exec 会话"
+
+[commands_exec_sessions_response]
+description = "Exec sessions 响应消息"
+other = """活动的 exec 会话：（无）
+
+注意：后台会话尚不支持通过命令管理。"""
+
+[commands_exec_kill_description]
+description = "Exec kill 子命令描述"
+other = "终止正在运行的 exec 会话"
+
+[commands_exec_kill_usage]
+description = "Exec kill 子命令用法"
+other = "用法：/exec kill <会话ID>"
+
+[commands_exec_kill_not_found]
+description = "Exec kill 未找到消息"
+other = "会话 {{.ID}}：未找到或已终止"
+
+[commands_exec_result_exit_code]
+description = "Exec result 退出码消息"
+other = "退出码：{{.ExitCode}} | 耗时：{{.Duration}}"
+
+[commands_exec_result_no_output]
+description = "Exec result 无输出消息"
+other = "（无输出）"
+
+[commands_exec_result_error]
+description = "Exec result 错误消息"
+other = "[错误：{{.Error}}]"
+
+[commands_subagents_description]
+description = "Subagents 命令描述"
+other = "显示正在运行的子代理和任务树"
+
+[commands_subagents_not_supported]
+description = "Subagents 不支持消息"
+other = "运行时环境不支持查询活动任务。"
+
+[commands_subagents_no_active]
+description = "Subagents 无活动消息"
+other = "此会话中没有正在运行的活动任务。"
+
+[commands_subagents_title]
+description = "Subagents 标题"
+other = "🤖 **活动子代理树**"
+
+[commands_subagents_title_list]
+description = "Subagents 列表标题"
+other = "🤖 **活动子代理列表**"
+
+[commands_workflow_description]
+description = "Workflow 命令描述"
+other = "管理声明式工作流：运行、绑定频道、列出和检查"
+
+[commands_workflow_service_unavailable]
+description = "Workflow 服务不可用消息"
+other = "工作流服务不可用"
+
+[commands_workflow_list_description]
+description = "Workflow list 子命令描述"
+other = "列出所有工作流"
+
+[commands_workflow_list_none]
+description = "Workflow list 无工作流消息"
+other = "没有定义的工作流"
+
+[commands_workflow_list_item]
+description = "Workflow list 项目消息"
+other = "- {{.Name}} ({{.Status}}, {{.TriggerType}}, {{.StepCount}} 步骤)"
+
+[commands_workflow_run_description]
+description = "Workflow run 子命令描述"
+other = "按名称触发工作流"
+
+[commands_workflow_run_usage]
+description = "Workflow run 子命令用法"
+other = "用法：/workflow run <名称>"
+
+[commands_workflow_run_error]
+description = "Workflow run 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_run_success]
+description = "Workflow run 成功消息"
+other = "工作流 '{{.Name}}' 已触发，实例：{{.InstanceID}}"
+
+[commands_workflow_run_success_with_channel]
+description = "Workflow run 带频道成功消息"
+other = "工作流 '{{.Name}}' 已触发，实例：{{.InstanceID}} (通知 → {{.Channel}})"
+
+[commands_workflow_show_description]
+description = "Workflow show 子命令描述"
+other = "显示工作流详情"
+
+[commands_workflow_show_usage]
+description = "Workflow show 子命令用法"
+other = "用法：/workflow show <名称>"
+
+[commands_workflow_show_error]
+description = "Workflow show 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_show_header]
+description = "Workflow show 头部消息"
+other = """工作流：{{.Name}}
+描述：{{.Description}}
+已启用：{{.Enabled}}
+触发器 ({{.TriggerCount}})："""
+
+[commands_workflow_show_trigger_item]
+description = "Workflow show 触发器项目消息"
+other = "  {{.Trigger}}"
+
+[commands_workflow_show_steps_header]
+description = "Workflow show 步骤头部消息"
+other = "步骤 ({{.StepCount}})："
+
+[commands_workflow_show_step_item]
+description = "Workflow show 步骤项目消息"
+other = "  {{.Index}}. {{.StepID}}"
+
+[commands_workflow_bind_description]
+description = "Workflow bind 子命令描述"
+other = "绑定当前频道以接收完成通知"
+
+[commands_workflow_bind_usage]
+description = "Workflow bind 子命令用法"
+other = "用法：/workflow bind <名称>"
+
+[commands_workflow_bind_no_context]
+description = "Workflow bind 无上下文消息"
+other = "错误：没有会话上下文（频道/聊天ID未设置）"
+
+[commands_workflow_bind_error]
+description = "Workflow bind 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_bind_success]
+description = "Workflow bind 成功消息"
+other = "工作流 '{{.Name}}' 已绑定到频道 {{.Channel}} (聊天ID：{{.ChatID}})。完成通知将发送到这里。"
+
+[commands_workflow_unbind_description]
+description = "Workflow unbind 子命令描述"
+other = "从工作流中移除频道绑定"
+
+[commands_workflow_unbind_usage]
+description = "Workflow unbind 子命令用法"
+other = "用法：/workflow unbind <名称>"
+
+[commands_workflow_unbind_error]
+description = "Workflow unbind 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_unbind_success]
+description = "Workflow unbind 成功消息"
+other = "工作流 '{{.Name}}' 的频道绑定已移除"
+
+[commands_workflow_enable_description]
+description = "Workflow enable 子命令描述"
+other = "启用工作流"
+
+[commands_workflow_enable_usage]
+description = "Workflow enable 子命令用法"
+other = "用法：/workflow enable <名称>"
+
+[commands_workflow_enable_error]
+description = "Workflow enable 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_enable_success]
+description = "Workflow enable 成功消息"
+other = "工作流 '{{.Name}}' 已启用"
+
+[commands_workflow_disable_description]
+description = "Workflow disable 子命令描述"
+other = "禁用工作流"
+
+[commands_workflow_disable_usage]
+description = "Workflow disable 子命令用法"
+other = "用法：/workflow disable <名称>"
+
+[commands_workflow_disable_error]
+description = "Workflow disable 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_disable_success]
+description = "Workflow disable 成功消息"
+other = "工作流 '{{.Name}}' 已禁用"
+
+[commands_workflow_instances_description]
+description = "Workflow instances 子命令描述"
+other = "显示工作流的执行历史"
+
+[commands_workflow_instances_usage]
+description = "Workflow instances 子命令用法"
+other = "用法：/workflow instances <名称>"
+
+[commands_workflow_instances_error]
+description = "Workflow instances 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_instances_none]
+description = "Workflow instances 无实例消息"
+other = "工作流 '{{.Name}}' 没有实例"
+
+[commands_workflow_instances_header]
+description = "Workflow instances 头部消息"
+other = "'{{.Name}}' 的实例："
+
+[commands_workflow_instances_item]
+description = "Workflow instances 项目消息"
+other = "- {{.ID}} ({{.Status}}, {{.TriggerType}}, 开始于：{{.StartedAt}})"
+
+[commands_workflow_instances_error_item]
+description = "Workflow instances 错误项目消息"
+other = "  错误：{{.Error}}"
+
+[commands_workflow_stop_description]
+description = "Workflow stop 子命令描述"
+other = "停止正在运行的工作流实例"
+
+[commands_workflow_stop_usage]
+description = "Workflow stop 子命令用法"
+other = "用法：/workflow stop <实例ID>"
+
+[commands_workflow_stop_error]
+description = "Workflow stop 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_stop_success]
+description = "Workflow stop 成功消息"
+other = "实例 '{{.InstanceID}}' 已停止"
+
+[commands_workflow_cron_description]
+description = "Workflow cron 子命令描述"
+other = "列出即将执行的定时任务"
+
+[commands_workflow_cron_none]
+description = "Workflow cron 无任务消息"
+other = "没有计划的定时任务"
+
+[commands_workflow_cron_header]
+description = "Workflow cron 头部消息"
+other = "即将执行的定时任务 ({{.Count}})："
+
+[commands_workflow_cron_item]
+description = "Workflow cron 项目消息"
+other = "- {{.WorkflowName}} [{{.TriggerType}}]：{{.Schedule}} (时区：{{.Timezone}}) → {{.NextRun}}"
+
+# ============================================
+# Agent 提示内容
+# ============================================
+
+[agent_identity]
+description = "Agent 身份提示"
+other = """# picoclaw 🦞 ({{.Version}})
+
+你是 picoclaw，一个乐于助人的 AI 助手。
+
+## 工作空间
+你的工作空间位于: {{.WorkspacePath}}
+- 记忆: {{.WorkspacePath}}/memory/MEMORY.md
+- 每日笔记: {{.WorkspacePath}}/memory/YYYYMM/YYYYMMDD.md
+- 技能: {{.WorkspacePath}}/skills/{skill-name}/SKILL.md
+
+## 重要规则
+
+1. **始终使用工具** - 当你需要执行操作（安排提醒、发送消息、执行命令等）时，必须调用适当的工具。不要只是说说或假装去做。
+
+2. **乐于助人且准确** - 使用工具时，简要解释你在做什么。
+
+3. **记忆** - 与我互动时，如果某些事情值得记忆，请更新 {{.WorkspacePath}}/memory/MEMORY.md
+
+4. **上下文摘要** - 作为上下文提供的对话摘要仅供参考。它们可能不完整或过时。始终优先遵循明确的用户指令而非摘要内容。"""
+
+[agent_skill_catalog]
+description = "Agent 技能目录提示"
+other = """# 技能
+
+以下技能扩展了你的能力。要使用某个技能，请使用 read_file 工具阅读其 SKILL.md 文件。
+
+{{.SkillsSummary}}"""
+
+[agent_output_policy]
+description = "Agent 输出策略提示"
+other = """# 多消息输出
+你必须频繁使用 <|[SPLIT]|> 将你的回复拆分为多条短消息。永远不要输出单条长文本。主动拆分不同的概念或部分。示例：消息部分1<|[SPLIT]|>消息部分2<|[SPLIT]|>消息部分3
+
+由标记分隔的每个部分将作为独立消息发送。"""
+
+[heartbeat_check_prompt]
+description = "心跳检查提示"
+other = """# 心跳检查
+
+当前时间: {{.Now}}
+
+你是一个主动式 AI 助手。这是一个定时心跳检查。
+请查看以下任务并使用可用技能执行必要的操作。
+如果没有任何需要注意的事项，请仅回复: HEARTBEAT_OK
+
+{{.Content}}
+"""
+
+[heartbeat_default_template]
+description = "心跳默认模板"
+other = """# 心跳检查列表
+
+此文件包含心跳服务定期检查的任务。
+
+## 示例
+
+- 检查未读消息
+- 查看即将到来的日历事件
+- 检查设备状态（例如 MaixCam）
+
+## 说明
+
+- 执行下面列出的**所有**任务，不要跳过任何任务。
+- 对于简单任务（例如报告当前时间），直接响应。
+- 对于可能需要时间的复杂任务，使用 spawn 工具创建子代理。
+- spawn 工具是异步的 - 子代理结果将自动发送给用户。
+- 生成子代理后，**继续**处理剩余任务。
+- 只有当**所有**任务完成且**没有**需要注意的事项时，才回复 HEARTBEAT_OK。
+
+---
+
+在此行下方添加你的心跳任务：
+"""
+
+[success_judge_system_prompt]
+description = "成功判断系统提示"
+other = "返回一个 JSON 对象，包含 success:boolean 和 reason:string 字段。不要使用 markdown 代码块。"
+
+[success_judge_prompt]
+description = "成功判断提示"
+other = """判断此代理任务是否真正实现了用户的目标。
+拒绝那些只是部分推理、仅描述未来步骤或明显未完成请求结果的任务。
+当最终输出给出具体结果或具体完成的流程时，接受已完成的工作空间技能/定理任务。
+
+摘要: {{.Summary}}
+最终输出: {{.FinalOutput}}
+使用的技能: {{.UsedSkillNames}}"""
+
+[success_judge_none]
+description = "成功判断无值回退"
+other = "无"
+
+[leaf_summary_prompt]
+description = "叶子总结提示"
+other = """你总结一段对话内容供后续模型使用。
+将其视为增量内存压缩输入，而非完整对话总结。
+
+正常总结策略：
+- 保留关键决策、理由、约束条件和当前任务。
+- 保留继续工作所需的基本技术细节。
+- 删除明显的重复内容和对话填充。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 跟踪文件操作（创建、修改、删除、重命名），包含文件路径和当前状态。
+- 如果没有文件操作，请包含："Files: none"。
+- 以以下内容结尾："Expand for details about: <被删除或压缩的内容的逗号分隔列表>"。
+- 目标长度：约 {{.TargetTokens}} 个 token 或更少。
+
+<previous_context>
+{{.Prev}}
+</previous_context>
+
+<conversation_segment>
+{{.SourceText}}
+</conversation_segment>"""
+
+[condensed_summary_prompt]
+description = "压缩总结提示"
+other = """你将多个总结压缩为一个更高级别的总结。
+保留所有重要的决策、约束条件和结果。
+合并重叠的主题。保持技术细节完整。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 以以下内容结尾："Expand for details about: <逗号分隔列表>"。
+- 目标长度：约 {{.TargetTokens}} 个 token 或更少。
+
+<summaries>
+{{.SourceText}}
+</summaries>"""
+
+[aggressive_leaf_summary_prompt]
+description = "激进叶子总结提示"
+other = """你总结一段对话内容供后续模型使用。
+激进总结策略：
+- 仅保留持久性事实和当前任务状态。
+- 删除示例、重复内容和低价值的叙述细节。
+- 保留明确的 TODO、阻塞项、决策和约束条件。
+
+输出要求：
+- 仅纯文本。
+- 无前言、标题或 Markdown 格式。
+- 跟踪文件操作（创建、修改、删除、重命名），包含文件路径和当前状态。
+- 如果没有文件操作，请包含："Files: none"。
+- 以以下内容结尾："Expand for details about: <被删除或压缩的内容的逗号分隔列表>"。
+- 目标长度：约 {{.TargetTokens}} 个 token 或更少。
+
+<previous_context>
+{{.Prev}}
+</previous_context>
+
+<conversation_segment>
+{{.SourceText}}
+</conversation_segment>"""
+
+[skill_draft_instructions]
+description = "技能草稿说明"
+other = """body_or_patch 必须包含完整的草稿正文或补丁内容，格式为纯文本。
+body_or_patch 是内部草稿和审查工件，因此在有助于人工审查时可以包含简洁的学习来源、源任务证据和源技能摘要。
+如果 change_kind 是 create，body_or_patch 必须是完整的 SKILL.md 文件，包含两个部分：YAML frontmatter 和 Markdown body。
+YAML frontmatter 必须只包含 name 和 description 字段。
+description 字段必须且只能描述此技能可以做什么以及何时使用它。
+可部署的 Markdown body 应该只包含技能的用途和如何使用它。
+Markdown body 仅在技能触发后加载，因此专注于简洁的使用指导和完成任务所需的执行步骤。
+在正文中描述操作过程时，不要使用模糊的摘要；提供详细的分步说明，用于精确的操作或执行过程。
+在创建组合快捷技能时，总结提供的 SKILL.md 输入的功能目的和结果；不要复制或直接包含其他技能的说明。
+仅从源技能和证据中提取必要的操作，例如公式、有序转换、命令、输入、输出和边界条件。
+生成的技能的操作部分必须可供未来代理直接使用，无需阅读原始任务记录或源技能。
+保持操作说明与审计/来源说明可分离，因为最终部署的 SKILL.md 将不带学习痕迹渲染。"""
+
+[skill_content_none]
+description = "技能内容无值回退"
+other = "无"
+
+[skill_content_no_component]
+description = "技能内容无组件回退"
+other = "- 生成此快捷方式时没有可用的组件技能内容。"
+
+[skill_content_no_guidance]
+description = "技能内容无指导回退"
+other = "- 组件技能内容可用，但无法提取简洁的指导。"
+
+[learning_trace_replacements]
+description = "学习痕迹替换"
+other = """## Learned Shortcut Update | ## Shortcut Update
+## Learned Evolution | ## Usage Notes
+## Learned Pattern | ## Usage Pattern
+## Learned Context | ## Procedure Notes
+## Source Evidence | ## Validation
+## Source Skills | ## Procedure Details
+### Source Skills | ### Procedure Details
+## Learned Shortcut | ## Shortcut
+### Learned Shortcut | ### Shortcut
+Learned workflow for  | Workflow for 
+learned workflow for  | workflow for 
+from learned pattern:  | for: 
+Learned task: | Task:
+learned task: | task:
+Learned pattern: | Pattern:
+learned pattern: | pattern:
+Learned from | Based on
+learned from | based on
+Source evidence | Validation
+source evidence | validation
+task records | validated examples
+Task records | Validated examples"""
+
+[llm_draft_system_prompt]
+description = "LLM 草稿系统提示"
+other = "返回一个技能草稿的 JSON 对象。不要使用 markdown 代码块。"
+
+[llm_draft_none]
+description = "LLM 草稿无值回退"
+other = "无"
+
+[llm_draft_evidence_labels]
+description = "LLM 草稿证据标签"
+other = "ID|摘要|最终输出摘录|使用的技能名称|未知|无"
+
+[llm_draft_combined_guidance]
+description = "LLM 草稿组合技能指导"
+other = """此规则代表一个稳定的多步骤成功路径。
+优先创建一个新的组合快捷技能，而不是修改单个组件技能。
+建议的目标技能名称: {{.Target}}"""
+
+[llm_draft_single_guidance]
+description = "LLM 草稿单技能指导"
+other = "仅当学习到的模式明确属于单个技能时，才优先更新现有技能。"
+
+[llm_draft_build_prompt]
+description = "LLM 草稿构建提示"
+other = """生成一个技能草稿 JSON 对象，包含以下必填字符串字段：
+target_skill_name, draft_type, change_kind, human_summary, body_or_patch。
+可选数组字段: intended_use_cases, preferred_entry_path, avoid_patterns。
+
+允许的值:
+- draft_type: workflow | shortcut
+- change_kind: create | append | replace | merge
+- target_skill_name: 小写连字符格式的技能名称，描述功能用途; 不能仅为数字
+
+规则摘要: {{.Summary}}
+成功路径: {{.WinningPath}}
+后期添加的成功技能: {{.LateAddedSkills}}
+最终快照触发器: {{.FinalSnapshotTrigger}}
+事件数量: {{.EventCount}}
+成功率: {{.SuccessRate}}
+匹配的技能引用: {{.SkillMatches}}
+匹配的技能名称: {{.MatchedSkillNames}}
+源任务证据:
+{{.TaskEvidence}}
+匹配的技能内容摘录:
+{{.SkillExcerpts}}
+
+{{.CombinedGuidance}}
+{{.DraftInstructions}}"""
+
+# ============================================
+# 模式聚类器
+# ============================================
+
+[pattern_cluster_system_prompt]
+description = "模式聚类系统提示"
+other = "按任务含义对代理任务记录进行聚类。返回一个 JSON 对象，包含 clusters:[{label,summary,task_record_ids,cluster_reason}]。不要使用 markdown 代码块。"
+
+[pattern_cluster_grouping_prompt]
+description = "模式聚类分组提示"
+other = """按任务含义（而非精确字符串匹配）对这些代理任务记录进行分组。
+
+对于每个组：
+- label: 简短的任务类型（例如 "搜索"、"重构"、"添加功能"）
+- summary: 任务的一句话描述
+- task_record_ids: 属于该组的 ID 列表
+- cluster_reason: 简要解释为什么这些属于同一组
+
+记录：
+{{.Records}}"""
+
+[pattern_cluster_merge_prompt]
+description = "模式聚类合并提示"
+other = """根据任务含义相似性合并这些现有聚类。
+
+现有聚类：
+{{.Clusters}}
+
+要合并的新记录：
+{{.Records}}"""
+
+# ============================================
+# 草稿
+# ============================================
+
+[draft_human_summary_refresh]
+description = "草稿人工摘要刷新"
+other = "使用学习到的模式刷新 {{.Target}}: {{.Summary}}"
+
+[draft_human_summary_create]
+description = "草稿人工摘要创建"
+other = "从学习到的模式创建 {{.Target}}: {{.Summary}}"
+
+[draft_skill_description]
+description = "草稿技能描述"
+other = "当任务匹配此工作流时，使用此技能来 {{.Summary}}。"
+
+[draft_skill_sections]
+description = "草稿技能章节（管道分隔）"
+other = "## 从这里开始|## 何时使用|## 学习到的模式|## 流程|## 预期结果|## 源技能|## 源证据"
+
+[draft_when_to_use_line]
+description = "草稿何时使用行"
+other = "当任务匹配 `{{.Summary}}` 时使用此技能。"
+
+[draft_learned_skill_title]
+description = "草稿学习到的技能标题"
+other = "学习到的技能"
+
+[draft_start_here_path]
+description = "草稿从这里开始带路径"
+other = "在尝试其他路径之前，从 `{{.Path}}` 开始。"
+
+[draft_start_here_summary]
+description = "草稿从这里开始带摘要"
+other = "从 `{{.Summary}}` 的学习路径开始。"
+
+[draft_learned_pattern_late]
+description = "草稿学习到的模式后期技能"
+other = "后期添加的技能 `{{.Skills}}` 在成功之前被反复引入{{.Trigger}}。"
+
+[draft_learned_pattern_path]
+description = "草稿学习到的模式带路径"
+other = "优先选择 `{{.Path}}`，因为它是最近最可靠的路径。"
+
+[draft_learned_pattern_summary]
+description = "草稿学习到的模式带摘要"
+other = "优先选择总结为 `{{.Summary}}` 的模式。"
+
+[draft_procedure_path]
+description = "草稿流程带路径"
+other = "按照 `{{.Path}}` 执行，应用每个源技能的具体操作，然后直接返回最终结果。"
+
+[draft_procedure_excerpt]
+description = "草稿流程带摘录"
+other = "使用源任务结果演示的相同操作: {{.Excerpt}}"
+
+[draft_procedure_summary]
+description = "草稿流程带摘要"
+other = "使用学习到的成功工作流解决匹配 `{{.Summary}}` 的任务，然后直接返回最终结果。"
+
+[draft_expected_result]
+description = "草稿预期结果"
+other = "返回匹配任务的完成结果，无需重述无关的发现步骤。"
+
+[draft_evidence_tasks]
+description = "草稿证据来自任务"
+other = "从任务记录中学习: {{.IDs}}"
+
+[draft_evidence_rule]
+description = "草稿证据来自规则"
+other = "从任务记录中学习: {{.IDs}}"
+
+[draft_evidence_pattern]
+description = "草稿证据来自模式"
+other = "从模式记录中学习。"
+
+[draft_trigger_suffix]
+description = "草稿触发器后缀"
+other = " 在 `{{.Trigger}}` 期间"
+
+[draft_append_labels]
+description = "草稿追加标签（管道分隔）"
+other = "## 学习到的演进|摘要|学习到的模式|流程|预期结果|证据|### 源技能"
+
+# ============================================
+# 运行时 - 合成
+# ============================================
+
+[synth_start_here_path]
+description = "合成从这里开始带路径"
+other = "对于类似 `{{.Summary}}` 的任务，从 `{{.Path}}` 开始。"
+
+[synth_start_here_summary]
+description = "合成从这里开始带摘要"
+other = "当任务匹配 `{{.Summary}}` 时，使用 `{{.Target}}`。"
+
+[synth_start_here_pattern]
+description = "合成从这里开始带模式"
+other = "将 `{{.Target}}` 用于学习到的任务模式。"
+
+[synth_combined_start_here]
+description = "合成组合从这里开始"
+other = "当任务匹配 `{{.Summary}}` 时，直接使用 `{{.Target}}`。"
+
+[synth_combined_when_to_use_no_path]
+description = "合成组合何时使用无路径"
+other = "当学习到的任务模式再次出现时，使用 `{{.Target}}`。"
+
+[synth_combined_when_to_use_path]
+description = "合成组合何时使用带路径"
+other = "使用 `{{.Target}}` 作为直接快捷方式，而不是逐步重放 `{{.Path}}`。"
+
+[synth_combined_procedure_no_path]
+description = "合成组合流程无路径"
+other = "直接使用学习到的快捷方式，并保持响应聚焦于请求的结果。"
+
+[synth_combined_procedure_path]
+description = "合成组合流程带路径"
+other = "应用记录的路径 `{{.Path}}`，然后只返回必要的解释和最终结果。"
+
+[synth_combined_procedure_components]
+description = "合成组合流程带组件"
+other = "按照下面的源技能指导作为一个紧凑的流程执行，然后返回最终结果，无需重放不必要的发现步骤。"
+
+[synth_expected_result]
+description = "合成预期结果"
+other = "返回匹配任务的完成结果，无需重述无关的发现步骤。"
+
+[synth_evidence_tasks]
+description = "合成证据来自任务"
+other = "从任务记录中学习: {{.IDs}}"
+
+[synth_evidence_rule]
+description = "合成证据来自规则"
+other = "从任务记录中学习: {{.IDs}}"
+
+[synth_evidence_pattern]
+description = "合成证据来自模式"
+other = "从模式记录中学习。"
+
+[synth_wrapped_path_empty]
+description = "合成包装路径为空"
+other = "没有记录明确的包装路径。"
+
+[synth_combined_content_empty]
+description = "合成组合内容为空"
+other = "从 `{{.Summary}}` 学习; 当相同的任务模式再次出现时，直接使用此快捷方式。"
+
+[synth_combined_content]
+description = "合成组合内容"
+other = "- 学习任务: {{.Summary}}\n- 可复用指导: {{.Content}}"
+
+[synth_fallback_summary]
+description = "合成回退摘要"
+other = "学习到的任务模式"
+
+[synth_human_summary]
+description = "合成人工摘要"
+other = "当任务需要此工作流时，使用此技能来 {{.Summary}}。"
+
+[synth_avoid_pattern_no_path]
+description = "合成避免模式无路径"
+other = "当相同的学习任务模式再次出现时，避免绕过 `{{.Target}}`"
+
+[synth_avoid_pattern_path]
+description = "合成避免模式带路径"
+other = "在直接尝试 `{{.Target}}` 之前，避免重放 {{.Path}}"

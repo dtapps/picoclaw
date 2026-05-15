@@ -3,9 +3,9 @@ package evolution
 import (
 	"context"
 	"encoding/json"
-	"os"
 	"strings"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
@@ -80,16 +80,10 @@ func (j *LLMTaskSuccessJudge) JudgeTaskRecord(
 		return j.fallbackDecision(ctx, record)
 	}
 
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	callCtx, cancel := withLLMCallTimeout(ctx, llmTaskSuccessJudgeTimeout)
 	defer cancel()
 
-	systemPrompt := "Return exactly one JSON object with fields success:boolean and reason:string. No markdown fences."
-	if isZh {
-		systemPrompt = "返回一个 JSON 对象，包含 success:boolean 和 reason:string 字段。不要使用 markdown 代码块。"
-	}
+	systemPrompt := i18n.T("success_judge_system_prompt")
 
 	resp, err := j.provider.Chat(callCtx, []providers.Message{
 		{
@@ -135,30 +129,9 @@ func (j *LLMTaskSuccessJudge) fallbackDecision(
 }
 
 func buildTaskSuccessJudgePrompt(record LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
-	var lines []string
-	if isZh {
-		lines = []string{
-			"判断此代理任务是否真正实现了用户的目标。",
-			"拒绝那些只是部分推理、仅描述未来步骤或明显未完成请求结果的任务。",
-			"当最终输出给出具体结果或具体完成的流程时，接受已完成的工作空间技能/定理任务。",
-			"",
-			"摘要: " + fallbackString(record.Summary, "无"),
-			"最终输出: " + fallbackString(record.FinalOutput, "无"),
-			"使用的技能: " + joinOrFallback(record.UsedSkillNames, "无"),
-		}
-	} else {
-		lines = []string{
-			"Decide whether this agent task truly achieved the user's goal.",
-			"Reject tasks that are only partial reasoning, only describe future steps, or obviously did not complete the requested outcome.",
-			"Accept completed custom workspace skill/theorem tasks when the final output gives a concrete result or concrete completed procedure.",
-			"",
-			"Summary: " + fallbackString(record.Summary, "none"),
-			"Final output: " + fallbackString(record.FinalOutput, "none"),
-			"Used skills: " + joinOrFallback(record.UsedSkillNames, "none"),
-		}
-	}
-	return strings.Join(lines, "\n")
+	return i18n.Tf("success_judge_prompt", map[string]any{
+		"Summary":        fallbackString(record.Summary, i18n.T("success_judge_none")),
+		"FinalOutput":    fallbackString(record.FinalOutput, i18n.T("success_judge_none")),
+		"UsedSkillNames": joinOrFallback(record.UsedSkillNames, i18n.T("success_judge_none")),
+	})
 }

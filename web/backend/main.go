@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/netbind"
 	"github.com/sipeed/picoclaw/web/backend/api"
@@ -404,9 +405,15 @@ func main() {
 		logger.SetLevel(logger.DEBUG)
 	}
 
+	// 初始化国际化(i18n)
+	if err := i18n.Init(); err != nil {
+		logger.Warn(fmt.Sprintf("初始化 i18n 失败: %v", err))
+	}
+
 	// Set language from command line or auto-detect
 	if *lang != "" {
 		SetLanguage(*lang)
+		i18n.SetLanguage(*lang)
 	}
 
 	// Resolve config path

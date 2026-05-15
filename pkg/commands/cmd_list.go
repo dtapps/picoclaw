@@ -2,44 +2,47 @@ package commands
 
 import (
 	"context"
-	"fmt"
 	"strings"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
 
 func listCommand() Definition {
 	return Definition{
 		Name:        "list",
-		Description: "List available options",
+		Description: i18n.T("commands_list_description"),
 		SubCommands: []SubCommand{
 			{
 				Name:        "models",
-				Description: "Configured models",
+				Description: i18n.T("commands_list_models_description"),
 				Handler: func(_ context.Context, req Request, rt *Runtime) error {
 					if rt == nil || rt.GetModelInfo == nil {
-						return req.Reply(unavailableMsg)
+						return req.Reply(unavailableMsg())
 					}
 					name, provider := rt.GetModelInfo()
 					if provider == "" {
 						provider = "configured default"
 					}
-					return req.Reply(fmt.Sprintf(
-						"Configured Model: %s\nProvider: %s\n\nTo change models, update config.json",
-						name, provider,
-					))
+					return req.Reply(i18n.Tf("commands_list_models_response", map[string]any{
+						"Name":     name,
+						"Provider": provider,
+					}))
 				},
 			},
 			{
 				Name:        "channels",
-				Description: "Enabled channels",
+				Description: i18n.T("commands_list_channels_description"),
 				Handler: func(_ context.Context, req Request, rt *Runtime) error {
 					if rt == nil || rt.GetEnabledChannels == nil {
-						return req.Reply(unavailableMsg)
+						return req.Reply(unavailableMsg())
 					}
 					enabled := rt.GetEnabledChannels()
 					if len(enabled) == 0 {
-						return req.Reply("No channels enabled")
+						return req.Reply(i18n.T("commands_list_channels_none"))
 					}
-					return req.Reply(fmt.Sprintf("Enabled Channels:\n- %s", strings.Join(enabled, "\n- ")))
+					return req.Reply(i18n.Tf("commands_list_channels_response", map[string]any{
+						"Channels": strings.Join(enabled, "\n- "),
+					}))
 				},
 			},
 			{
@@ -49,19 +52,18 @@ func listCommand() Definition {
 			},
 			{
 				Name:        "skills",
-				Description: "Installed skills",
+				Description: i18n.T("commands_list_skills_description"),
 				Handler: func(_ context.Context, req Request, rt *Runtime) error {
 					if rt == nil || rt.ListSkillNames == nil {
-						return req.Reply(unavailableMsg)
+						return req.Reply(unavailableMsg())
 					}
 					names := rt.ListSkillNames()
 					if len(names) == 0 {
-						return req.Reply("No installed skills")
+						return req.Reply(i18n.T("commands_list_skills_none"))
 					}
-					return req.Reply(fmt.Sprintf(
-						"Installed Skills:\n- %s\n\nUse /use <skill> <message> to force one for a single request, or /use <skill> to apply it to your next message.",
-						strings.Join(names, "\n- "),
-					))
+					return req.Reply(i18n.Tf("commands_list_skills_response", map[string]any{
+						"Skills": strings.Join(names, "\n- "),
+					}))
 				},
 			},
 			{

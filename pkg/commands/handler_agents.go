@@ -10,7 +10,7 @@ import (
 func agentsHandler() Handler {
 	return func(_ context.Context, req Request, rt *Runtime) error {
 		if rt == nil || rt.ListAgentIDs == nil {
-			return req.Reply(unavailableMsg)
+			return req.Reply(unavailableMsg())
 		}
 		ids := rt.ListAgentIDs()
 		if len(ids) == 0 {

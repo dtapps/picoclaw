@@ -18,6 +18,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/constants"
 	"github.com/sipeed/picoclaw/pkg/fileutil"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/state"
 	"github.com/sipeed/picoclaw/pkg/tools"
@@ -239,90 +240,17 @@ func (hs *HeartbeatService) buildPrompt() string {
 
 	now := time.Now().Format("2006-01-02 15:04:05")
 
-	// 检查 LANG 环境变量以确定语言偏好
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-	if isZh {
-		return fmt.Sprintf(`# 心跳检查
-
-当前时间: %s
-
-你是一个主动式 AI 助手。这是一个定时心跳检查。
-请查看以下任务并使用可用技能执行必要的操作。
-如果没有任何需要注意的事项，请仅回复: HEARTBEAT_OK
-
-%s
-`, now, content)
-	}
-
-	return fmt.Sprintf(`# Heartbeat Check
-
-Current time: %s
-
-You are a proactive AI assistant. This is a scheduled heartbeat check.
-Review the following tasks and execute any necessary actions using available skills.
-If there is nothing that requires attention, respond ONLY with: HEARTBEAT_OK
-
-%s
-`, now, content)
+	return i18n.Tf("heartbeat_check_prompt", map[string]any{
+		"Now":     now,
+		"Content": content,
+	})
 }
 
 // createDefaultHeartbeatTemplate creates the default HEARTBEAT.md file
 func (hs *HeartbeatService) createDefaultHeartbeatTemplate() {
 	heartbeatPath := filepath.Join(hs.workspace, "HEARTBEAT.md")
 
-	defaultContent := `# Heartbeat Check List
-
-This file contains tasks for the heartbeat service to check periodically.
-
-## Examples
-
-- Check for unread messages
-- Review upcoming calendar events
-- Check device status (e.g., MaixCam)
-
-## Instructions
-
-- Execute ALL tasks listed below. Do NOT skip any task.
-- For simple tasks (e.g., report current time), respond directly.
-- For complex tasks that may take time, use the spawn tool to create a subagent.
-- The spawn tool is async - subagent results will be sent to the user automatically.
-- After spawning a subagent, CONTINUE to process remaining tasks.
-- Only respond with HEARTBEAT_OK when ALL tasks are done AND nothing needs attention.
-
----
-
-Add your heartbeat tasks below this line:
-`
-
-	// 检查 LANG 环境变量以确定语言偏好
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-	if isZh {
-		defaultContent = `# 心跳检查列表
-
-此文件包含心跳服务定期检查的任务。
-
-## 示例
-
-- 检查未读消息
-- 查看即将到来的日历事件
-- 检查设备状态（例如 MaixCam）
-
-## 说明
-
-- 执行下面列出的**所有**任务，不要跳过任何任务。
-- 对于简单任务（例如报告当前时间），直接响应。
-- 对于可能需要时间的复杂任务，使用 spawn 工具创建子代理。
-- spawn 工具是异步的 - 子代理结果将自动发送给用户。
-- 生成子代理后，**继续**处理剩余任务。
-- 只有当**所有**任务完成且**没有**需要注意的事项时，才回复 HEARTBEAT_OK。
-
----
-
-在此行下方添加你的心跳任务：
-`
-	}
+	defaultContent := i18n.T("heartbeat_default_template")
 
 	if err := fileutil.WriteFileAtomic(heartbeatPath, []byte(defaultContent), 0o644); err != nil {
 		hs.logErrorf("Failed to create default HEARTBEAT.md: %v", err)

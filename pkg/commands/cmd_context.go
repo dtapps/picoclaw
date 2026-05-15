@@ -2,21 +2,22 @@ package commands
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
 
 func contextCommand() Definition {
 	return Definition{
 		Name:        "context",
-		Description: "Show current session context and token usage",
-		Usage:       "/context",
+		Description: i18n.T("commands_context_description"),
+		Usage:       i18n.T("commands_context_usage"),
 		Handler: func(_ context.Context, req Request, rt *Runtime) error {
 			if rt == nil || rt.GetContextStats == nil {
-				return req.Reply(unavailableMsg)
+				return req.Reply(unavailableMsg())
 			}
 			stats := rt.GetContextStats()
 			if stats == nil {
-				return req.Reply("No active session context.")
+				return req.Reply(i18n.T("commands_context_no_session"))
 			}
 			return req.Reply(formatContextStats(stats))
 		},
@@ -29,14 +30,13 @@ func formatContextStats(s *ContextStats) string {
 		remaining = 0
 	}
 	usedWindowPercent := s.UsedTokens * 100 / max(s.TotalTokens, 1)
-	return fmt.Sprintf(
-		"Context usage  \nMessages: %d  \nUsed: ~%d / %d tokens (%d%%)  \nCompress at: %d tokens  \nCompression progress: %d%%  \nRemaining: ~%d tokens",
-		s.MessageCount,
-		s.UsedTokens,
-		s.TotalTokens,
-		usedWindowPercent,
-		s.CompressAtTokens,
-		s.UsedPercent,
-		remaining,
-	)
+	return i18n.Tf("commands_context_stats", map[string]any{
+		"MessageCount":       s.MessageCount,
+		"UsedTokens":         s.UsedTokens,
+		"TotalTokens":        s.TotalTokens,
+		"UsedPercent":        usedWindowPercent,
+		"CompressAtTokens":   s.CompressAtTokens,
+		"CompressionPercent": s.UsedPercent,
+		"Remaining":          remaining,
+	})
 }

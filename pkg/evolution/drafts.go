@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
@@ -344,19 +345,16 @@ func (g *DefaultDraftGenerator) loadBaseSkillContent(target string, matches []sk
 }
 
 func (g *DefaultDraftGenerator) buildHumanSummary(target string, rule LearningRecord, hasExisting bool) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if hasExisting {
-		if isZh {
-			return fmt.Sprintf("使用学习到的模式刷新 %s: %s", target, rule.Summary)
-		}
-		return fmt.Sprintf("Refresh %s with learned pattern: %s", target, rule.Summary)
+		return i18n.Tf("draft_human_summary_refresh", map[string]any{
+			"Target":  target,
+			"Summary": rule.Summary,
+		})
 	}
-	if isZh {
-		return fmt.Sprintf("从学习到的模式创建 %s: %s", target, rule.Summary)
-	}
-	return fmt.Sprintf("Create %s from learned pattern: %s", target, rule.Summary)
+	return i18n.Tf("draft_human_summary_create", map[string]any{
+		"Target":  target,
+		"Summary": rule.Summary,
+	})
 }
 
 func (g *DefaultDraftGenerator) buildNewSkillBody(
@@ -365,47 +363,28 @@ func (g *DefaultDraftGenerator) buildNewSkillBody(
 	evidence DraftEvidence,
 	matches []skills.SkillInfo,
 ) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+	description := i18n.Tf("draft_skill_description", map[string]any{
+		"Summary": sentenceFragment(fallbackString(rule.Summary, target)),
+	})
 
-	var description string
-	if isZh {
-		description = fmt.Sprintf(
-			"当任务匹配此工作流时，使用此技能来 %s.",
-			sentenceFragment(fallbackString(rule.Summary, target)),
-		)
-	} else {
-		description = fmt.Sprintf(
-			"Use this skill to %s when the task matches this workflow.",
-			sentenceFragment(fallbackString(rule.Summary, target)),
-		)
+	sections := i18n.T("draft_skill_sections")
+	sectionParts := strings.Split(sections, "|")
+	if len(sectionParts) != 7 {
+		sectionParts = []string{
+			"## Start Here",
+			"## When To Use",
+			"## Learned Pattern",
+			"## Procedure",
+			"## Expected Result",
+			"## Source Skills",
+			"## Source Evidence",
+		}
 	}
+	startHere, whenToUse, learnedPattern, procedure, expectedResult, sourceSkills, sourceEvidence := sectionParts[0], sectionParts[1], sectionParts[2], sectionParts[3], sectionParts[4], sectionParts[5], sectionParts[6]
 
-	var startHere, whenToUse, learnedPattern, procedure, expectedResult, sourceSkills, sourceEvidence string
-	if isZh {
-		startHere = "## 从这里开始"
-		whenToUse = "## 何时使用"
-		learnedPattern = "## 学习到的模式"
-		procedure = "## 流程"
-		expectedResult = "## 预期结果"
-		sourceSkills = "## 源技能"
-		sourceEvidence = "## 源证据"
-	} else {
-		startHere = "## Start Here"
-		whenToUse = "## When To Use"
-		learnedPattern = "## Learned Pattern"
-		procedure = "## Procedure"
-		expectedResult = "## Expected Result"
-		sourceSkills = "## Source Skills"
-		sourceEvidence = "## Source Evidence"
-	}
-
-	var whenToUseLine string
-	if isZh {
-		whenToUseLine = fmt.Sprintf("当任务匹配 `%s` 时使用此技能。", strings.TrimSpace(rule.Summary))
-	} else {
-		whenToUseLine = fmt.Sprintf("Use this skill when the task matches `%s`.", strings.TrimSpace(rule.Summary))
-	}
+	whenToUseLine := i18n.Tf("draft_when_to_use_line", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 
 	body := strings.Join([]string{
 		"# " + titleCaseSkillName(target),
@@ -439,27 +418,20 @@ func (g *DefaultDraftGenerator) buildAppendBody(
 	evidence DraftEvidence,
 	matches []skills.SkillInfo,
 ) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
-	var learnedEvolution, summaryLabel, learnedPatternLabel, procedureLabel, expectedResultLabel, evidenceLabel, sourceSkills string
-	if isZh {
-		learnedEvolution = "## 学习到的演进"
-		summaryLabel = "摘要"
-		learnedPatternLabel = "学习到的模式"
-		procedureLabel = "流程"
-		expectedResultLabel = "预期结果"
-		evidenceLabel = "证据"
-		sourceSkills = "### 源技能"
-	} else {
-		learnedEvolution = "## Learned Evolution"
-		summaryLabel = "Summary"
-		learnedPatternLabel = "Learned pattern"
-		procedureLabel = "Procedure"
-		expectedResultLabel = "Expected result"
-		evidenceLabel = "Evidence"
-		sourceSkills = "### Source Skills"
+	labels := i18n.T("draft_append_labels")
+	labelParts := strings.Split(labels, "|")
+	if len(labelParts) != 7 {
+		labelParts = []string{
+			"## Learned Evolution",
+			"Summary",
+			"Learned pattern",
+			"Procedure",
+			"Expected result",
+			"Evidence",
+			"### Source Skills",
+		}
 	}
+	learnedEvolution, summaryLabel, learnedPatternLabel, procedureLabel, expectedResultLabel, evidenceLabel, sourceSkills := labelParts[0], labelParts[1], labelParts[2], labelParts[3], labelParts[4], labelParts[5], labelParts[6]
 
 	return strings.Join([]string{
 		learnedEvolution,
@@ -488,9 +460,6 @@ func buildSkillDocument(name, description, body string) string {
 }
 
 func titleCaseSkillName(name string) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	parts := strings.FieldsFunc(name, func(r rune) bool { return r == '-' || r == '_' || r == ' ' })
 	for i, part := range parts {
 		if part == "" {
@@ -499,137 +468,78 @@ func titleCaseSkillName(name string) string {
 		parts[i] = strings.ToUpper(part[:1]) + part[1:]
 	}
 	if len(parts) == 0 {
-		if isZh {
-			return "学习到的技能"
-		}
-		return "Learned Skill"
+		return i18n.T("draft_learned_skill_title")
 	}
 	return strings.Join(parts, " ")
 }
 
 func (g *DefaultDraftGenerator) startHereLine(rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) > 0 {
-		if isZh {
-			return fmt.Sprintf("在尝试其他路径之前，从 `%s` 开始。", strings.Join(rule.WinningPath, " -> "))
-		}
-		return fmt.Sprintf("Start with `%s` before trying other paths.", strings.Join(rule.WinningPath, " -> "))
+		return i18n.Tf("draft_start_here_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	if isZh {
-		return fmt.Sprintf("从 `%s` 的学习路径开始。", strings.TrimSpace(rule.Summary))
-	}
-	return fmt.Sprintf("Start from the learned path for `%s`.", strings.TrimSpace(rule.Summary))
+	return i18n.Tf("draft_start_here_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) learnedPatternLine(rule LearningRecord) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.LateAddedSkills) > 0 {
-		if isZh {
-			return fmt.Sprintf(
-				"后期添加的技能 `%s` 在成功之前被反复引入%s。",
-				strings.Join(rule.LateAddedSkills, " -> "),
-				triggerSuffix(rule.FinalSnapshotTrigger),
-			)
-		}
-		return fmt.Sprintf(
-			"Late-added skill `%s` was repeatedly introduced immediately before success%s.",
-			strings.Join(rule.LateAddedSkills, " -> "),
-			triggerSuffix(rule.FinalSnapshotTrigger),
-		)
+		return i18n.Tf("draft_learned_pattern_late", map[string]any{
+			"Skills":  strings.Join(rule.LateAddedSkills, " -> "),
+			"Trigger": triggerSuffix(rule.FinalSnapshotTrigger),
+		})
 	}
 	if len(rule.WinningPath) > 0 {
-		if isZh {
-			return fmt.Sprintf(
-				"优先选择 `%s`，因为它是最近最可靠的路径。",
-				strings.Join(rule.WinningPath, " -> "),
-			)
-		}
-		return fmt.Sprintf(
-			"Prefer `%s` because it was the most reliable recent path.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("draft_learned_pattern_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	if isZh {
-		return fmt.Sprintf("优先选择总结为 `%s` 的模式。", strings.TrimSpace(rule.Summary))
-	}
-	return fmt.Sprintf("Prefer the pattern summarized as `%s`.", strings.TrimSpace(rule.Summary))
+	return i18n.Tf("draft_learned_pattern_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) procedureLine(rule LearningRecord, evidence DraftEvidence) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(rule.WinningPath) > 0 {
-		if isZh {
-			return fmt.Sprintf(
-				"按照 `%s` 执行，应用每个源技能的具体操作，然后直接返回最终结果。",
-				strings.Join(rule.WinningPath, " -> "),
-			)
-		}
-		return fmt.Sprintf(
-			"Follow `%s`, applying the concrete operation from each source skill, then return the final result directly.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("draft_procedure_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
 	if excerpt := firstFinalOutputExcerpt(evidence, 260); excerpt != "" {
-		if isZh {
-			return "使用源任务结果演示的相同操作: " + excerpt
-		}
-		return "Use the same operation demonstrated by the source task result: " + excerpt
+		return i18n.Tf("draft_procedure_excerpt", map[string]any{
+			"Excerpt": excerpt,
+		})
 	}
-	if isZh {
-		return fmt.Sprintf(
-			"使用学习到的成功工作流解决匹配 `%s` 的任务，然后直接返回最终结果。",
-			strings.TrimSpace(rule.Summary),
-		)
-	}
-	return fmt.Sprintf(
-		"Solve tasks matching `%s` using the learned successful workflow, then return the final result directly.",
-		strings.TrimSpace(rule.Summary),
-	)
+	return i18n.Tf("draft_procedure_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) expectedResultLine(evidence DraftEvidence) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if excerpt := firstFinalOutputExcerpt(evidence, 320); excerpt != "" {
 		return excerpt
 	}
-	if isZh {
-		return "返回匹配任务的完成结果，无需重述无关的发现步骤。"
-	}
-	return "Return the completed result for the matched task without restating unrelated discovery steps."
+	return i18n.T("draft_expected_result")
 }
 
 func (g *DefaultDraftGenerator) evidenceLine(rule LearningRecord, evidence DraftEvidence) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	if len(evidence.TaskRecords) > 0 {
 		ids := make([]string, 0, len(evidence.TaskRecords))
 		for _, task := range evidence.TaskRecords {
 			ids = append(ids, task.ID)
 		}
-		if isZh {
-			return fmt.Sprintf("从任务记录中学习: %s", strings.Join(ids, ", "))
-		}
-		return fmt.Sprintf("Learned from task records: %s", strings.Join(ids, ", "))
+		return i18n.Tf("draft_evidence_tasks", map[string]any{
+			"IDs": strings.Join(ids, ", "),
+		})
 	}
 	if len(rule.TaskRecordIDs) > 0 {
-		if isZh {
-			return fmt.Sprintf("从任务记录中学习: %s", strings.Join(rule.TaskRecordIDs, ", "))
-		}
-		return fmt.Sprintf("Learned from task records: %s", strings.Join(rule.TaskRecordIDs, ", "))
+		return i18n.Tf("draft_evidence_rule", map[string]any{
+			"IDs": strings.Join(rule.TaskRecordIDs, ", "),
+		})
 	}
-	if isZh {
-		return "从模式记录中学习。"
-	}
-	return "Learned from the pattern record."
+	return i18n.T("draft_evidence_pattern")
 }
 
 func firstFinalOutputExcerpt(evidence DraftEvidence, maxLen int) string {
@@ -642,15 +552,11 @@ func firstFinalOutputExcerpt(evidence DraftEvidence, maxLen int) string {
 }
 
 func triggerSuffix(trigger string) string {
-	lang := os.Getenv("LANG")
-	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
-
 	trigger = strings.TrimSpace(trigger)
 	if trigger == "" {
 		return ""
 	}
-	if isZh {
-		return fmt.Sprintf(" 在 `%s` 期间", trigger)
-	}
-	return fmt.Sprintf(" during `%s`", trigger)
+	return i18n.Tf("draft_trigger_suffix", map[string]any{
+		"Trigger": trigger,
+	})
 }
