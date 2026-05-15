@@ -123,8 +123,8 @@ const (
 
 func main() {
 	// 初始化国际化(i18n)
-	if err := i18n.Init(); err != nil {
-		fmt.Fprintf(os.Stderr, "警告: 初始化 i18n 失败: %v\n", err)
+	if initErr := i18n.Init(); initErr != nil {
+		fmt.Fprintf(os.Stderr, "警告: 初始化 i18n 失败: %v\n", initErr)
 	}
 
 	cliui.Init(earlyColorDisabled())

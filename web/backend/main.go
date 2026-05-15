@@ -406,8 +406,8 @@ func main() {
 	}
 
 	// 初始化国际化(i18n)
-	if err := i18n.Init(); err != nil {
-		logger.Warn(fmt.Sprintf("初始化 i18n 失败: %v", err))
+	if initErr := i18n.Init(); initErr != nil {
+		logger.Warn(fmt.Sprintf("初始化 i18n 失败: %v", initErr))
 	}
 
 	// Set language from command line or auto-detect

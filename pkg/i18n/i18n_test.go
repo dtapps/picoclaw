@@ -13,7 +13,7 @@ func TestInit(t *testing.T) {
 	bundle = nil
 	localizer = nil
 	once = sync.Once{}
-	initErr = nil
+	errInit = nil
 
 	err := Init()
 	if err != nil {
@@ -135,7 +135,7 @@ func TestEnsureInitialized(t *testing.T) {
 	bundle = nil
 	localizer = nil
 	once = sync.Once{}
-	initErr = nil
+	errInit = nil
 
 	// 直接调用 T()，应该自动初始化
 	result := T("commands_start_description")

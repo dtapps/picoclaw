@@ -18,7 +18,7 @@ var (
 	bundle    *i18n.Bundle
 	localizer *i18n.Localizer
 	once      sync.Once
-	initErr   error
+	errInit   error
 )
 
 // Init 初始化 i18n 翻译包，加载嵌入的翻译文件。
@@ -31,13 +31,13 @@ func Init() error {
 
 		// 加载英文翻译
 		if _, err := bundle.LoadMessageFileFS(localeFS, "locales/en.toml"); err != nil {
-			initErr = err
+			errInit = err
 			return
 		}
 
 		// 加载中文翻译
 		if _, err := bundle.LoadMessageFileFS(localeFS, "locales/zh.toml"); err != nil {
-			initErr = err
+			errInit = err
 			return
 		}
 
@@ -45,7 +45,7 @@ func Init() error {
 		lang := detectLanguage()
 		localizer = i18n.NewLocalizer(bundle, lang)
 	})
-	return initErr
+	return errInit
 }
 
 // detectLanguage 从 LANG 环境变量检测语言
