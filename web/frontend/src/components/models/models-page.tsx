@@ -5,7 +5,7 @@ import {
   IconSettings,
   IconStar,
 } from "@tabler/icons-react"
-import { type ComponentType, useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
@@ -25,6 +25,7 @@ import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
 import { refreshGatewayState } from "@/store/gateway"
 
 import { AddModelSheet } from "./add-model-sheet"
+import { CatalogDialog } from "./catalog-dialog"
 import { DeleteModelDialog } from "./delete-model-dialog"
 import { EditModelSheet } from "./edit-model-sheet"
 import { getProviderKey, getProviderLabel } from "./provider-label"
@@ -330,13 +331,11 @@ export function ModelsPage() {
         onDeleted={fetchModels}
       />
 
-      {CatalogDialogComp && (
-        <CatalogDialogComp
-          open={catalogOpen}
-          onClose={() => setCatalogOpen(false)}
-          onModelAdded={fetchModels}
-        />
-      )}
+      <CatalogDialog
+        open={catalogOpen}
+        onClose={() => setCatalogOpen(false)}
+        onModelAdded={fetchModels}
+      />
     </div>
   )
 }
