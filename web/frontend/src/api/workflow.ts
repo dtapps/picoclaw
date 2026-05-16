@@ -91,10 +91,16 @@ export interface Step {
   enabled?: boolean
 }
 
+export interface NotifyTarget {
+  channel: string
+  chat_id: string
+}
+
 export interface WorkflowConfig {
   failure_strategy?: string
-  notify_channel?: string
-  notify_chat_id?: string
+  notify_channels?: NotifyTarget[]  // v2 格式：多频道
+  notify_channel?: string           // v1 格式：向后兼容
+  notify_chat_id?: string           // v1 格式：向后兼容
   workdir?: string
 }
 

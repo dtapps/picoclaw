@@ -415,14 +415,14 @@ export function WorkflowsPage() {
 
       {/* Cron 调度弹窗 */}
       <Dialog open={cronDialogOpen} onOpenChange={setCronDialogOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <IconClock className="h-5 w-5" />
               {t("pages.workflows.cron_schedule", "Cron Schedule")}
             </DialogTitle>
           </DialogHeader>
-          <div className="py-2">
+          <div className="py-2 flex-1 overflow-hidden flex flex-col">
             {cronLoading ? (
               <div className="py-8 text-center text-muted-foreground text-sm">
                 {t("common.loading", "Loading...")}
@@ -432,7 +432,7 @@ export function WorkflowsPage() {
                 {t("pages.workflows.no_cron_tasks", "No scheduled cron tasks")}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 overflow-y-auto pr-1">
                 {cronTasks
                   .slice()
                   .sort((a, b) => {
@@ -460,11 +460,11 @@ export function WorkflowsPage() {
                   .map((task) => (
                   <div
                     key={`${task.workflow_name}-${task.trigger_type}-${task.schedule}`}
-                    className="flex items-center justify-between rounded-md border px-4 py-3"
+                    className="flex items-start justify-between rounded-md border px-3 py-2.5 gap-2"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="font-medium text-sm truncate">{task.workflow_name}</p>
-                      <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                         <span className={cn(
                           "rounded px-1.5 py-0.5 text-[10px] font-medium",
                           task.trigger_type === "cron" && "bg-blue-100 text-blue-700",
@@ -475,15 +475,17 @@ export function WorkflowsPage() {
                           {task.trigger_type === "at" && "AT"}
                           {task.trigger_type === "interval" && "INTERVAL"}
                         </span>
-                        <code className="rounded bg-muted px-1.5 py-0.5">{task.schedule}</code>
+                        <code className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{task.schedule}</code>
                         {task.timezone && task.timezone !== "UTC" && (
-                          <span>({task.timezone})</span>
+                          <span className="text-[11px]">({task.timezone})</span>
                         )}
                       </div>
                     </div>
-                    <span className="ml-3 shrink-0 text-sm font-medium text-blue-600 whitespace-nowrap">
-                      → {task.next_run}
-                    </span>
+                    <div className="shrink-0 text-right">
+                      <div className="text-xs font-medium text-blue-600 whitespace-nowrap">
+                        → {task.next_run.split(' ').slice(0, 2).join(' ')}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>

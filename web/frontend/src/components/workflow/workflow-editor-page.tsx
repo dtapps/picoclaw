@@ -300,9 +300,8 @@ export function WorkflowEditorPage() {
           steps: wfData.steps,
           config: {
             ...wfData.config,
-            // 保留编辑器未管理的通知配置字段
-            notify_channel: editWorkflow!.config?.notify_channel,
-            notify_chat_id: editWorkflow!.config?.notify_chat_id,
+            // 保留编辑器未管理的通知配置字段（v2 格式）
+            notify_channels: editWorkflow!.config?.notify_channels,
           },
         } as UpdateWorkflowRequest)
       } else {
