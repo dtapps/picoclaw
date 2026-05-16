@@ -19,6 +19,7 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
+	"github.com/sipeed/picoclaw/pkg/commands"
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
@@ -164,6 +165,9 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 	c.yuanbaoClient.OnConnected(func() {
 		logger.InfoC(c.Name(), "元宝频道已连接...")
 		c.SetRunning(true)
+
+		// 同步命令到服务器
+		c.syncCommands()
 	})
 
 	// 设置断开连接回调
@@ -341,4 +345,66 @@ func (c *YuanbaoChannel) EditMessage(ctx context.Context, chatID string, message
 		"message_id": messageID,
 	})
 	return nil
+}
+
+// commandDefs 存储命令定义，用于同步到元宝服务器
+var commandDefs []commands.Definition
+
+// RegisterCommands implements channels.CommandRegistrarCapable.
+// 存储命令定义，在连接成功后同步到元宝服务器。
+func (c *YuanbaoChannel) RegisterCommands(ctx context.Context, defs []commands.Definition) error {
+	commandDefs = defs
+	// 如果已经连接，立即同步
+	if c.IsRunning() && c.yuanbaoClient != nil {
+		c.syncCommands()
+	}
+	return nil
+}
+
+// syncCommands 同步命令到元宝服务器
+func (c *YuanbaoChannel) syncCommands() {
+	if c.yuanbaoClient == nil {
+		return
+	}
+
+	// 使用系统真实的命令定义
+	defs := commands.BuiltinDefinitions()
+
+	// 将命令转换为元宝格式
+	var botCommands []yuanbaoTypes.BotCommand
+	for _, def := range defs {
+		if def.Name == "" || def.Description == "" {
+			continue
+		}
+		cmd := yuanbaoTypes.BotCommand{
+			Name:        "/" + def.Name,
+			Description: def.Description,
+		}
+		botCommands = append(botCommands, cmd)
+	}
+
+	// 将注册的插件命令转换为元宝命令格式
+	var pluginCommands []yuanbaoTypes.BotCommand
+	for _, def := range commandDefs {
+		if def.Name == "" || def.Description == "" {
+			continue
+		}
+		cmd := yuanbaoTypes.BotCommand{
+			Name:        "/" + def.Name,
+			Description: def.Description,
+		}
+		pluginCommands = append(pluginCommands, cmd)
+	}
+
+	// 同步命令到服务器
+	if err := c.yuanbaoClient.SyncCommands(botCommands, pluginCommands); err != nil {
+		logger.ErrorCF(c.Name(), "同步命令到元宝服务器失败", map[string]any{
+			"error": err.Error(),
+		})
+	} else {
+		logger.InfoCF(c.Name(), "同步命令到元宝服务器成功", map[string]any{
+			"bot_commands":    len(botCommands),
+			"plugin_commands": len(pluginCommands),
+		})
+	}
 }
