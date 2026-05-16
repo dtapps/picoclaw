@@ -182,11 +182,11 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 			return
 		}
 
-		content := ""
+		var content strings.Builder
 		for _, segment := range msg.Content {
-			content += strings.TrimSpace(segment.Text)
+			content.WriteString(strings.TrimSpace(segment.Text))
 		}
-		if content == "" {
+		if content.String() == "" {
 			logger.ErrorCF(c.Name(), "微博频道错误", map[string]any{
 				"error": "消息为空",
 			})
@@ -236,7 +236,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 		c.HandleInboundContext(
 			c.ctx,
 			inboundCtx.ChatID,
-			content,
+			content.String(),
 			mediaRefs,
 			inboundCtx,
 			sender,
