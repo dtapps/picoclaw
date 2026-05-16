@@ -13,6 +13,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/evolution"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 type evolutionBridge struct {
@@ -43,21 +44,24 @@ func newEvolutionBridge(
 		return nil, nil
 	}
 
-	modelID := resolvedEvolutionModelID(cfg, provider)
+	// 包装 provider，自动注入 tracing 信息
+	wrappedProvider := wrapProviderWithTracing(provider, cfg.Tracing)
+
+	modelID := resolvedEvolutionModelID(cfg, wrappedProvider)
 	runtime, err := evolution.NewRuntime(evolution.RuntimeOptions{
 		Config: cfg.Evolution,
 		PatternClusterer: evolution.NewLLMPatternClusterer(
-			provider,
+			wrappedProvider,
 			modelID,
 			evolution.NewHeuristicPatternClusterer(cfg.Evolution.EffectiveMinTaskCount(), nil),
 			cfg.Evolution.EffectiveMinTaskCount(),
 			nil,
 		),
 		GeneratorFactory: func(workspace string) evolution.DraftGenerator {
-			return evolution.NewDraftGeneratorForWorkspace(workspace, provider, modelID)
+			return evolution.NewDraftGeneratorForWorkspace(workspace, wrappedProvider, modelID)
 		},
 		SuccessJudgeFactory: func(workspace string) evolution.SuccessJudge {
-			return evolution.NewLLMTaskSuccessJudge(provider, modelID, &evolution.HeuristicSuccessJudge{})
+			return evolution.NewLLMTaskSuccessJudge(wrappedProvider, modelID, &evolution.HeuristicSuccessJudge{})
 		},
 		ApplierFactory: func(workspace string) *evolution.Applier {
 			return evolution.NewApplier(evolution.NewPaths(workspace, cfg.Evolution.StateDir), nil)
@@ -88,6 +92,43 @@ func newEvolutionBridge(
 	}
 
 	return bridge, nil
+}
+
+// tracingProvider 包装器，为 evolution 的 LLM 调用自动注入链路追踪信息
+type tracingProvider struct {
+	inner   providers.LLMProvider
+	tracing config.TracingConfig
+}
+
+func (p *tracingProvider) Chat(
+	ctx context.Context,
+	messages []providers.Message,
+	tools []providers.ToolDefinition,
+	model string,
+	opts map[string]any,
+) (*providers.LLMResponse, error) {
+	// 注入链路追踪信息到上下文
+	if p.tracing.IsEnabled() {
+		ctx = tracing.WithHeaders(ctx, p.tracing.Headers)
+		// evolution 是后台任务，使用静态标识
+		ctx = tracing.WithAgentID(ctx, "evolution")
+		ctx = tracing.WithAgentName(ctx, "Evolution")
+		ctx = tracing.WithChannel(ctx, "evolution")
+		ctx = tracing.WithModel(ctx, model)
+	}
+	return p.inner.Chat(ctx, messages, tools, model, opts)
+}
+
+func (p *tracingProvider) GetDefaultModel() string {
+	return p.inner.GetDefaultModel()
+}
+
+// 包装 provider，自动注入链路追踪信息
+func wrapProviderWithTracing(provider providers.LLMProvider, tracingCfg config.TracingConfig) providers.LLMProvider {
+	if provider == nil || !tracingCfg.IsEnabled() {
+		return provider
+	}
+	return &tracingProvider{inner: provider, tracing: tracingCfg}
 }
 
 func resolvedEvolutionModelID(cfg *config.Config, provider providers.LLMProvider) string {

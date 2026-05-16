@@ -283,6 +283,7 @@ func registerSharedTools(
 		if (spawnEnabled || spawnStatusEnabled) && cfg.Tools.IsToolEnabled("subagent") {
 			subagentManager := tools.NewSubagentManager(provider, agent.Model, agent.Workspace)
 			subagentManager.SetLLMOptions(agent.MaxTokens, agent.Temperature)
+			subagentManager.SetTracingConfig(cfg.Tracing)
 
 			// Inject a media resolver so the legacy RunToolLoop fallback path can
 			// resolve media:// refs in the same way the main AgentLoop does.
