@@ -17,7 +17,6 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
-	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
@@ -124,7 +123,6 @@ func (rt *Runtime) FinalizeTurn(ctx context.Context, input TurnCaseInput) error 
 		WorkspaceID:    workspaceID,
 		CreatedAt:      createdAt,
 		SessionKey:     input.SessionKey,
-		TurnID:         input.TurnID,
 		Summary:        buildRecordSummary(input),
 		FinalOutput:    summarizeText(input.FinalContent, 1200),
 		Status:         RecordStatus("new"),
@@ -277,9 +275,6 @@ func (rt *Runtime) RunColdPathOnce(ctx context.Context, workspace string) error 
 		"pattern_count": len(patternRecords),
 		"run_id":        runID,
 	})
-
-	// 从最近一条记录中提取链路追踪信息，注入到上下文
-	ctx = rt.injectTracingFromRecentRecord(ctx, taskRecords)
 
 	admittedCount := 0
 	newRuleCount := 0
@@ -1601,34 +1596,4 @@ func nextRetentionScore(current float64, success bool) float64 {
 		return 1
 	}
 	return current
-}
-
-// injectTracingFromRecentRecord 从最近一条记录中提取链路追踪信息，注入到上下文中
-func (rt *Runtime) injectTracingFromRecentRecord(ctx context.Context, records []LearningRecord) context.Context {
-	if len(records) == 0 {
-		return ctx
-	}
-
-	// 找到最近一条有 tracing 信息的记录
-	var recentRecord *LearningRecord
-	for i := len(records) - 1; i >= 0; i-- {
-		if records[i].SessionKey != "" || records[i].TurnID != "" {
-			recentRecord = &records[i]
-			break
-		}
-	}
-
-	if recentRecord == nil {
-		return ctx
-	}
-
-	// 注入链路追踪信息到上下文
-	if recentRecord.SessionKey != "" {
-		ctx = tracing.WithSessionKey(ctx, recentRecord.SessionKey)
-	}
-	if recentRecord.TurnID != "" {
-		ctx = tracing.WithTurnID(ctx, recentRecord.TurnID)
-	}
-
-	return ctx
 }
