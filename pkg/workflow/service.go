@@ -1189,11 +1189,20 @@ func (s *Service) reloadWorkflowsUnsafe() error {
 
 	// 迁移所有工作流到最新版本
 	migratedCount := 0
+	savedCount := 0
 	for _, wf := range workflows {
 		if wf.MigrateToV2() {
 			migratedCount++
 			logger.InfoCF("workflow", "工作流配置已迁移",
 				map[string]any{"workflow": wf.Name, "version": wf.Version})
+
+			// 保存迁移后的配置到磁盘
+			if err := s.store.SaveWorkflow(wf); err != nil {
+				logger.ErrorCF("workflow", "保存迁移后的工作流失败",
+					map[string]any{"workflow": wf.Name, "error": err.Error()})
+			} else {
+				savedCount++
+			}
 		}
 		// 计算运行时状态字段
 		s.computeWorkflowRuntimeState(wf)
@@ -1201,7 +1210,7 @@ func (s *Service) reloadWorkflowsUnsafe() error {
 
 	if migratedCount > 0 {
 		logger.InfoCF("workflow", "批量迁移完成",
-			map[string]any{"total": len(workflows), "migrated": migratedCount})
+			map[string]any{"total": len(workflows), "migrated": migratedCount, "saved": savedCount})
 	}
 
 	s.workflows = workflows
