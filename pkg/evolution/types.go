@@ -76,6 +76,7 @@ type LearningRecord struct {
 	CreatedAt            time.Time             `json:"created_at"`
 	UpdatedAt            *time.Time            `json:"updated_at,omitempty"`
 	SessionKey           string                `json:"session_key,omitempty"`
+	TurnID               string                `json:"turn_id,omitempty"`
 	TaskHash             string                `json:"task_hash,omitempty"`
 	Summary              string                `json:"summary"`
 	UserGoal             string                `json:"user_goal,omitempty"`
