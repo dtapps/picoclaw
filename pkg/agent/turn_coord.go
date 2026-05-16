@@ -12,6 +12,7 @@ import (
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 func (al *AgentLoop) runTurn(ctx context.Context, ts *turnState, pipeline *Pipeline) (turnResult, error) {
@@ -444,6 +445,16 @@ func (al *AgentLoop) askSideQuestion(
 				callOpts = shallowCloneLLMOptions(llmOpts)
 				callOpts["thinking_level"] = string(agent.ThinkingLevel)
 			}
+		}
+		// 注入链路追踪信息到上下文
+		if al.GetConfig() != nil && al.GetConfig().Tracing.IsEnabled() {
+			ctx = tracing.WithHeaders(ctx, al.GetConfig().Tracing.Headers)
+			ctx = tracing.WithAgentID(ctx, agent.ID)
+			ctx = tracing.WithAgentName(ctx, agent.Name)
+			ctx = tracing.WithChannel(ctx, channel)
+			ctx = tracing.WithChatID(ctx, chatID)
+			ctx = tracing.WithSenderID(ctx, senderID)
+			ctx = tracing.WithModel(ctx, model)
 		}
 		return provider.Chat(ctx, callMessages, nil, model, callOpts)
 	}

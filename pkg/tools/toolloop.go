@@ -12,8 +12,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
+	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 	"github.com/sipeed/picoclaw/pkg/utils"
 )
 
@@ -24,6 +26,7 @@ type ToolLoopConfig struct {
 	Tools         *ToolRegistry
 	MaxIterations int
 	LLMOptions    map[string]any
+	TracingCfg    config.TracingConfig
 
 	// MediaResolver resolves media:// refs in messages before each LLM call.
 	// This is optional and is mainly used by subagent legacy fallback execution
@@ -88,7 +91,15 @@ func RunToolLoop(
 		if config.MediaResolver != nil && iteration > 1 {
 			callMessages = config.MediaResolver(messages)
 		}
-		response, err := config.Provider.Chat(ctx, callMessages, providerToolDefs, config.Model, llmOpts)
+		// 注入链路追踪信息到上下文
+		callCtx := ctx
+		if config.TracingCfg.IsEnabled() {
+			callCtx = tracing.WithHeaders(ctx, config.TracingCfg.Headers)
+			callCtx = tracing.WithChannel(callCtx, channel)
+			callCtx = tracing.WithChatID(callCtx, chatID)
+			callCtx = tracing.WithModel(callCtx, config.Model)
+		}
+		response, err := config.Provider.Chat(callCtx, callMessages, providerToolDefs, config.Model, llmOpts)
 		if err != nil {
 			logger.ErrorCF("toolloop", "LLM call failed",
 				map[string]any{
