@@ -191,11 +191,11 @@ func (w *Workflow) MigrateToV2() bool {
 			w.Config.NotifyChannels = []NotifyTarget{
 				{Channel: w.Config.NotifyChannel, ChatID: w.Config.NotifyChatID},
 			}
-			// 清空旧字段（可选，保留用于向后兼容）
-			// w.Config.NotifyChannel = ""
-			// w.Config.NotifyChatID = ""
 			migrated = true
 		}
+		// 清空旧字段（已迁移到新格式）
+		w.Config.NotifyChannel = ""
+		w.Config.NotifyChatID = ""
 	}
 
 	// 更新版本号

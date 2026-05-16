@@ -433,7 +433,31 @@ export function WorkflowsPage() {
               </div>
             ) : (
               <div className="space-y-2">
-                {cronTasks.map((task) => (
+                {cronTasks
+                  .slice()
+                  .sort((a, b) => {
+                    // 按下次执行时间排序（从早到晚）
+                    // 将时间转换为 UTC 时间戳进行比较，确保时区一致性
+                    const parseToUTC = (timeStr: string): number => {
+                      // "2006-01-02 15:04:05 MST" 格式
+                      // 尝试直接解析，JavaScript 会尽量处理时区
+                      const date = new Date(timeStr);
+                      const timestamp = date.getTime();
+                      
+                      // 如果解析失败（NaN），尝试移除时区后按本地时间解析
+                      if (isNaN(timestamp)) {
+                        const dateTimePart = timeStr.replace(/\s+[A-Z]{2,4}$/, '');
+                        return new Date(dateTimePart).getTime();
+                      }
+                      
+                      return timestamp;
+                    };
+                    
+                    const timeA = parseToUTC(a.next_run);
+                    const timeB = parseToUTC(b.next_run);
+                    return timeA - timeB;
+                  })
+                  .map((task) => (
                   <div
                     key={`${task.workflow_name}-${task.trigger_type}-${task.schedule}`}
                     className="flex items-center justify-between rounded-md border px-4 py-3"
