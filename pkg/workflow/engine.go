@@ -14,6 +14,24 @@ import (
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
+// describeActionType 将步骤 action 英文标识转为中文类型名称。
+func describeActionType(action string) string {
+	switch action {
+	case "agent_prompt":
+		return "Agent 步骤"
+	case "tool_call":
+		return "工具步骤"
+	case "parallel":
+		return "并行步骤"
+	case "if":
+		return "条件步骤"
+	case "notify":
+		return "通知步骤"
+	default:
+		return "步骤"
+	}
+}
+
 type contextKey string
 
 const (
@@ -537,7 +555,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	inst.mu.Lock()
 	inst.StepStates[step.ID] = state
 	inst.mu.Unlock()
-	inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 开始执行（action: %s）", step.ID, step.Action))
+	inst.appendLog(step.ID, "info", fmt.Sprintf("%s '%s' 开始执行", describeActionType(step.Action), step.ID))
 	inst.mu.Lock()
 	_ = e.store.SaveInstance(inst)
 	inst.mu.Unlock()
