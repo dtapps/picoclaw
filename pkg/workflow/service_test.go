@@ -381,11 +381,14 @@ func TestService_BindChannel(t *testing.T) {
 	}
 
 	loaded, _ := svc.GetWorkflow("bind-test")
-	if loaded.Config.NotifyChannel != "telegram" {
-		t.Fatalf("NotifyChannel = %q, want %q", loaded.Config.NotifyChannel, "telegram")
+	if len(loaded.Config.NotifyChannels) != 1 {
+		t.Fatalf("NotifyChannels length = %d, want 1", len(loaded.Config.NotifyChannels))
 	}
-	if loaded.Config.NotifyChatID != "-100456" {
-		t.Fatalf("NotifyChatID = %q, want %q", loaded.Config.NotifyChatID, "-100456")
+	if loaded.Config.NotifyChannels[0].Channel != "telegram" {
+		t.Fatalf("NotifyChannels[0].Channel = %q, want %q", loaded.Config.NotifyChannels[0].Channel, "telegram")
+	}
+	if loaded.Config.NotifyChannels[0].ChatID != "-100456" {
+		t.Fatalf("NotifyChannels[0].ChatID = %q, want %q", loaded.Config.NotifyChannels[0].ChatID, "-100456")
 	}
 }
 
@@ -397,17 +400,17 @@ func TestService_UnbindChannel(t *testing.T) {
 	wf := &Workflow{
 		Name:   "unbind-test",
 		Steps:  []Step{{ID: "s1", Action: "agent_prompt", Prompt: "hi"}},
-		Config: WorkflowConfig{NotifyChannel: "telegram", NotifyChatID: "-100"},
+		Config: WorkflowConfig{NotifyChannels: []NotifyTarget{{Channel: "telegram", ChatID: "-100"}}},
 	}
 	svc.CreateWorkflow(wf)
 
-	if err := svc.UnbindChannel("unbind-test"); err != nil {
+	if err := svc.UnbindChannel("unbind-test", "telegram", "-100"); err != nil {
 		t.Fatalf("UnbindChannel() error: %v", err)
 	}
 
 	loaded, _ := svc.GetWorkflow("unbind-test")
-	if loaded.Config.NotifyChannel != "" {
-		t.Fatalf("NotifyChannel = %q, want empty", loaded.Config.NotifyChannel)
+	if len(loaded.Config.NotifyChannels) != 0 {
+		t.Fatalf("NotifyChannels = %v, want empty", loaded.Config.NotifyChannels)
 	}
 }
 
@@ -795,8 +798,15 @@ func TestService_BindChannel_ReadsFreshFromDisk(t *testing.T) {
 	if diskWf.Vars["extra"] != "added" {
 		t.Fatalf("Vars[extra] = %q, want %q (external addition preserved)", diskWf.Vars["extra"], "added")
 	}
-	if diskWf.Config.NotifyChannel != "telegram" {
-		t.Fatalf("NotifyChannel = %q, want %q (bind applied)", diskWf.Config.NotifyChannel, "telegram")
+	if len(diskWf.Config.NotifyChannels) != 1 {
+		t.Fatalf("NotifyChannels length = %d, want 1 (bind applied)", len(diskWf.Config.NotifyChannels))
+	}
+	if diskWf.Config.NotifyChannels[0].Channel != "telegram" {
+		t.Fatalf(
+			"NotifyChannels[0].Channel = %q, want %q (bind applied)",
+			diskWf.Config.NotifyChannels[0].Channel,
+			"telegram",
+		)
 	}
 }
 
@@ -809,7 +819,7 @@ func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
 	wf := &Workflow{
 		Name:   "unbind-fresh",
 		Steps:  []Step{{ID: "s1", Action: "agent_prompt", Prompt: "old"}},
-		Config: WorkflowConfig{NotifyChannel: "telegram", NotifyChatID: "-100"},
+		Config: WorkflowConfig{NotifyChannels: []NotifyTarget{{Channel: "telegram", ChatID: "-100"}}},
 	}
 	svc.CreateWorkflow(wf)
 
@@ -819,7 +829,7 @@ func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
 	svc.store.SaveWorkflow(externalWf)
 
 	// UnbindChannel 应基于最新磁盘数据操作
-	if err := svc.UnbindChannel("unbind-fresh"); err != nil {
+	if err := svc.UnbindChannel("unbind-fresh", "telegram", "-100"); err != nil {
 		t.Fatalf("UnbindChannel() error: %v", err)
 	}
 
@@ -827,7 +837,7 @@ func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
 	if diskWf.Steps[0].Prompt != "new" {
 		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new")
 	}
-	if diskWf.Config.NotifyChannel != "" {
+	if len(diskWf.Config.NotifyChannels) != 0 {
 		t.Fatalf("NotifyChannel = %q, want empty (unbind applied)", diskWf.Config.NotifyChannel)
 	}
 }

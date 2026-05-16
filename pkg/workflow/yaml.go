@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
 // ParseYAMLWorkflow 将 YAML 字节流反序列化为 Workflow 结构体。
@@ -13,6 +15,13 @@ func ParseYAMLWorkflow(data []byte) (*Workflow, error) {
 	if err := yaml.Unmarshal(data, &wf); err != nil {
 		return nil, fmt.Errorf("解析工作流 YAML 失败: %w", err)
 	}
+
+	// 自动迁移配置到最新版本
+	if wf.MigrateToV2() {
+		logger.DebugCF("workflow", "工作流配置已自动迁移",
+			map[string]any{"workflow": wf.Name, "version": wf.Version})
+	}
+
 	return &wf, nil
 }
 

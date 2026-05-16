@@ -199,12 +199,13 @@ StopInstance(instanceID)
 
 A workflow is an executable unit composed of an ordered set of steps. Each workflow contains:
 
+- **Version**: Configuration format version (`version`), currently v2, used for automatic migration of legacy configurations
 - **Name**: Unique identifier for reference and management, restricted to `a-zA-Z0-9_-` only
 - **Description**: Purpose description
 - **Triggers**: Define when the workflow auto-executes (manual/cron/event)
 - **Vars**: Workflow-level variables to avoid repeating the same values (e.g., paths, URLs) across steps
 - **Steps**: Ordered sequence of actions
-- **Config**: Global options like failure strategy (stop/continue)
+- **Config**: Global options like failure strategy (stop/continue), notification channels, etc.
 
 > **Name Rules**: Workflow names are restricted to `a-zA-Z0-9_-` because they are used as YAML file names. Non-ASCII or special characters would cause file system issues. The `enabled` state is a runtime property not stored in the YAML definition — it is managed via a `.disabled` marker file (see File Storage).
 
@@ -718,13 +719,19 @@ The agent can manage workflows via the `workflow` tool:
 | `stop` | Stop an instance | `instance_id` |
 | `create` | Create a workflow | `name`, `steps_yaml` |
 | `delete` | Delete a workflow | `name` |
-| `bind` | Bind current channel for completion notifications | `name` |
-| `unbind` | Remove channel binding | `name` |
+| `bind` | Bind current channel for notifications (append mode) | `name` |
+| `unbind` | Unbind current channel from notifications | `name` |
 | `enable` | Enable a workflow | `name` |
 | `disable` | Disable a workflow | `name` |
 | `instances` | View execution history | `name` |
 
 The `bind` and `run` actions automatically capture the channel/chatID from the conversation context (same pattern as the Cron tool). After binding, completion notifications (success/failure/cancel) are sent to the bound channel.
+
+**Multi-channel Support**:
+
+- The `bind` action uses append mode, adding the current channel to the notification list without overwriting existing bindings
+- The `unbind` action automatically unbinds the current conversation channel
+- When a workflow executes, it sends notifications to all bound channels
 
 ### Channel Binding Example (in conversation)
 
@@ -745,8 +752,9 @@ Workflows can also be managed via the `/workflow` slash command in any chat chan
 | `/workflow list` | List all workflows |
 | `/workflow run <name>` | Trigger a workflow (auto-passes current channel for notifications) |
 | `/workflow show <name>` | View workflow details |
-| `/workflow bind <name>` | Bind current channel for notifications |
-| `/workflow unbind <name>` | Remove channel binding |
+| `/workflow bind <name>` | Bind current channel for notifications (append mode) |
+| `/workflow unbind <name>` | Unbind current channel from notifications |
+| `/workflow channels <name>` | List all notification channels bound to a workflow |
 | `/workflow enable <name>` | Enable a workflow |
 | `/workflow disable <name>` | Disable a workflow |
 | `/workflow instances <name>` | View execution history |
@@ -755,9 +763,51 @@ Workflows can also be managed via the `/workflow` slash command in any chat chan
 Usage example:
 
 ```
-/workflow bind morning-briefing     → Bind notification channel
-/workflow run morning-briefing      → Trigger with current channel bound
+# Bind in Telegram channel
+/workflow bind morning-briefing      → Add current Telegram channel to notification list
+
+# View all bound channels
+/workflow channels morning-briefing   → Show all notification channels
+
+# Switch to DingTalk group and bind
+/workflow bind morning-briefing      → Add DingTalk channel to notification list too
+
+# Unbind in DingTalk group
+/workflow unbind morning-briefing    → Remove only DingTalk channel binding
+
+# Trigger execution
+/workflow run morning-briefing       → Trigger with current channel bound
+
+# View execution history
 /workflow instances morning-briefing → View execution history
+```
+
+**Multi-channel Notifications**:
+
+- The `bind` command uses **append mode**, it doesn't overwrite existing bindings but adds the current channel to the notification list
+- The `unbind` command automatically unbinds the **current conversation channel**, no need to specify manually
+- The `channels` command shows all bound notification channels
+- When a workflow executes, it sends notifications to all bound channels
+
+Example:
+```bash
+# Execute in Telegram
+/workflow bind my-workflow
+# → Add Telegram channel to notification list
+
+# Execute in DingTalk
+/workflow bind my-workflow
+# → Add DingTalk channel to notification list (Telegram still retained)
+
+# View bindings
+/workflow channels my-workflow
+# → Shows:
+#   1. telegram (ID: -100xxx)
+#   2. dingtalk (ID: cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs=)
+
+# Unbind in DingTalk
+/workflow unbind my-workflow
+# → Remove only DingTalk channel, Telegram still retained
 ```
 
 ## File Storage
@@ -847,12 +897,37 @@ Channel binding follows the same pattern as the Cron tool: `ToolChannel(ctx)` / 
 **YAML config fallback**:
 
 ```yaml
+# v1 format (single channel, backward compatible)
 config:
   notify_channel: telegram   # Default notification channel
   notify_chat_id: "-100xxx"  # Default notification chat ID
+
+# v2 format (multi-channel, recommended)
+config:
+  notify_channels:
+    - channel: telegram
+      chat_id: "-100xxx"
+    - channel: dingtalk
+      chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
 ```
 
-When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine falls back to `notify_channel`/`notify_chat_id` from the workflow config.
+When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine falls back to notification targets from the workflow config.
+
+**Version Migration Mechanism**:
+
+The workflow engine supports configuration version management to ensure backward compatibility:
+
+- **v1 format**: Uses `notify_channel` and `notify_chat_id` fields (single channel)
+- **v2 format**: Uses `notify_channels` array field (multi-channel), while retaining v1 fields for backward compatibility
+- **Automatic migration**: When loading a workflow, if v1 format is detected and v2 format is not in use, the system automatically migrates to v2 format
+- **Version field**: Workflow definitions can optionally include a `version` field (e.g., `version: 2`), defaulting to 1 if not set
+
+Migration is fully automated with no user intervention required:
+1. **Load-time migration**: Automatically detects and migrates when reading YAML files from disk
+2. **Startup migration**: Batch migrates all loaded workflows when the service starts
+3. **Save-time migration**: Automatically migrates to the latest version before saving
+
+This design ensures that legacy configurations work without modification while providing extensibility for new features.
 
 ### Notification via Steps
 

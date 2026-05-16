@@ -90,7 +90,8 @@ type Runtime struct {
 	WorkflowRun       func(ctx context.Context, name, channel, chatID string) (string, error)
 	WorkflowShow      func(name string) (*WorkflowInfo, []string, error) // info, stepIDs, 错误
 	WorkflowBind      func(name, channel, chatID string) error
-	WorkflowUnbind    func(name string) error
+	WorkflowUnbind    func(name, channel, chatID string) error
+	WorkflowChannels  func(name string) ([]NotifyTarget, error)
 	WorkflowEnable    func(name string, enabled bool) error
 	WorkflowInstances func(name string) ([]WorkflowInstanceInfo, error)
 	WorkflowStop      func(instanceID string) error
@@ -104,4 +105,10 @@ type CronTaskInfo struct {
 	Schedule     string `json:"schedule"`     // cron 表达式、at 时间或 interval 值
 	Timezone     string `json:"timezone"`
 	NextRun      string `json:"next_run"`
+}
+
+// NotifyTarget 表示通知目标（频道 + 聊天 ID）。
+type NotifyTarget struct {
+	Channel string `json:"channel"` // 频道名称，如 "dingtalk"、"telegram"
+	ChatID  string `json:"chat_id"` // 聊天 ID
 }

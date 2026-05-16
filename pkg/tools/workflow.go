@@ -110,7 +110,7 @@ func (t *WorkflowTool) Execute(ctx context.Context, args map[string]any) *ToolRe
 	case "bind":
 		return t.bindWorkflow(ctx, args)
 	case "unbind":
-		return t.unbindWorkflow(args)
+		return t.unbindWorkflow(ctx, args)
 	case "enable":
 		return t.enableWorkflow(args, true)
 	case "disable":
@@ -345,17 +345,24 @@ func (t *WorkflowTool) bindWorkflow(ctx context.Context, args map[string]any) *T
 }
 
 // unbindWorkflow 移除工作流的频道绑定。
-func (t *WorkflowTool) unbindWorkflow(args map[string]any) *ToolResult {
+func (t *WorkflowTool) unbindWorkflow(ctx context.Context, args map[string]any) *ToolResult {
 	name, _ := args["name"].(string)
 	if name == "" {
 		return ErrorResult("name is required for unbind")
 	}
 
-	if err := t.service.UnbindChannel(name); err != nil {
+	channel := ToolChannel(ctx)
+	chatID := ToolChatID(ctx)
+
+	if channel == "" || chatID == "" {
+		return ErrorResult("no session context (channel/chat_id not set). Use this command in an active conversation.")
+	}
+
+	if err := t.service.UnbindChannel(name, channel, chatID); err != nil {
 		return ErrorResult(fmt.Sprintf("Failed to unbind workflow '%s': %v", name, err))
 	}
 
-	return SilentResult(fmt.Sprintf("Workflow '%s' channel binding removed", name))
+	return SilentResult(fmt.Sprintf("Removed binding for workflow '%s' on channel %s (ID: %s)", name, channel, chatID))
 }
 
 // enableWorkflow 启用或禁用工作流。

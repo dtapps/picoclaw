@@ -14,24 +14,6 @@ import (
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
-// describeActionType 将步骤 action 英文标识转为中文类型名称。
-func describeActionType(action string) string {
-	switch action {
-	case "agent_prompt":
-		return "Agent 步骤"
-	case "tool_call":
-		return "工具步骤"
-	case "parallel":
-		return "并行步骤"
-	case "if":
-		return "条件步骤"
-	case "notify":
-		return "通知步骤"
-	default:
-		return "步骤"
-	}
-}
-
 type contextKey string
 
 const (
@@ -157,12 +139,23 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 
 	// 频道绑定：优先使用触发时传入的频道，否则使用工作流配置的默认通知频道
 	if channel == "" {
-		channel = wf.Config.NotifyChannel
+		// 优先从新字段获取所有通知目标
+		targets := wf.Config.GetNotifyTargets()
+		if len(targets) > 0 {
+			inst.NotifyChannels = targets
+			// 向后兼容：设置第一个为目标
+			channel = targets[0].Channel
+			chatID = targets[0].ChatID
+		} else {
+			// 向后兼容：从旧字段获取
+			channel = wf.Config.NotifyChannel
+			chatID = wf.Config.NotifyChatID
+		}
 		inst.Channel = channel
-	}
-	if chatID == "" {
-		chatID = wf.Config.NotifyChatID
 		inst.ChatID = chatID
+	} else {
+		// 如果传入了 channel/chatID，也保存到 NotifyChannels
+		inst.NotifyChannels = []NotifyTarget{{Channel: channel, ChatID: chatID}}
 	}
 
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 开始执行（触发: %s）", wf.Name, triggerType))
@@ -555,7 +548,7 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	inst.mu.Lock()
 	inst.StepStates[step.ID] = state
 	inst.mu.Unlock()
-	inst.appendLog(step.ID, "info", fmt.Sprintf("%s '%s' 开始执行", describeActionType(step.Action), step.ID))
+	inst.appendLog(step.ID, "info", fmt.Sprintf("步骤 '%s' 开始执行", step.ID))
 	inst.mu.Lock()
 	_ = e.store.SaveInstance(inst)
 	inst.mu.Unlock()

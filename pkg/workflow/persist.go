@@ -140,6 +140,12 @@ func (ps *PersistStore) SaveWorkflow(wf *Workflow) error {
 	ps.mu.Lock()
 	defer ps.mu.Unlock()
 
+	// 保存前自动迁移到最新版本
+	if wf.MigrateToV2() {
+		logger.DebugCF("workflow", "保存前自动迁移工作流配置",
+			map[string]any{"workflow": wf.Name, "version": wf.Version})
+	}
+
 	data, err := renderYAMLWorkflow(wf)
 	if err != nil {
 		return err

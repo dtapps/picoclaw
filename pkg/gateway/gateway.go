@@ -973,12 +973,27 @@ func setupWorkflowService(
 		_ = msgBus.PublishOutbound(context.Background(), msg)
 	}
 
+	// sendToAllTargets 发送通知到所有目标频道
+	sendToAllTargets := func(targets []workflow.NotifyTarget, content string) {
+		for _, target := range targets {
+			if target.Channel != "" && target.ChatID != "" {
+				sendNotification(target.Channel, target.ChatID, content)
+			}
+		}
+	}
+
+	// sendToInstTargets 根据实例配置发送通知（支持多频道）
+	sendToInstTargets := func(inst *workflow.WorkflowInstance, content string) {
+		if len(inst.NotifyChannels) > 0 {
+			sendToAllTargets(inst.NotifyChannels, content)
+		} else if inst.Channel != "" && inst.ChatID != "" {
+			sendNotification(inst.Channel, inst.ChatID, content)
+		}
+	}
+
 	// 设置执行开始回调：推送开始通知到绑定频道
 	engine.SetOnStart(func(inst *workflow.WorkflowInstance) <-chan struct{} {
-		if inst.Channel == "" || inst.ChatID == "" {
-			return nil
-		}
-		sendNotification(inst.Channel, inst.ChatID,
+		sendToInstTargets(inst,
 			fmt.Sprintf("🚀 工作流 '%s' 开始执行\n触发: %s", inst.WorkflowName, inst.TriggerType))
 		return nil
 	})
@@ -986,10 +1001,6 @@ func setupWorkflowService(
 	// 设置步骤开始回调：通知频道即将执行的步骤
 	engine.SetOnStepStart(
 		func(step workflow.Step, inst *workflow.WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any) {
-			if inst.Channel == "" || inst.ChatID == "" {
-				return
-			}
-
 			var content string
 			switch step.Action {
 			case "agent_prompt":
@@ -1001,15 +1012,15 @@ func setupWorkflowService(
 				if len(actionDesc) > 80 {
 					actionDesc = actionDesc[:77] + "..."
 				}
-				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
+				content = fmt.Sprintf("▶️ Agent 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
 			case "parallel":
-				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（并行执行）", workflow.StepLabel(step))
+				content = fmt.Sprintf("▶️ 并行步骤 '%s' 开始执行（并行执行）", workflow.StepLabel(step))
 			case "if":
 				actionDesc := fmt.Sprintf("条件判断: %s", step.When)
 				if len(actionDesc) > 80 {
 					actionDesc = actionDesc[:77] + "..."
 				}
-				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
+				content = fmt.Sprintf("▶️ 条件步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), actionDesc)
 			case "tool_call":
 				toolFeedbackMaxLen := cfg.Agents.Defaults.GetToolFeedbackMaxArgsLength()
 				var argsPreview string
@@ -1022,22 +1033,19 @@ func setupWorkflowService(
 				stepLabel := workflow.StepLabel(step)
 				content = utils.FormatToolFeedbackMessage(
 					step.Tool,
-					fmt.Sprintf("▶️ 步骤 '%s' 开始执行", stepLabel),
+					fmt.Sprintf("▶️ 工具步骤 '%s' 开始执行", stepLabel),
 					argsPreview,
 				)
 			default:
 				content = fmt.Sprintf("▶️ 步骤 '%s' 开始执行（%s）", workflow.StepLabel(step), step.Action)
 			}
-			sendNotification(inst.Channel, inst.ChatID, content)
+
+			sendToInstTargets(inst, content)
 		},
 	)
 
 	// 设置步骤完成回调：将结果实时推送到绑定频道
 	engine.SetOnStepComplete(func(step workflow.Step, inst *workflow.WorkflowInstance, result workflow.StepResult) {
-		if inst.Channel == "" || inst.ChatID == "" {
-			return
-		}
-
 		// notify 步骤：直接发送消息（不显示步骤完成标记）
 		if step.Action == "notify" {
 			if result.Error != nil {
@@ -1048,7 +1056,7 @@ func setupWorkflowService(
 				message = step.Message
 			}
 			if message != "" {
-				sendNotification(inst.Channel, inst.ChatID, message)
+				sendToInstTargets(inst, message)
 			}
 			return
 		}
@@ -1057,20 +1065,20 @@ func setupWorkflowService(
 			stepLabel := workflow.StepLabel(step)
 			var resultMsg string
 			if result.Error != nil {
-				statusText := fmt.Sprintf("❌ 步骤 '%s' 执行失败", stepLabel)
+				statusText := fmt.Sprintf("❌ 工具步骤 '%s' 执行失败", stepLabel)
 				resultMsg = utils.FormatToolFeedbackMessage(step.Tool, statusText, result.Error.Error())
 			} else if result.Output != "" {
-				statusText := fmt.Sprintf("✅ 步骤 '%s' 执行完成", stepLabel)
+				statusText := fmt.Sprintf("✅ 工具步骤 '%s' 执行完成", stepLabel)
 				outputPreview := result.Output
 				if len([]rune(outputPreview)) > 300 {
 					outputPreview = string([]rune(outputPreview)[:297]) + "..."
 				}
 				resultMsg = utils.FormatToolFeedbackMessage(step.Tool, statusText, outputPreview)
 			} else {
-				statusText := fmt.Sprintf("✅ 步骤 '%s' 执行完成", stepLabel)
+				statusText := fmt.Sprintf("✅ 工具步骤 '%s' 执行完成", stepLabel)
 				resultMsg = utils.FormatToolFeedbackMessage(step.Tool, statusText, "")
 			}
-			sendNotification(inst.Channel, inst.ChatID, resultMsg)
+			sendToInstTargets(inst, resultMsg)
 			return
 		}
 
@@ -1078,14 +1086,11 @@ func setupWorkflowService(
 		if step.Action != "agent_prompt" || result.Error != nil || result.Output == "" {
 			return
 		}
-		sendNotification(inst.Channel, inst.ChatID, result.Output)
+		sendToInstTargets(inst, result.Output)
 	})
 
 	// 设置执行完成回调：将结果推送到绑定频道
 	engine.SetOnComplete(func(inst *workflow.WorkflowInstance) <-chan struct{} {
-		if inst.Channel == "" || inst.ChatID == "" {
-			return nil
-		}
 		statusText := "✅ 完成"
 		if inst.Status == workflow.StatusFailed {
 			statusText = "❌ 失败"
@@ -1098,7 +1103,7 @@ func setupWorkflowService(
 		if inst.Error != "" {
 			summary += "\n错误: " + inst.Error
 		}
-		sendNotification(inst.Channel, inst.ChatID, summary)
+		sendToInstTargets(inst, summary)
 		return nil
 	})
 

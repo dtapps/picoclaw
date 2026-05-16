@@ -305,8 +305,23 @@ func (al *AgentLoop) buildCommandsRuntime(
 		rt.WorkflowBind = func(name, channel, chatID string) error {
 			return ws.BindChannel(name, channel, chatID)
 		}
-		rt.WorkflowUnbind = func(name string) error {
-			return ws.UnbindChannel(name)
+		rt.WorkflowUnbind = func(name, channel, chatID string) error {
+			return ws.UnbindChannel(name, channel, chatID)
+		}
+		rt.WorkflowChannels = func(name string) ([]commands.NotifyTarget, error) {
+			targets, err := ws.GetNotifyChannels(name)
+			if err != nil {
+				return nil, err
+			}
+			// 转换为 commands.NotifyTarget
+			result := make([]commands.NotifyTarget, len(targets))
+			for i, t := range targets {
+				result[i] = commands.NotifyTarget{
+					Channel: t.Channel,
+					ChatID:  t.ChatID,
+				}
+			}
+			return result, nil
 		}
 		rt.WorkflowEnable = func(name string, enabled bool) error {
 			return ws.SetEnabled(name, enabled)
