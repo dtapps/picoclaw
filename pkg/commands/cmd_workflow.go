@@ -42,6 +42,12 @@ func workflowCommand() Definition {
 				Handler:     workflowUnbindHandler(),
 			},
 			{
+				Name:        "channels",
+				Description: i18n.T("commands_workflow_channels_description"),
+				ArgsUsage:   "<name>",
+				Handler:     workflowChannelsHandler(),
+			},
+			{
 				Name:        "enable",
 				Description: i18n.T("commands_workflow_enable_description"),
 				ArgsUsage:   "<name>",
@@ -208,11 +214,56 @@ func workflowUnbindHandler() Handler {
 			return req.Reply(i18n.T("commands_workflow_unbind_usage"))
 		}
 
-		if err := rt.WorkflowUnbind(name); err != nil {
+		// 自动使用当前对话的频道和 chatID
+		channel := req.Channel
+		chatID := req.ChatID
+
+		if channel == "" || chatID == "" {
+			return req.Reply(i18n.T("commands_workflow_unbind_no_context"))
+		}
+
+		if err := rt.WorkflowUnbind(name, channel, chatID); err != nil {
 			return req.Reply(i18n.Tf("commands_workflow_unbind_error", map[string]any{"Error": err.Error()}))
 		}
 
-		return req.Reply(i18n.Tf("commands_workflow_unbind_success", map[string]any{"Name": name}))
+		return req.Reply(i18n.Tf("commands_workflow_unbind_success", map[string]any{
+			"Name":    name,
+			"Channel": channel,
+			"ChatID":  chatID,
+		}))
+	}
+}
+
+func workflowChannelsHandler() Handler {
+	return func(ctx context.Context, req Request, rt *Runtime) error {
+		if rt == nil || rt.WorkflowChannels == nil {
+			return req.Reply(i18n.T("commands_workflow_service_unavailable"))
+		}
+
+		name := nthToken(req.Text, 2)
+		if name == "" {
+			return req.Reply(i18n.T("commands_workflow_channels_usage"))
+		}
+
+		targets, err := rt.WorkflowChannels(name)
+		if err != nil {
+			return req.Reply(i18n.Tf("commands_workflow_channels_error", map[string]any{"Error": err.Error()}))
+		}
+
+		if len(targets) == 0 {
+			return req.Reply(i18n.Tf("commands_workflow_channels_none", map[string]any{"Name": name}))
+		}
+
+		var sb strings.Builder
+		sb.WriteString(i18n.Tf("commands_workflow_channels_header", map[string]any{"Name": name}) + "\n")
+		for i, target := range targets {
+			sb.WriteString(i18n.Tf("commands_workflow_channels_item", map[string]any{
+				"Index":   i + 1,
+				"Channel": target.Channel,
+				"ChatID":  target.ChatID,
+			}) + "\n")
+		}
+		return req.Reply(sb.String())
 	}
 }
 

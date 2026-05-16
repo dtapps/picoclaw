@@ -26,15 +26,16 @@ import (
 // Workflow 表示一个声明式工作流定义。
 // 工作流由名称、描述、触发器列表、步骤列表和变量组成，以 YAML 文件存储在 workspace/workflows/ 目录下。
 type Workflow struct {
-	Name        string            `yaml:"name"                 json:"name"`           // 工作流名称，全局唯一标识
-	Description string            `yaml:"description"          json:"description"`    // 工作流描述
-	Triggers    []Trigger         `yaml:"triggers"             json:"triggers"`       // 触发器列表
-	Vars        map[string]string `yaml:"vars,omitempty"       json:"vars,omitempty"` // 全局变量，可在步骤中通过 {{.vars.key}} 引用
-	Steps       []Step            `yaml:"steps"                json:"steps"`          // 步骤列表，按顺序执行
-	Config      WorkflowConfig    `yaml:"config,omitempty"     json:"config"`         // 全局配置
-	Enabled     bool              `yaml:"-"                    json:"enabled"`        // 是否启用（运行时状态，不序列化到 YAML）
-	CreatedAt   time.Time         `yaml:"created_at,omitempty" json:"createdAt"`      // 创建时间
-	UpdatedAt   time.Time         `yaml:"updated_at,omitempty" json:"updatedAt"`      // 更新时间
+	Version     int               `yaml:"version,omitempty"    json:"version,omitempty"` // 配置版本号（默认 1）
+	Name        string            `yaml:"name"                 json:"name"`              // 工作流名称，全局唯一标识
+	Description string            `yaml:"description"          json:"description"`       // 工作流描述
+	Triggers    []Trigger         `yaml:"triggers"             json:"triggers"`          // 触发器列表
+	Vars        map[string]string `yaml:"vars,omitempty"       json:"vars,omitempty"`    // 全局变量，可在步骤中通过 {{.vars.key}} 引用
+	Steps       []Step            `yaml:"steps"                json:"steps"`             // 步骤列表，按顺序执行
+	Config      WorkflowConfig    `yaml:"config,omitempty"     json:"config"`            // 全局配置
+	Enabled     bool              `yaml:"-"                    json:"enabled"`           // 是否启用（运行时状态，不序列化到 YAML）
+	CreatedAt   time.Time         `yaml:"created_at,omitempty" json:"createdAt"`         // 创建时间
+	UpdatedAt   time.Time         `yaml:"updated_at,omitempty" json:"updatedAt"`         // 更新时间
 
 	// 运行时状态字段
 	NextRunAt     *time.Time `yaml:"-"                         json:"nextRunAt,omitempty"`     // 下次运行时间（动态计算）
@@ -145,12 +146,64 @@ type RetryConfig struct {
 	Delay       string `yaml:"delay"        json:"delay"`        // 重试间隔，如 "10s"、"1m"
 }
 
+// NotifyTarget 定义通知目标（频道 + 聊天 ID）。
+type NotifyTarget struct {
+	Channel string `yaml:"channel" json:"channel"` // 频道名称，如 "dingtalk"、"telegram"
+	ChatID  string `yaml:"chat_id" json:"chat_id"` // 聊天 ID，如 "cid..."、"-100123"
+}
+
 // WorkflowConfig 包含工作流的全局配置。
 type WorkflowConfig struct {
-	FailureStrategy string `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
-	NotifyChannel   string `yaml:"notify_channel,omitempty"   json:"notify_channel,omitempty"`   // 完成通知频道，如 "telegram"
-	NotifyChatID    string `yaml:"notify_chat_id,omitempty"   json:"notify_chat_id,omitempty"`   // 完成通知聊天 ID，如 "chat-123"
-	Workdir         string `yaml:"workdir,omitempty"          json:"workdir,omitempty"`          // 工作目录，tool_call 步骤执行时的默认目录
+	FailureStrategy string         `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
+	NotifyChannels  []NotifyTarget `yaml:"notify_channels,omitempty"  json:"notify_channels,omitempty"`  // 通知目标列表（支持多频道）
+	NotifyChannel   string         `yaml:"notify_channel,omitempty"   json:"notify_channel,omitempty"`   // 完成通知频道（向后兼容，单频道）
+	NotifyChatID    string         `yaml:"notify_chat_id,omitempty"   json:"notify_chat_id,omitempty"`   // 完成通知聊天 ID（向后兼容，单频道）
+	Workdir         string         `yaml:"workdir,omitempty"          json:"workdir,omitempty"`          // 工作目录，tool_call 步骤执行时的默认目录
+}
+
+// GetNotifyTargets 返回通知目标列表。
+// 优先使用 notify_channels，如果为空则从旧字段 notify_channel/notify_chat_id 转换。
+func (c *WorkflowConfig) GetNotifyTargets() []NotifyTarget {
+	if len(c.NotifyChannels) > 0 {
+		return c.NotifyChannels
+	}
+	// 向后兼容：从旧字段转换
+	if c.NotifyChannel != "" && c.NotifyChatID != "" {
+		return []NotifyTarget{{Channel: c.NotifyChannel, ChatID: c.NotifyChatID}}
+	}
+	return nil
+}
+
+// MigrateToV2 将 v1 配置迁移到 v2 格式。
+// 如果 config.version 为空或 1，且使用了旧字段，则自动迁移到新格式。
+func (w *Workflow) MigrateToV2() bool {
+	// 如果已经是 v2 或更高版本，无需迁移
+	if w.Version >= 2 {
+		return false
+	}
+
+	migrated := false
+
+	// 迁移通知配置
+	if w.Config.NotifyChannel != "" && w.Config.NotifyChatID != "" {
+		// 如果还没有使用新格式，则迁移
+		if len(w.Config.NotifyChannels) == 0 {
+			w.Config.NotifyChannels = []NotifyTarget{
+				{Channel: w.Config.NotifyChannel, ChatID: w.Config.NotifyChatID},
+			}
+			// 清空旧字段（可选，保留用于向后兼容）
+			// w.Config.NotifyChannel = ""
+			// w.Config.NotifyChatID = ""
+			migrated = true
+		}
+	}
+
+	// 更新版本号
+	if migrated {
+		w.Version = 2
+	}
+
+	return migrated
 }
 
 // --- 运行时状态 ---
@@ -167,18 +220,19 @@ const (
 // WorkflowInstance 表示一次工作流执行的运行实例。
 // 记录了每个步骤的执行状态和输出，用于追踪和恢复。
 type WorkflowInstance struct {
-	ID           string                    `json:"id"`                    // 实例唯一 ID
-	WorkflowName string                    `json:"workflow_name"`         // 所属工作流名称
-	Status       string                    `json:"status"`                // 实例状态
-	StepStates   map[string]*StepState     `json:"step_states"`           // 各步骤执行状态
-	StepOutputs  map[string]map[string]any `json:"step_outputs"`          // 各步骤输出数据
-	TriggerType  string                    `json:"trigger_type"`          // 触发类型：cron | event | manual
-	Channel      string                    `json:"channel,omitempty"`     // 绑定频道（从触发上下文继承）
-	ChatID       string                    `json:"chat_id,omitempty"`     // 绑定聊天 ID（从触发上下文继承）
-	Logs         []LogEntry                `json:"logs,omitempty"`        // 执行日志
-	StartedAt    time.Time                 `json:"started_at"`            // 开始时间
-	FinishedAt   *time.Time                `json:"finished_at,omitempty"` // 结束时间
-	Error        string                    `json:"error,omitempty"`       // 错误信息
+	ID             string                    `json:"id"`                        // 实例唯一 ID
+	WorkflowName   string                    `json:"workflow_name"`             // 所属工作流名称
+	Status         string                    `json:"status"`                    // 实例状态
+	StepStates     map[string]*StepState     `json:"step_states"`               // 各步骤执行状态
+	StepOutputs    map[string]map[string]any `json:"step_outputs"`              // 各步骤输出数据
+	TriggerType    string                    `json:"trigger_type"`              // 触发类型：cron | event | manual
+	Channel        string                    `json:"channel,omitempty"`         // 绑定频道（向后兼容，单频道）
+	ChatID         string                    `json:"chat_id,omitempty"`         // 绑定聊天 ID（向后兼容，单频道）
+	NotifyChannels []NotifyTarget            `json:"notify_channels,omitempty"` // 通知目标列表（支持多频道）
+	Logs           []LogEntry                `json:"logs,omitempty"`            // 执行日志
+	StartedAt      time.Time                 `json:"started_at"`                // 开始时间
+	FinishedAt     *time.Time                `json:"finished_at,omitempty"`     // 结束时间
+	Error          string                    `json:"error,omitempty"`           // 错误信息
 
 	mu sync.Mutex `json:"-"` // 保护 StepStates/StepOutputs/Logs 等字段的并发访问
 

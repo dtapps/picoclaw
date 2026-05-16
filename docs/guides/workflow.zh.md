@@ -199,12 +199,13 @@ StopInstance(instanceID)
 
 工作流是由一组有序步骤组成的可执行单元。每个工作流包含：
 
+- **版本**：配置格式版本号（`version`），当前最新版本为 2，用于自动迁移旧格式配置
 - **名称**：唯一标识符，用于引用和管理，仅允许英文字母、数字、连字符和下划线（`a-zA-Z0-9_-`）
 - **描述**：工作流用途说明
 - **触发器**：定义工作流何时自动执行（手动/Cron/事件）
 - **变量**：工作流级变量，避免在步骤中重复写相同的值（如路径、URL 等）
 - **步骤**：按顺序执行的操作序列
-- **配置**：失败策略（stop/continue）等全局选项
+- **配置**：失败策略（stop/continue）、通知频道等全局选项
 
 > **名称规则说明**：工作流名称限制为 `a-zA-Z0-9_-`，因为名称直接用作 YAML 文件名，非 ASCII 或特殊字符会导致文件系统问题。`enabled`（启用状态）是运行时属性，不会序列化到 YAML 定义中，而是通过 `.disabled` 标记文件管理（详见文件存储）。
 
@@ -717,13 +718,19 @@ Agent 可通过 `workflow` 工具管理工作流：
 | `stop` | 停止实例 | `instance_id` |
 | `create` | 创建工作流 | `name`, `steps_yaml` |
 | `delete` | 删除工作流 | `name` |
-| `bind` | 绑定当前频道用于完成通知 | `name` |
-| `unbind` | 移除频道绑定 | `name` |
+| `bind` | 绑定当前频道用于通知（追加模式） | `name` |
+| `unbind` | 解绑当前频道的通知 | `name` |
 | `enable` | 启用工作流 | `name` |
 | `disable` | 禁用工作流 | `name` |
 | `instances` | 查看执行历史 | `name` |
 
 `bind` 和 `run` 动作会自动从对话上下文中捕获 channel/chatID（与 Cron 工具一致）。绑定后，工作流执行完成（成功/失败/取消）会自动通知绑定的频道。
+
+**多频道支持**：
+
+- `bind` 采用追加模式，将当前频道添加到通知列表，不会覆盖已有绑定
+- `unbind` 自动解绑当前对话所在的频道
+- 工作流执行时，会向所有绑定的频道发送通知
 
 ### 频道绑定示例（对话中）
 
@@ -744,8 +751,9 @@ Agent：→ workflow action=bind name=morning-briefing
 | `/workflow list` | 列出所有工作流 |
 | `/workflow run <name>` | 触发执行（自动传递当前频道用于通知） |
 | `/workflow show <name>` | 查看工作流详情 |
-| `/workflow bind <name>` | 绑定当前频道用于通知 |
-| `/workflow unbind <name>` | 移除频道绑定 |
+| `/workflow bind <name>` | 绑定当前频道用于通知（追加模式） |
+| `/workflow unbind <name>` | 解绑当前频道的通知 |
+| `/workflow channels <name>` | 查看工作流绑定的所有通知频道 |
 | `/workflow enable <name>` | 启用工作流 |
 | `/workflow disable <name>` | 禁用工作流 |
 | `/workflow instances <name>` | 查看执行历史 |
@@ -754,9 +762,51 @@ Agent：→ workflow action=bind name=morning-briefing
 使用示例：
 
 ```
-/workflow bind morning-briefing      → 绑定通知频道
+# 在 Telegram 频道中绑定
+/workflow bind morning-briefing      → 将当前 Telegram 频道添加到通知列表
+
+# 查看所有绑定的频道
+/workflow channels morning-briefing   → 显示所有通知频道
+
+# 切换到钉钉群后绑定
+/workflow bind morning-briefing      → 将钉钉频道也添加到通知列表
+
+# 在钉钉群中解绑
+/workflow unbind morning-briefing    → 只移除钉钉频道的绑定
+
+# 触发执行
 /workflow run morning-briefing       → 触发执行并绑定当前频道
+
+# 查看执行历史
 /workflow instances morning-briefing → 查看执行历史
+```
+
+**多频道通知**：
+
+- `bind` 命令采用**追加模式**，不会覆盖已有绑定，而是将当前频道添加到通知列表
+- `unbind` 命令自动解绑**当前对话所在频道**，无需手动指定
+- `channels` 命令可以查看所有已绑定的通知频道
+- 工作流执行时，会向所有绑定的频道发送通知
+
+示例：
+```bash
+# 在 Telegram 中执行
+/workflow bind my-workflow
+# → 添加 Telegram 频道到通知列表
+
+# 在钉钉中执行
+/workflow bind my-workflow
+# → 添加钉钉频道到通知列表（Telegram 仍保留）
+
+# 查看绑定
+/workflow channels my-workflow
+# → 显示：
+#   1. telegram (ID: -100xxx)
+#   2. dingtalk (ID: cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs=)
+
+# 在钉钉中解绑
+/workflow unbind my-workflow
+# → 只移除钉钉频道，Telegram 仍保留
 ```
 
 ## 文件存储
@@ -846,12 +896,37 @@ last_run_status: success
 **YAML 配置回退**：
 
 ```yaml
+# v1 格式（单频道，向后兼容）
 config:
   notify_channel: telegram   # 默认通知频道
   notify_chat_id: "-100xxx"  # 默认通知聊天 ID
+
+# v2 格式（多频道，推荐）
+config:
+  notify_channels:
+    - channel: telegram
+      chat_id: "-100xxx"
+    - channel: dingtalk
+      chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
 ```
 
-当工作流在没有频道上下文的情况下触发（如 cron 触发、事件触发或 Web UI），引擎会回退使用工作流配置中的 `notify_channel`/`notify_chat_id`。
+当工作流在没有频道上下文的情况下触发（如 cron 触发、事件触发或 Web UI），引擎会回退使用工作流配置中的通知目标。
+
+**版本迁移机制**：
+
+工作流引擎支持配置版本管理，确保向后兼容性：
+
+- **v1 格式**：使用 `notify_channel` 和 `notify_chat_id` 字段（单频道）
+- **v2 格式**：使用 `notify_channels` 数组字段（多频道），同时保留 v1 字段用于向后兼容
+- **自动迁移**：加载工作流时，如果检测到 v1 格式且未使用 v2 格式，系统会自动迁移到 v2 格式
+- **版本号字段**：工作流定义可选包含 `version` 字段（如 `version: 2`），未设置时默认为 1
+
+迁移过程完全自动化，无需用户干预：
+1. **加载时迁移**：从磁盘读取 YAML 文件时自动检测并迁移
+2. **启动时迁移**：服务启动时批量迁移所有已加载的工作流
+3. **保存时迁移**：保存工作流前自动迁移到最新版本
+
+这种设计确保了旧配置无需修改即可正常工作，同时为新功能提供扩展空间。
 
 ### 通过步骤实现通知
 

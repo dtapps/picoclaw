@@ -11,6 +11,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/media"
 	"github.com/sipeed/picoclaw/pkg/tools"
+	"github.com/sipeed/picoclaw/pkg/workflow"
 )
 
 func (al *AgentLoop) RegisterTool(tool tools.Tool) {
@@ -71,7 +72,8 @@ type WorkflowServiceProvider interface {
 	RunWorkflow(ctx context.Context, name, channel, chatID string) (string, error)
 	ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error)
 	BindChannel(name, channel, chatID string) error
-	UnbindChannel(name string) error
+	UnbindChannel(name, channel, chatID string) error
+	GetNotifyChannels(name string) ([]workflow.NotifyTarget, error)
 	SetEnabled(name string, enabled bool) error
 	InstancesForCommand(name string) ([]commands.WorkflowInstanceInfo, error)
 	StopInstance(instanceID string) error

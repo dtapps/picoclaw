@@ -432,11 +432,15 @@ other = "Workflow '{{.Name}}' bound to channel {{.Channel}} (chat_id: {{.ChatID}
 
 [commands_workflow_unbind_description]
 description = "Workflow unbind subcommand description"
-other = "Remove channel binding from a workflow"
+other = "Remove current channel binding from a workflow"
 
 [commands_workflow_unbind_usage]
 description = "Workflow unbind subcommand usage"
 other = "Usage: /workflow unbind <name>"
+
+[commands_workflow_unbind_no_context]
+description = "Workflow unbind no context error"
+other = "Error: Cannot get current channel info, please use this command in a chat"
 
 [commands_workflow_unbind_error]
 description = "Workflow unbind error message"
@@ -444,7 +448,31 @@ other = "Error: {{.Error}}"
 
 [commands_workflow_unbind_success]
 description = "Workflow unbind success message"
-other = "Workflow '{{.Name}}' channel binding removed"
+other = "Removed binding for workflow '{{.Name}}' on channel {{.Channel}} (ID: {{.ChatID}})"
+
+[commands_workflow_channels_description]
+description = "Workflow channels subcommand description"
+other = "List all notification channels bound to a workflow"
+
+[commands_workflow_channels_usage]
+description = "Workflow channels subcommand usage"
+other = "Usage: /workflow channels <name>"
+
+[commands_workflow_channels_error]
+description = "Workflow channels error message"
+other = "Error: {{.Error}}"
+
+[commands_workflow_channels_none]
+description = "Workflow channels no channels message"
+other = "No notification channels bound to workflow '{{.Name}}'"
+
+[commands_workflow_channels_header]
+description = "Workflow channels header message"
+other = "Notification channels for workflow '{{.Name}}':"
+
+[commands_workflow_channels_item]
+description = "Workflow channels list item"
+other = "{{.Index}}. {{.Channel}} (ID: {{.ChatID}})"
 
 [commands_workflow_enable_description]
 description = "Workflow enable subcommand description"

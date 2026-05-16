@@ -300,6 +300,8 @@ func (s *Service) DeleteWorkflow(name string) error {
 
 // BindChannel 将频道信息绑定到工作流配置，执行完成后自动通知该频道。
 // 通常由 Agent 通过命令触发，从上下文中提取 channel/chatID。
+// BindChannel 将当前频道添加到工作流的通知目标列表。
+// 如果该频道已存在，则更新其 chatID；否则追加到列表末尾。
 func (s *Service) BindChannel(name, channel, chatID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -320,8 +322,28 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 		return err
 	}
 
-	freshWf.Config.NotifyChannel = channel
-	freshWf.Config.NotifyChatID = chatID
+	// 确保使用 v2 格式
+	freshWf.MigrateToV2()
+
+	// 查找是否已存在相同频道的目标
+	found := false
+	for i, target := range freshWf.Config.NotifyChannels {
+		if target.Channel == channel {
+			// 更新现有频道的 chatID
+			freshWf.Config.NotifyChannels[i].ChatID = chatID
+			found = true
+			break
+		}
+	}
+
+	// 如果不存在，则追加
+	if !found {
+		freshWf.Config.NotifyChannels = append(freshWf.Config.NotifyChannels, NotifyTarget{
+			Channel: channel,
+			ChatID:  chatID,
+		})
+	}
+
 	freshWf.UpdatedAt = time.Now()
 
 	if err := s.store.SaveWorkflow(freshWf); err != nil {
@@ -333,7 +355,8 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 }
 
 // UnbindChannel 移除工作流的频道绑定。
-func (s *Service) UnbindChannel(name string) error {
+// 如果 channel 和 chatID 为空，则清空所有通知目标；否则移除匹配的特定目标。
+func (s *Service) UnbindChannel(name, channel, chatID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -353,8 +376,23 @@ func (s *Service) UnbindChannel(name string) error {
 		return err
 	}
 
-	freshWf.Config.NotifyChannel = ""
-	freshWf.Config.NotifyChatID = ""
+	// 确保使用 v2 格式
+	freshWf.MigrateToV2()
+
+	if channel == "" && chatID == "" {
+		// 清空所有通知目标
+		freshWf.Config.NotifyChannels = nil
+	} else {
+		// 移除匹配的通知目标
+		targets := freshWf.Config.NotifyChannels[:0]
+		for _, target := range freshWf.Config.NotifyChannels {
+			if target.Channel != channel || target.ChatID != chatID {
+				targets = append(targets, target)
+			}
+		}
+		freshWf.Config.NotifyChannels = targets
+	}
+
 	freshWf.UpdatedAt = time.Now()
 
 	if err := s.store.SaveWorkflow(freshWf); err != nil {
@@ -363,6 +401,28 @@ func (s *Service) UnbindChannel(name string) error {
 
 	s.workflows[name] = freshWf
 	return nil
+}
+
+// GetNotifyChannels 获取工作流的所有通知目标。
+func (s *Service) GetNotifyChannels(name string) ([]NotifyTarget, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	wf, ok := s.workflows[name]
+	if !ok {
+		if !s.store.WorkflowExists(name) {
+			return nil, errNotFound(name)
+		}
+		var err error
+		wf, err = s.store.LoadSingleWorkflow(name)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 确保使用 v2 格式
+	wf.MigrateToV2()
+	return wf.Config.GetNotifyTargets(), nil
 }
 
 // SetEnabled 设置工作流的启用/禁用状态。
@@ -1127,9 +1187,21 @@ func (s *Service) reloadWorkflowsUnsafe() error {
 		return err
 	}
 
-	// 为每个工作流计算运行时状态字段
+	// 迁移所有工作流到最新版本
+	migratedCount := 0
 	for _, wf := range workflows {
+		if wf.MigrateToV2() {
+			migratedCount++
+			logger.InfoCF("workflow", "工作流配置已迁移",
+				map[string]any{"workflow": wf.Name, "version": wf.Version})
+		}
+		// 计算运行时状态字段
 		s.computeWorkflowRuntimeState(wf)
+	}
+
+	if migratedCount > 0 {
+		logger.InfoCF("workflow", "批量迁移完成",
+			map[string]any{"total": len(workflows), "migrated": migratedCount})
 	}
 
 	s.workflows = workflows

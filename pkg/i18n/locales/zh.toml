@@ -435,11 +435,15 @@ other = "工作流 '{{.Name}}' 已绑定到频道 {{.Channel}} (聊天ID：{{.Ch
 
 [commands_workflow_unbind_description]
 description = "Workflow unbind 子命令描述"
-other = "从工作流中移除频道绑定"
+other = "从工作流中移除当前频道的绑定"
 
 [commands_workflow_unbind_usage]
 description = "Workflow unbind 子命令用法"
 other = "用法：/workflow unbind <名称>"
+
+[commands_workflow_unbind_no_context]
+description = "Workflow unbind 无上下文错误"
+other = "错误：无法获取当前频道信息，请在聊天中使用此命令"
 
 [commands_workflow_unbind_error]
 description = "Workflow unbind 错误消息"
@@ -447,7 +451,31 @@ other = "错误：{{.Error}}"
 
 [commands_workflow_unbind_success]
 description = "Workflow unbind 成功消息"
-other = "工作流 '{{.Name}}' 的频道绑定已移除"
+other = "已移除工作流 '{{.Name}}' 在频道 {{.Channel}} (ID: {{.ChatID}}) 的绑定"
+
+[commands_workflow_channels_description]
+description = "Workflow channels 子命令描述"
+other = "查看工作流绑定的所有通知频道"
+
+[commands_workflow_channels_usage]
+description = "Workflow channels 子命令用法"
+other = "用法：/workflow channels <名称>"
+
+[commands_workflow_channels_error]
+description = "Workflow channels 错误消息"
+other = "错误：{{.Error}}"
+
+[commands_workflow_channels_none]
+description = "Workflow channels 无频道消息"
+other = "工作流 '{{.Name}}' 未绑定任何通知频道"
+
+[commands_workflow_channels_header]
+description = "Workflow channels 头部消息"
+other = "工作流 '{{.Name}}' 的通知频道："
+
+[commands_workflow_channels_item]
+description = "Workflow channels 列表项"
+other = "{{.Index}}. {{.Channel}} (ID: {{.ChatID}})"
 
 [commands_workflow_enable_description]
 description = "Workflow enable 子命令描述"
