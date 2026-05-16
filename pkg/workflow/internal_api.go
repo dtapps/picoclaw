@@ -10,12 +10,19 @@ import (
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 )
 
+// ToolLister 用于从 agent 注册表获取已注册工具名称列表。
+// 由 gateway 实现，避免 workflow 包与 agent 包之间的循环导入。
+type ToolLister interface {
+	ListRegisteredTools() []string
+}
+
 // InternalAPI 在网关进程的 HTTP 服务器上注册工作流内部端点。
 // Web 后端通过反向代理访问这些端点来执行运行时操作（运行、停止、查询实例）。
 // 路径以 /internal/workflow/ 为前缀，不与频道 webhook 冲突。
 type InternalAPI struct {
-	service  *Service
-	eventBus runtimeevents.Bus
+	service    *Service
+	eventBus   runtimeevents.Bus
+	toolLister ToolLister // 可选，用于获取已注册工具列表
 }
 
 // NewInternalAPI 创建工作流内部 API 处理器。
@@ -24,6 +31,11 @@ func NewInternalAPI(svc *Service) *InternalAPI {
 		service:  svc,
 		eventBus: svc.cfg.EventBus,
 	}
+}
+
+// SetToolLister 注入工具列表获取器，用于运行时查询已注册工具名称。
+func (a *InternalAPI) SetToolLister(l ToolLister) {
+	a.toolLister = l
 }
 
 // HandlerMux 是注册 HTTP 处理器的接口，与 health.Server 保持一致。
@@ -42,6 +54,7 @@ func (a *InternalAPI) RegisterOnMux(mux HandlerMux) {
 	mux.HandleFunc("/internal/workflow/stream", a.handleStream)
 	mux.HandleFunc("/internal/workflow/clear_cache", a.handleClearCache)
 	mux.HandleFunc("/internal/workflow/cron_tasks", a.handleCronTasks)
+	mux.HandleFunc("/internal/workflow/registered_tools", a.handleRegisteredTools)
 }
 
 // handleRun 手动触发工作流执行。
@@ -316,4 +329,22 @@ func (a *InternalAPI) handleCronTasks(w http.ResponseWriter, r *http.Request) {
 	tasks := a.service.CronListForCommand()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"tasks": tasks})
+}
+
+// handleRegisteredTools 返回所有 agent 上已注册的工具名称列表（去重）。
+// 前端工作流编辑器使用此接口获取准确的工具运行时名称，避免前后端 sanitize 不一致。
+func (a *InternalAPI) handleRegisteredTools(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if a.toolLister == nil {
+		http.Error(w, "tool lister not available", http.StatusServiceUnavailable)
+		return
+	}
+
+	tools := a.toolLister.ListRegisteredTools()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"tools": tools})
 }

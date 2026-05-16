@@ -280,6 +280,14 @@ export async function deleteWorkflowInstance(
   if (!res.ok) throw new Error("Failed to delete workflow instance")
 }
 
+/** 获取系统已注册的工具名称列表（从 agent registry 直接读取，名称准确） */
+export async function getRegisteredTools(): Promise<string[]> {
+  const res = await launcherFetch("/api/workflow/registered-tools")
+  if (!res.ok) throw new Error("Failed to fetch registered tools")
+  const data = await res.json()
+  return data.tools || []
+}
+
 // --- SSE 实时事件 ---
 
 export interface WorkflowStepEvent {

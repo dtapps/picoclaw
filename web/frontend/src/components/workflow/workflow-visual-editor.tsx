@@ -33,7 +33,7 @@ import {
 
 import { getTools, type ToolParamProperty } from "@/api/tools"
 import { getMCPConfig, getMCPServerDetails } from "@/api/mcp"
-import { EventTypeGroups } from "@/api/workflow"
+import { EventTypeGroups, getRegisteredTools } from "@/api/workflow"
 
 // --- 步骤图标 ---
 
@@ -164,12 +164,6 @@ function formatToolLabel(name: string, description?: string): string {
   return `${name} — ${short}`
 }
 
-/** 将 MCP 工具名转为运行时名称格式 mcp_{server}_{tool} */
-function mcpRuntimeName(server: string, tool: string): string {
-  const sanitize = (s: string) => s.replace(/[^a-zA-Z0-9_]/g, "_")
-  return `mcp_${sanitize(server)}_${sanitize(tool)}`
-}
-
 /** 从 JSON Schema properties 提取参数定义 */
 function extractParamDefs(schema?: { properties?: Record<string, ToolParamProperty>; required?: string[] }): ToolParamDef[] {
   if (!schema?.properties) return []
@@ -214,10 +208,19 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
 
       if (cancelled) return
 
-      // 2. 获取 MCP 工具（并行探测所有已启用服务器）
+      // 2. 获取 MCP 工具：从后端已注册列表获取准确的运行时名称，从 MCP server details 获取参数定义
       const mcpTools: ToolOption[] = []
       try {
-        const mcpConfig = await getMCPConfig()
+        const [mcpConfig, registeredNames] = await Promise.all([
+          getMCPConfig(),
+          getRegisteredTools().catch(() => [] as string[]),
+        ])
+        // 构建 "mcp_{sanitizedServer}_{sanitizedTool}" -> runtimeName 映射
+        const registeredMap = new Map<string, string>()
+        for (const name of registeredNames) {
+          registeredMap.set(name, name)
+        }
+
         if (mcpConfig.enabled) {
           const enabledServers = mcpConfig.servers.filter((s) => s.enabled)
           const details = await Promise.allSettled(
@@ -226,7 +229,20 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
           for (const result of details) {
             if (result.status === "fulfilled" && result.value.connected) {
               for (const tool of result.value.tools) {
-                const runtimeName = mcpRuntimeName(result.value.server_name, tool.name)
+                // 在已注册列表中查找匹配的工具名（后端 sanitize 的真实名称）
+                const server = result.value.server_name.toLowerCase()
+                const toolName = tool.name.toLowerCase()
+                let runtimeName = ""
+                // 精确匹配或模糊匹配（处理 -/_ 差异）
+                for (const registered of registeredNames) {
+                  const lower = registered.toLowerCase()
+                  if (lower.includes(server) && lower.includes(toolName)) {
+                    runtimeName = registered
+                    break
+                  }
+                }
+                if (!runtimeName) continue
+
                 mcpTools.push({
                   name: runtimeName,
                   label: formatToolLabel(`${result.value.server_name} / ${tool.name}`, tool.description),

@@ -31,6 +31,7 @@ func (h *Handler) registerWorkflowRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/workflows/{name}/instances/{id}", h.handleDeleteInstance)     // 删除实例
 	mux.HandleFunc("POST /api/workflows/import", h.handleImportWorkflow)                      // 导入
 	mux.HandleFunc("GET /api/workflow/cron-tasks", h.handleCronTasks)                         // Cron 调度列表
+	mux.HandleFunc("GET /api/workflow/registered-tools", h.handleRegisteredTools)             // 已注册工具列表
 }
 
 // getWorkflowStore 从配置创建持久化存储实例（懒初始化 + 缓存，避免每次请求重复读配置文件）。
@@ -364,6 +365,18 @@ func (h *Handler) handleCronTasks(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]any{"tasks": []any{}})
+}
+
+// handleRegisteredTools 获取网关进程中所有 agent 已注册的工具名称列表。
+// 通过反向代理转发到网关进程的内部 API；网关不可用时返回空列表。
+func (h *Handler) handleRegisteredTools(w http.ResponseWriter, r *http.Request) {
+	if body, ok := h.proxyToGatewayFast(http.MethodGet, "/internal/workflow/registered_tools", nil); ok {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(body)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{"tools": []any{}})
 }
 
 // handleUpdateWorkflow 更新已有工作流的定义。

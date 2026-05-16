@@ -485,6 +485,7 @@ func setupAndStartServices(
 	// 注册工作流内部 API 端点（供 Web 后端反向代理调用）
 	if runningServices.WorkflowService != nil {
 		workflowAPI := workflow.NewInternalAPI(runningServices.WorkflowService)
+		workflowAPI.SetToolLister(&agentToolLister{agentLoop: agentLoop})
 		workflowAPI.RegisterOnMux(runningServices.ChannelManager.Mux())
 	}
 
@@ -685,6 +686,7 @@ func restartServices(
 	// 重新注册工作流内部 API（更新服务引用）
 	if runningServices.ChannelManager.Mux() != nil {
 		workflowAPI := workflow.NewInternalAPI(runningServices.WorkflowService)
+		workflowAPI.SetToolLister(&agentToolLister{agentLoop: al})
 		workflowAPI.RegisterOnMux(runningServices.ChannelManager.Mux())
 	}
 
@@ -923,7 +925,23 @@ func setupWorkflowService(
 			if defaultAgent == nil {
 				return "", false, fmt.Errorf("no default agent available")
 			}
-			tool, ok := defaultAgent.Tools.Get(toolName)
+
+			var tool tools.Tool
+			var ok bool
+			if tool, ok = defaultAgent.Tools.Get(toolName); !ok {
+				for _, agentID := range registry.ListAgentIDs() {
+					if agentID == defaultAgent.ID {
+						continue
+					}
+					if agent, found := registry.GetAgent(agentID); found {
+						if t, found := agent.Tools.Get(toolName); found {
+							tool = t
+							ok = true
+							break
+						}
+					}
+				}
+			}
 			if !ok {
 				return "", false, fmt.Errorf("tool '%s' not found", toolName)
 			}
@@ -1119,6 +1137,31 @@ func setupWorkflowService(
 	}
 
 	return service, nil
+}
+
+// agentToolLister 实现 workflow.ToolLister 接口，从 agent registry 获取已注册工具名称。
+type agentToolLister struct {
+	agentLoop *agent.AgentLoop
+}
+
+func (l *agentToolLister) ListRegisteredTools() []string {
+	if l.agentLoop == nil {
+		return nil
+	}
+	registry := l.agentLoop.GetRegistry()
+	seen := make(map[string]struct{})
+	var tools []string
+	for _, agentID := range registry.ListAgentIDs() {
+		if ag, ok := registry.GetAgent(agentID); ok {
+			for _, name := range ag.Tools.List() {
+				if _, exists := seen[name]; !exists {
+					seen[name] = struct{}{}
+					tools = append(tools, name)
+				}
+			}
+		}
+	}
+	return tools
 }
 
 func createHeartbeatHandler(agentLoop *agent.AgentLoop) func(prompt, channel, chatID string) *tools.ToolResult {
