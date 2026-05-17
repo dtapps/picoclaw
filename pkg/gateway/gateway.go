@@ -959,8 +959,10 @@ func setupWorkflowService(
 	// 消息进入消息总线 → dispatchOutbound → worker queue，保证 FIFO 顺序。
 	// 标记 message_kind=workflow_notification 使 preSend 跳过 streamActive/placeholder 检查。
 	sendNotification := func(channelName, chatID, content string) {
-		logger.DebugCF("workflow", "sendNotification", map[string]any{
-			"channel": channelName, "chat_id": chatID, "content_len": len(content),
+		logger.InfoCF("workflow", "准备发送通知到渠道", map[string]any{
+			"channel":     channelName,
+			"chat_id":     chatID,
+			"content_len": len(content),
 		})
 		msg := bus.OutboundMessage{
 			Context: bus.NewOutboundContext(channelName, chatID, ""),
@@ -970,7 +972,19 @@ func setupWorkflowService(
 			msg.Context.Raw = make(map[string]string, 1)
 		}
 		msg.Context.Raw["message_kind"] = "workflow_notification"
-		_ = msgBus.PublishOutbound(context.Background(), msg)
+		err := msgBus.PublishOutbound(context.Background(), msg)
+		if err != nil {
+			logger.ErrorCF("workflow", "发送通知失败", map[string]any{
+				"channel": channelName,
+				"chat_id": chatID,
+				"error":   err.Error(),
+			})
+		} else {
+			logger.InfoCF("workflow", "通知已发送到消息总线", map[string]any{
+				"channel": channelName,
+				"chat_id": chatID,
+			})
+		}
 	}
 
 	// sendToAllTargets 发送通知到所有目标频道
@@ -986,6 +1000,8 @@ func setupWorkflowService(
 					"chat_id": target.ChatID,
 				})
 				sendNotification(target.Channel, target.ChatID, content)
+				// 等待一小段时间，让异步发送有机会完成
+				time.Sleep(100 * time.Millisecond)
 			} else {
 				logger.WarnCF("workflow", "跳过无效的通知目标", map[string]any{
 					"index":   i,
