@@ -53,7 +53,41 @@ function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: strin
 	return refs
 }
 
-const VALID_FUNC_NAMES = new Set(["now", "now_tz", "date", "date_tz", "unix", "env"])
+// 模板函数列表，初始化为空，在组件加载时从后端获取
+let VALID_FUNC_NAMES = new Set<string>()
+
+/** 从后端获取支持的模板函数列表 */
+async function loadTemplateFunctions(): Promise<void> {
+	try {
+		const response = await fetch("/api/workflow/template-functions")
+		if (response.ok) {
+			const data = await response.json()
+			VALID_FUNC_NAMES = new Set(data.functions || [])
+		} else {
+			console.warn("Failed to load template functions, using fallback list")
+			// 降级方案：使用硬编码的默认列表
+			VALID_FUNC_NAMES = new Set([
+				"now", "now_tz", "date", "date_tz", "unix",
+				"days_ago", "days_from_now",
+				"hours_ago", "hours_from_now",
+				"minutes_ago", "minutes_from_now",
+				"weeks_ago", "day_of_week", "format_time",
+				"env"
+			])
+		}
+	} catch (error) {
+		console.error("Error loading template functions:", error)
+		// 降级方案
+		VALID_FUNC_NAMES = new Set([
+			"now", "now_tz", "date", "date_tz", "unix",
+			"days_ago", "days_from_now",
+			"hours_ago", "hours_from_now",
+			"minutes_ago", "minutes_from_now",
+			"weeks_ago", "day_of_week", "format_time",
+			"env"
+		])
+	}
+}
 
 /** 从步骤的 prompt、args、when 中提取所有 {{.fn.xxx}} 模板函数引用 */
 function extractFuncRefs(step: WorkflowStep): string[] {
@@ -185,6 +219,11 @@ export function WorkflowEditorPage() {
   const [loading, setLoading] = useState(!!editName)
   const [submitting, setSubmitting] = useState(false)
   const [toolRequiredParams, setToolRequiredParams] = useState<Map<string, string[]>>(new Map())
+
+  // 加载模板函数列表（从后端动态获取）
+  useEffect(() => {
+    void loadTemplateFunctions()
+  }, [])
 
   const isEdit = !!editWorkflow
 

@@ -9,6 +9,21 @@ import (
 	"time"
 )
 
+// SupportedTemplateFunctions 返回所有支持的模板函数名称列表
+// 用于前端校验和文档生成
+func SupportedTemplateFunctions() []string {
+	return []string{
+		// 时间和日期函数
+		"now", "now_tz", "date", "date_tz", "unix",
+		"days_ago", "days_from_now",
+		"hours_ago", "hours_from_now",
+		"minutes_ago", "minutes_from_now",
+		"weeks_ago", "day_of_week", "format_time",
+		// 其他函数
+		"env",
+	}
+}
+
 // EvaluateCondition 根据 when 子句判断步骤是否应该执行。
 //
 // 支持的条件类型：
