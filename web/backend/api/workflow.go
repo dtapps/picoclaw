@@ -32,6 +32,7 @@ func (h *Handler) registerWorkflowRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/workflows/import", h.handleImportWorkflow)                      // 导入
 	mux.HandleFunc("GET /api/workflow/cron-tasks", h.handleCronTasks)                         // Cron 调度列表
 	mux.HandleFunc("GET /api/workflow/registered-tools", h.handleRegisteredTools)             // 已注册工具列表
+	mux.HandleFunc("GET /api/workflow/template-functions", h.handleTemplateFunctions)         // 模板函数列表
 }
 
 // getWorkflowStore 从配置创建持久化存储实例（懒初始化 + 缓存，避免每次请求重复读配置文件）。
@@ -750,4 +751,19 @@ func describeTriggerType(triggers []workflow.Trigger) string {
 		}
 	}
 	return "manual"
+}
+
+// handleTemplateFunctions 返回支持的模板函数列表
+func (h *Handler) handleTemplateFunctions(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	functions := workflow.SupportedTemplateFunctions()
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"functions": functions,
+	})
 }
