@@ -362,6 +362,16 @@ func TestGetChatKind(t *testing.T) {
 			chatID: "",
 			want:   "direct",
 		},
+		{
+			name:   "group: 前缀的 chat_id 自动识别为群组",
+			chatID: "group:322876273",
+			want:   "group",
+		},
+		{
+			name:   "group: 前缀带空格的 chat_id 自动识别为群组",
+			chatID: "group:123456",
+			want:   "group",
+		},
 	}
 
 	for _, tt := range tests {

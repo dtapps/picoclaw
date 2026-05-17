@@ -304,9 +304,18 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 
 	messageIDs := []string{}
 	chatKind := c.getChatKind(msg.ChatID)
+
+	// 去掉 ChatType 前缀获取实际的 ID
+	actualChatID := msg.ChatID
+	if strings.HasPrefix(msg.ChatID, "group:") {
+		actualChatID = strings.TrimPrefix(msg.ChatID, "group:")
+	} else if strings.HasPrefix(msg.ChatID, "direct:") {
+		actualChatID = strings.TrimPrefix(msg.ChatID, "direct:")
+	}
+
 	if chatKind == "direct" {
 		messageID, err := c.yuanbaoClient.SendMessage(&yuanbaoTypes.OutboundC2CMessage{
-			ToUserID: msg.ChatID,
+			ToUserID: actualChatID,
 			Text:     content,
 		})
 		if err != nil {
@@ -315,7 +324,7 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 		messageIDs = append(messageIDs, messageID)
 	} else if chatKind == "group" {
 		messageID, err := c.yuanbaoClient.SendGroupMessage(&yuanbaoTypes.OutboundGroupMessage{
-			ToGroupID: msg.ChatID,
+			ToGroupID: actualChatID,
 			Text:      content,
 		})
 		if err != nil {
@@ -330,9 +339,17 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 }
 
 func (c *YuanbaoChannel) getChatKind(chatID string) string {
-	// chatType 只记录 group，有记录即为群组，无记录默认按 direct 处理
+	// 优先检查 chatType 映射表（从收到的消息中记录的）
 	if _, ok := c.chatType.Load(chatID); ok {
 		return "group"
+	}
+	// 自动识别 group: 前缀的 chat_id（用于工作流通知等场景）
+	if strings.HasPrefix(chatID, "group:") {
+		return "group"
+	}
+	// 自动识别 direct: 前缀
+	if strings.HasPrefix(chatID, "direct:") {
+		return "direct"
 	}
 	return "direct"
 }

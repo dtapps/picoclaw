@@ -12,6 +12,7 @@ type Handler func(ctx context.Context, req Request, rt *Runtime) error
 type Request struct {
 	Channel  string
 	ChatID   string
+	ChatType string // 会话类型: direct | group
 	SenderID string
 	Text     string
 	Reply    func(text string) error
