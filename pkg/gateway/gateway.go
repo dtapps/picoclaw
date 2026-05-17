@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -959,13 +960,25 @@ func setupWorkflowService(
 	// 消息进入消息总线 → dispatchOutbound → worker queue，保证 FIFO 顺序。
 	// 标记 message_kind=workflow_notification 使 preSend 跳过 streamActive/placeholder 检查。
 	sendNotification := func(channelName, chatID, content string) {
+		// 去掉 ChatType 前缀 (group: 或 direct:)，获取实际的 chat_id
+		// 注意：元宝渠道的 group 需要保留前缀来识别群聊类型
+		actualChatID := chatID
+		if strings.HasPrefix(chatID, "group:") {
+			if channelName != "yuanbao" {
+				actualChatID = strings.TrimPrefix(chatID, "group:")
+			}
+		} else if strings.HasPrefix(chatID, "direct:") {
+			actualChatID = strings.TrimPrefix(chatID, "direct:")
+		}
+
 		logger.InfoCF("workflow", "准备发送通知到渠道", map[string]any{
 			"channel":     channelName,
 			"chat_id":     chatID,
+			"actual_id":   actualChatID,
 			"content_len": len(content),
 		})
 		msg := bus.OutboundMessage{
-			Context: bus.NewOutboundContext(channelName, chatID, ""),
+			Context: bus.NewOutboundContext(channelName, actualChatID, ""),
 			Content: content,
 		}
 		if msg.Context.Raw == nil {

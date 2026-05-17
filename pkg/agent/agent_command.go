@@ -43,6 +43,7 @@ func (al *AgentLoop) handleCommand(
 	result := executor.Execute(ctx, commands.Request{
 		Channel:  msg.Channel,
 		ChatID:   msg.ChatID,
+		ChatType: msg.Context.ChatType,
 		SenderID: msg.SenderID,
 		Text:     msg.Content,
 		Reply: func(text string) error {
