@@ -137,26 +137,40 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 		StartedAt:    time.Now(),
 	}
 
-	// 频道绑定：优先使用触发时传入的频道，否则使用工作流配置的默认通知频道
-	if channel == "" {
-		// 优先从新字段获取所有通知目标
-		targets := wf.Config.GetNotifyTargets()
-		if len(targets) > 0 {
-			inst.NotifyChannels = targets
-			// 向后兼容：设置第一个为目标
-			channel = targets[0].Channel
-			chatID = targets[0].ChatID
-		} else {
-			// 向后兼容：从旧字段获取
-			channel = wf.Config.NotifyChannel
-			chatID = wf.Config.NotifyChatID
-		}
-		inst.Channel = channel
-		inst.ChatID = chatID
-	} else {
-		// 如果传入了 channel/chatID，也保存到 NotifyChannels
+	// 频道绑定：始终使用工作流配置的通知目标
+	// 如果配置了多频道，就发送到所有频道；否则使用运行时传入的频道
+	targets := wf.Config.GetNotifyTargets()
+	if len(targets) > 0 {
+		// 使用配置的所有通知目标
+		inst.NotifyChannels = targets
+		// 向后兼容：Channel/ChatID 设置为第一个目标（用于单频道场景）
+		channel = targets[0].Channel
+		chatID = targets[0].ChatID
+		logger.InfoCF("workflow", "工作流配置了多频道通知", map[string]any{
+			"workflow":        wf.Name,
+			"notify_channels": targets,
+			"count":           len(targets),
+		})
+	} else if channel != "" {
+		// 没有配置，使用运行时传入的频道
 		inst.NotifyChannels = []NotifyTarget{{Channel: channel, ChatID: chatID}}
+		logger.InfoCF("workflow", "使用运行时传入的单频道", map[string]any{
+			"workflow": wf.Name,
+			"channel":  channel,
+			"chat_id":  chatID,
+		})
+	} else {
+		// 向后兼容：从旧字段获取
+		channel = wf.Config.NotifyChannel
+		chatID = wf.Config.NotifyChatID
+		logger.InfoCF("workflow", "使用旧版单频道配置", map[string]any{
+			"workflow": wf.Name,
+			"channel":  channel,
+			"chat_id":  chatID,
+		})
 	}
+	inst.Channel = channel
+	inst.ChatID = chatID
 
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 开始执行（触发: %s）", wf.Name, triggerType))
 
