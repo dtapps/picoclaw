@@ -129,23 +129,25 @@ type ParallelSteps []ParallelBranch
 //   - if: 条件判断，根据 when 表达式执行 true 或 false 分支
 //   - notify: 发送通知消息到绑定的频道
 type Step struct {
-	ID        string         `yaml:"id"                   json:"id"`                   // 步骤唯一标识，用于步骤间引用（仅限 a-zA-Z0-9_）
-	Name      string         `yaml:"name,omitempty"       json:"name,omitempty"`       // 步骤显示名称（可选，支持任意字符）
-	Action    string         `yaml:"action"               json:"action"`               // 动作类型：agent_prompt | tool_call | parallel | if | notify
-	Prompt    string         `yaml:"prompt,omitempty"     json:"prompt,omitempty"`     // agent_prompt 的提示词内容
-	Tool      string         `yaml:"tool,omitempty"       json:"tool,omitempty"`       // tool_call 的工具名称
-	Args      map[string]any `yaml:"args,omitempty"       json:"args,omitempty"`       // tool_call 的参数
-	Parallel  ParallelSteps  `yaml:"parallel,omitempty"   json:"parallel,omitempty"`   // parallel 的子步骤列表（支持 []Step 和 []{branch: Step[]} 两种格式）
-	IfTrue    []Step         `yaml:"if_true,omitempty"    json:"if_true,omitempty"`    // if 条件为 true 时执行的步骤
-	IfFalse   []Step         `yaml:"if_false,omitempty"   json:"if_false,omitempty"`   // if 条件为 false 时执行的步骤
-	Message   string         `yaml:"message,omitempty"    json:"message,omitempty"`    // notify 的消息内容（支持模板）
-	When      string         `yaml:"when,omitempty"       json:"when,omitempty"`       // 执行条件：on_error | on_success | 模板比较
-	Delay     string         `yaml:"delay,omitempty"      json:"delay,omitempty"`      // 执行前等待时间，如 "5s"、"1m"
-	Retry     *RetryConfig   `yaml:"retry,omitempty"      json:"retry,omitempty"`      // 重试配置
-	Timeout   string         `yaml:"timeout,omitempty"    json:"timeout,omitempty"`    // 超时时间，如 "30s"、"5m"，默认 30m
-	OutputKey string         `yaml:"output_key,omitempty" json:"output_key,omitempty"` // 输出键名，用于步骤间数据传递
-	Workdir   string         `yaml:"workdir,omitempty"    json:"workdir,omitempty"`    // 工作目录（前端使用，后端从 config 读取）
-	Enabled   *bool          `yaml:"enabled,omitempty"    json:"enabled,omitempty"`    // 是否启用，nil/false 为禁用
+	ID               string         `yaml:"id"                           json:"id"`                           // 步骤唯一标识，用于步骤间引用（仅限 a-zA-Z0-9_）
+	Name             string         `yaml:"name,omitempty"               json:"name,omitempty"`               // 步骤显示名称（可选，支持任意字符）
+	Action           string         `yaml:"action"                       json:"action"`                       // 动作类型：agent_prompt | tool_call | parallel | if | notify
+	Prompt           string         `yaml:"prompt,omitempty"             json:"prompt,omitempty"`             // agent_prompt 的提示词内容
+	Tool             string         `yaml:"tool,omitempty"               json:"tool,omitempty"`               // tool_call 的工具名称
+	Args             map[string]any `yaml:"args,omitempty"               json:"args,omitempty"`               // tool_call 的参数
+	Parallel         ParallelSteps  `yaml:"parallel,omitempty"           json:"parallel,omitempty"`           // parallel 的子步骤列表（支持 []Step 和 []{branch: Step[]} 两种格式）
+	IfTrue           []Step         `yaml:"if_true,omitempty"            json:"if_true,omitempty"`            // if 条件为 true 时执行的步骤
+	IfFalse          []Step         `yaml:"if_false,omitempty"           json:"if_false,omitempty"`           // if 条件为 false 时执行的步骤
+	Message          string         `yaml:"message,omitempty"            json:"message,omitempty"`            // notify 的消息内容（支持模板）
+	When             string         `yaml:"when,omitempty"               json:"when,omitempty"`               // 执行条件：on_error | on_success | 模板比较
+	Delay            string         `yaml:"delay,omitempty"              json:"delay,omitempty"`              // 执行前等待时间，如 "5s"、"1m"
+	Retry            *RetryConfig   `yaml:"retry,omitempty"              json:"retry,omitempty"`              // 重试配置
+	Timeout          string         `yaml:"timeout,omitempty"            json:"timeout,omitempty"`            // 超时时间，如 "30s"、"5m"，默认 30m
+	OutputKey        string         `yaml:"output_key,omitempty"         json:"output_key,omitempty"`         // 输出键名，用于步骤间数据传递
+	Workdir          string         `yaml:"workdir,omitempty"            json:"workdir,omitempty"`            // 工作目录（前端使用，后端从 config 读取）
+	Enabled          *bool          `yaml:"enabled,omitempty"            json:"enabled,omitempty"`            // 是否启用，nil/false 为禁用
+	NotifyOnStart    *bool          `yaml:"notify_on_start,omitempty"    json:"notify_on_start,omitempty"`    // 是否发送步骤开始执行通知，nil/true 为发送
+	NotifyOnComplete *bool          `yaml:"notify_on_complete,omitempty" json:"notify_on_complete,omitempty"` // 是否发送步骤执行完成通知，nil/true 为发送
 }
 
 // RetryConfig 定义步骤的重试策略。

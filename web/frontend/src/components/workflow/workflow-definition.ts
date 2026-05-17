@@ -83,6 +83,8 @@ function stepToSwd(s: WorkflowStep): Step {
         delay: s.delay || "",
         timeout: s.timeout || "",
         enabled: s.enabled ?? true,
+        notify_on_start: s.notify_on_start ?? true,
+        notify_on_complete: s.notify_on_complete ?? true,
       },
       branches: {
         true: (s.if_true || []).map(stepToSwd),
@@ -118,6 +120,8 @@ function stepToSwd(s: WorkflowStep): Step {
         output_key: s.output_key || "",
         timeout: s.timeout || "",
         enabled: s.enabled ?? true,
+        notify_on_start: s.notify_on_start ?? true,
+        notify_on_complete: s.notify_on_complete ?? true,
       },
       branches,
     } as BranchedStep
@@ -138,6 +142,7 @@ function stepToSwd(s: WorkflowStep): Step {
         delay: s.delay || "",
         timeout: s.timeout || "",
         enabled: s.enabled ?? true,
+        notify_on_start: s.notify_on_start ?? true,
       },
     }
   }
@@ -159,6 +164,8 @@ function stepToSwd(s: WorkflowStep): Step {
       output_key: s.output_key || "",
       timeout: s.timeout || "",
       enabled: s.enabled ?? true,
+      notify_on_start: s.notify_on_start ?? true,
+      notify_on_complete: s.notify_on_complete ?? true,
     },
   }
 }
@@ -232,6 +239,8 @@ function swdToStep(s: Step): WorkflowStep {
       delay: (s.properties.delay as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
       enabled: s.properties.enabled === false ? false : undefined,
+      notify_on_start: s.properties.notify_on_start === false ? false : undefined,
+      notify_on_complete: s.properties.notify_on_complete === false ? false : undefined,
       if_true: (branched.branches.true || []).map(swdToStep),
       if_false: (branched.branches.false || []).map(swdToStep),
     }
@@ -264,6 +273,8 @@ function swdToStep(s: Step): WorkflowStep {
       delay: (s.properties.delay as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
       enabled: s.properties.enabled === false ? false : undefined,
+      notify_on_start: s.properties.notify_on_start === false ? false : undefined,
+      notify_on_complete: s.properties.notify_on_complete === false ? false : undefined,
       parallel: parallelBranches,
     }
   }
@@ -312,6 +323,8 @@ function swdToStep(s: Step): WorkflowStep {
     output_key: (sp.output_key as string) || undefined,
     timeout: (sp.timeout as string) || undefined,
     enabled: sp.enabled === false ? false : undefined,
+    notify_on_start: sp.notify_on_start === false ? false : undefined,
+    notify_on_complete: action !== "notify" ? (sp.notify_on_complete === false ? false : undefined) : undefined,
   }
 }
 

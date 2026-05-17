@@ -1054,6 +1054,11 @@ func setupWorkflowService(
 	// 设置步骤开始回调：通知频道即将执行的步骤
 	engine.SetOnStepStart(
 		func(step workflow.Step, inst *workflow.WorkflowInstance, resolvedPrompt string, resolvedArgs map[string]any) {
+			// 检查是否启用开始通知（nil 或 true 为启用）
+			if step.NotifyOnStart != nil && !*step.NotifyOnStart {
+				return
+			}
+
 			var content string
 			switch step.Action {
 			case "agent_prompt":
@@ -1099,7 +1104,7 @@ func setupWorkflowService(
 
 	// 设置步骤完成回调：将结果实时推送到绑定频道
 	engine.SetOnStepComplete(func(step workflow.Step, inst *workflow.WorkflowInstance, result workflow.StepResult) {
-		// notify 步骤：直接发送消息（不显示步骤完成标记）
+		// notify 步骤：直接发送消息（不显示步骤完成标记），不受完成通知开关控制
 		if step.Action == "notify" {
 			if result.Error != nil {
 				return
@@ -1111,6 +1116,20 @@ func setupWorkflowService(
 			if message != "" {
 				sendToInstTargets(inst, message)
 			}
+			return
+		}
+
+		// agent_prompt 步骤：始终推送 AI 响应，不受完成通知开关控制
+		if step.Action == "agent_prompt" {
+			if result.Error != nil || result.Output == "" {
+				return
+			}
+			sendToInstTargets(inst, result.Output)
+			return
+		}
+
+		// 其他步骤（tool_call / parallel / if）检查完成通知开关
+		if step.NotifyOnComplete != nil && !*step.NotifyOnComplete {
 			return
 		}
 
@@ -1135,11 +1154,13 @@ func setupWorkflowService(
 			return
 		}
 
-		// 仅推送 agent_prompt 类型的步骤输出（AI 响应）
-		if step.Action != "agent_prompt" || result.Error != nil || result.Output == "" {
-			return
+		// parallel / if 步骤的完成通知
+		stepLabel := workflow.StepLabel(step)
+		if result.Error != nil {
+			sendToInstTargets(inst, fmt.Sprintf("❌ 步骤 '%s' 执行失败", stepLabel))
+		} else {
+			sendToInstTargets(inst, fmt.Sprintf("✅ 步骤 '%s' 执行完成", stepLabel))
 		}
-		sendToInstTargets(inst, result.Output)
 	})
 
 	// 设置执行完成回调：将结果推送到绑定频道

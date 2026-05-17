@@ -93,6 +93,8 @@ export interface Step {
   output_key?: string
   workdir?: string
   enabled?: boolean
+  notify_on_start?: boolean
+  notify_on_complete?: boolean
 }
 
 export interface NotifyTarget {

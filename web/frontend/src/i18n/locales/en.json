@@ -1237,6 +1237,8 @@
       "enabled_yes": "On",
       "enabled_no": "Off",
       "disabled": "Disabled",
+      "notify_on_start": "Notify on Start",
+      "notify_on_complete": "Notify on Complete",
       "trigger_agent": "Agent Prompt",
       "trigger_tool": "Tool Call",
       "trigger_notify": "Notify",

@@ -1232,6 +1232,8 @@
       "enabled_yes": "已启用",
       "enabled_no": "已禁用",
       "disabled": "已禁用",
+      "notify_on_start": "开始执行时通知",
+      "notify_on_complete": "执行完成时通知",
       "trigger_agent": "Agent 提示",
       "trigger_tool": "工具调用",
       "trigger_notify": "通知",
