@@ -1308,6 +1308,15 @@
       "fn_date": "当前日期（UTC）",
       "fn_date_tz": "当前日期（指定时区）",
       "fn_unix": "Unix 时间戳",
+      "fn_days_ago": "N 天前的日期",
+      "fn_days_from_now": "N 天后的日期",
+      "fn_hours_ago": "N 小时前的时间",
+      "fn_hours_from_now": "N 小时后的时间",
+      "fn_minutes_ago": "N 分钟前的时间",
+      "fn_minutes_from_now": "N 分钟后的时间",
+      "fn_weeks_ago": "N 周前的日期",
+      "fn_day_of_week": "星期几（1=周一, 7=周日）",
+      "fn_format_time": "自定义时间格式",
       "fn_env": "环境变量"
     }
   },

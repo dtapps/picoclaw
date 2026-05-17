@@ -53,8 +53,16 @@ function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: strin
 	return refs
 }
 
-// 模板函数列表，初始化为空，在组件加载时从后端获取
-let VALID_FUNC_NAMES = new Set<string>()
+// 模板函数列表，初始化为默认值，在组件加载时从后端获取最新列表
+const DEFAULT_FUNC_NAMES = new Set([
+	"now", "now_tz", "date", "date_tz", "unix",
+	"days_ago", "days_from_now",
+	"hours_ago", "hours_from_now",
+	"minutes_ago", "minutes_from_now",
+	"weeks_ago", "day_of_week", "format_time",
+	"env"
+])
+let VALID_FUNC_NAMES = new Set(DEFAULT_FUNC_NAMES)
 
 /** 从后端获取支持的模板函数列表 */
 async function loadTemplateFunctions(): Promise<void> {
@@ -62,30 +70,17 @@ async function loadTemplateFunctions(): Promise<void> {
 		const response = await fetch("/api/workflow/template-functions")
 		if (response.ok) {
 			const data = await response.json()
-			VALID_FUNC_NAMES = new Set(data.functions || [])
+			const functions = data.functions || []
+			if (functions.length > 0) {
+				// 只有当后端返回非空列表时才更新
+				VALID_FUNC_NAMES = new Set(functions)
+			}
 		} else {
-			console.warn("Failed to load template functions, using fallback list")
-			// 降级方案：使用硬编码的默认列表
-			VALID_FUNC_NAMES = new Set([
-				"now", "now_tz", "date", "date_tz", "unix",
-				"days_ago", "days_from_now",
-				"hours_ago", "hours_from_now",
-				"minutes_ago", "minutes_from_now",
-				"weeks_ago", "day_of_week", "format_time",
-				"env"
-			])
+			console.warn("Failed to load template functions, using default list")
 		}
 	} catch (error) {
 		console.error("Error loading template functions:", error)
-		// 降级方案
-		VALID_FUNC_NAMES = new Set([
-			"now", "now_tz", "date", "date_tz", "unix",
-			"days_ago", "days_from_now",
-			"hours_ago", "hours_from_now",
-			"minutes_ago", "minutes_from_now",
-			"weeks_ago", "day_of_week", "format_time",
-			"env"
-		])
+		// 使用默认列表（已经在初始化时设置）
 	}
 }
 

@@ -501,7 +501,7 @@ steps:
 > - `{{.vars.key}}` — the key must be defined in `vars`
 > - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
 > - `{{.self.key}}` — the key only supports `id` and `name`
-> - `{{.fn.xxx}}` — the function name must be a supported template function (now, now_tz, date, date_tz, unix, env)
+> - `{{.fn.xxx}}` — the function name must be a supported template function (now, now_tz, date, date_tz, unix, days_ago, days_from_now, hours_ago, hours_from_now, minutes_ago, minutes_from_now, weeks_ago, day_of_week, format_time, env)
 > - Referencing non-existent variables, steps, output keys, or functions will raise an error, preventing silent template passthrough at runtime
 
 > **Tool parameter validation**: Required parameters for `tool_call` steps are validated when saving a workflow:

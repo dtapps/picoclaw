@@ -478,14 +478,14 @@ var templateRefRe = regexp.MustCompile(`\{\{\.([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\}
 // templateFuncRefRe 匹配 {{.fn.xxx}} 模板函数引用（可能包含参数，如 {{.fn.now_tz "Asia/Shanghai"}}）。
 var templateFuncRefRe = regexp.MustCompile(`\{\{\.fn\.([a-zA-Z0-9_]+)[^}]*\}\}`)
 
-// validFuncNames 是支持的模板函数名称列表。
-var validFuncNames = map[string]bool{
-	"now":     true,
-	"now_tz":  true,
-	"date":    true,
-	"date_tz": true,
-	"unix":    true,
-	"env":     true,
+// validFuncNames 是支持的模板函数名称列表，从 SupportedTemplateFunctions() 初始化。
+var validFuncNames map[string]bool
+
+func init() {
+	validFuncNames = make(map[string]bool)
+	for _, fn := range SupportedTemplateFunctions() {
+		validFuncNames[fn] = true
+	}
 }
 
 // collectOutputKeys 递归收集步骤及其子步骤的 OutputKey 映射。
