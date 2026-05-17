@@ -131,8 +131,6 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 		StepStates:   make(map[string]*StepState),
 		StepOutputs:  make(map[string]map[string]any),
 		TriggerType:  triggerType,
-		Channel:      channel,
-		ChatID:       chatID,
 		Logs:         make([]LogEntry, 0),
 		StartedAt:    time.Now(),
 	}
@@ -143,9 +141,6 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 	if len(targets) > 0 {
 		// 使用配置的所有通知目标
 		inst.NotifyChannels = targets
-		// 向后兼容：Channel/ChatID 设置为第一个目标（用于单频道场景）
-		channel = targets[0].Channel
-		chatID = targets[0].ChatID
 		logger.InfoCF("workflow", "工作流配置了多频道通知", map[string]any{
 			"workflow":        wf.Name,
 			"notify_channels": targets,
@@ -159,18 +154,7 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 			"channel":  channel,
 			"chat_id":  chatID,
 		})
-	} else {
-		// 向后兼容：从旧字段获取
-		channel = wf.Config.NotifyChannel
-		chatID = wf.Config.NotifyChatID
-		logger.InfoCF("workflow", "使用旧版单频道配置", map[string]any{
-			"workflow": wf.Name,
-			"channel":  channel,
-			"chat_id":  chatID,
-		})
 	}
-	inst.Channel = channel
-	inst.ChatID = chatID
 
 	inst.appendLog("", "info", fmt.Sprintf("工作流 '%s' 开始执行（触发: %s）", wf.Name, triggerType))
 
@@ -278,11 +262,6 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 当工作流绑定了通知频道时，通知通过 SendMessage 同步发送
 	// （标记 workflow_notification 绕过 preSend 的 streamActive/placeholder 检查），
 	// 消息在回调返回时已到达远程 API，无需额外延迟。
-
-	// 将频道信息注入上下文，供步骤执行器回调时读取
-	if inst.Channel != "" {
-		ctx = withChannelCtx(ctx, inst.Channel, inst.ChatID)
-	}
 
 	// 将工作目录注入上下文，供 tool_call 步骤自动注入 cwd
 	if wf.Config.Workdir != "" {
@@ -515,7 +494,10 @@ func initStepStatesRecursive(steps []Step, states map[string]*StepState) {
 		if _, exists := states[step.ID]; !exists {
 			states[step.ID] = &StepState{Name: step.Name, Status: StatusPending}
 		}
-		initStepStatesRecursive(step.Parallel, states)
+		// v2 格式：每个分支包含多个步骤
+		for _, branch := range step.Parallel {
+			initStepStatesRecursive(branch.Branch, states)
+		}
 		initStepStatesRecursive(step.IfTrue, states)
 		initStepStatesRecursive(step.IfFalse, states)
 	}
@@ -778,32 +760,52 @@ func (e *Engine) executeIfInEngine(ctx context.Context, step Step, inst *Workflo
 
 func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *WorkflowInstance) StepResult {
 	type parallelResult struct {
-		index  int
-		result StepResult
+		index   int
+		results []StepResult
 	}
 
-	subSteps := step.Parallel
-	ch := make(chan parallelResult, len(subSteps))
+	branches := step.Parallel
+	ch := make(chan parallelResult, len(branches))
 
-	for i, subStep := range subSteps {
-		go func(idx int, s Step) {
-			r := e.executeStepWithState(ctx, s, inst)
-			ch <- parallelResult{index: idx, result: r}
-		}(i, subStep)
+	// v2 格式：每个分支包含多个步骤，分支内串行执行，分支间并行执行
+	for i, branch := range branches {
+		go func(idx int, b ParallelBranch) {
+			var results []StepResult
+			for _, s := range b.Branch {
+				r := e.executeStepWithState(ctx, s, inst)
+				results = append(results, r)
+				// 如果步骤失败且策略为 stop，停止该分支的后续步骤
+				if r.Error != nil && inst.FailureStrategy == "stop" {
+					break
+				}
+			}
+			ch <- parallelResult{index: idx, results: results}
+		}(i, branch)
 	}
 
 	var errs []error
 	outputs := make(map[string]any)
-	for range subSteps {
+	for range branches {
 		r := <-ch
-		if r.result.Error != nil {
-			errs = append(errs, fmt.Errorf("步骤[%d]: %w", r.index, r.result.Error))
+		for _, result := range r.results {
+			if result.Error != nil {
+				errs = append(errs, result.Error)
+			}
 		}
-		key := subSteps[r.index].OutputKey
-		if key == "" {
-			key = "result"
+		// 收集该分支最后一个步骤的输出
+		if len(r.results) > 0 {
+			lastResult := r.results[len(r.results)-1]
+			// 使用分支最后一个步骤的 OutputKey
+			branch := branches[r.index]
+			var key string
+			if len(branch.Branch) > 0 {
+				key = branch.Branch[len(branch.Branch)-1].OutputKey
+			}
+			if key == "" {
+				key = "result"
+			}
+			outputs[key] = lastResult.Output
 		}
-		outputs[key] = r.result.Output
 	}
 
 	if len(errs) > 0 {
@@ -819,8 +821,12 @@ func (e *Engine) executeParallelInEngine(ctx context.Context, step Step, inst *W
 
 	// 合并输出
 	var combined strings.Builder
-	for _, subStep := range subSteps {
-		key := subStep.OutputKey
+	for _, branch := range branches {
+		if len(branch.Branch) == 0 {
+			continue
+		}
+		lastStep := branch.Branch[len(branch.Branch)-1]
+		key := lastStep.OutputKey
 		if key == "" {
 			key = "result"
 		}

@@ -839,7 +839,7 @@ func TestService_UnbindChannel_ReadsFreshFromDisk(t *testing.T) {
 		t.Fatalf("Steps[0].Prompt = %q, want %q (external change preserved)", diskWf.Steps[0].Prompt, "new")
 	}
 	if len(diskWf.Config.NotifyChannels) != 0 {
-		t.Fatalf("NotifyChannel = %q, want empty (unbind applied)", diskWf.Config.NotifyChannel)
+		t.Fatalf("NotifyChannels = %v, want empty (unbind applied)", diskWf.Config.NotifyChannels)
 	}
 }
 

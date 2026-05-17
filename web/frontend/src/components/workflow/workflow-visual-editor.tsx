@@ -250,8 +250,8 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
                   params: tool.parameters.map((p) => ({
                     name: p.name,
                     type: p.type,
-                    description: p.description,
-                    required: p.required,
+                    description: p.description || "",
+                    required: p.required || false,
                   })),
                 })
               }

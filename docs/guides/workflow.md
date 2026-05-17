@@ -199,7 +199,7 @@ StopInstance(instanceID)
 
 A workflow is an executable unit composed of an ordered set of steps. Each workflow contains:
 
-- **Version**: Configuration format version (`version`), currently v2, used for automatic migration of legacy configurations
+- **Version**: Configuration format version (`version`), currently version 2
 - **Name**: Unique identifier for reference and management, restricted to `a-zA-Z0-9_-` only
 - **Description**: Purpose description
 - **Triggers**: Define when the workflow auto-executes (manual/cron/event)
@@ -583,8 +583,9 @@ vars:
 config:
   failure_strategy: stop  # stop or continue
   workdir: "/root/.picoclaw/workspace/news"  # optional, default working directory for tool_call steps
-  notify_channel: telegram  # optional, default notification channel
-  notify_chat_id: "-100xxx" # optional, default notification chat ID
+  notify_channels:         # optional, notification targets list
+    - channel: telegram
+      chat_id: "-100xxx"
 
 steps:
   - id: fetch_weather
@@ -939,23 +940,17 @@ The engine determines the notification channel for each execution using this pri
 
 1. **Run-time channel** — When triggered from a chat context (`/workflow run`, `workflow action=run`), the current channel/chatID is passed to the instance and used for notifications
 2. **Persistent binding** — When triggered without a chat context (Web UI, cron, event), the engine falls back to the channel set via `/workflow bind` or `workflow action=bind`
-3. **YAML config fallback** — If neither is available, the engine falls back to `notify_channel`/`notify_chat_id` from the workflow config
+3. **YAML config** — If neither is available, the engine uses `notify_channels` from the workflow config
 
 > **Note**: `/workflow bind` and `workflow action=bind` persist the channel into the workflow definition, so future cron/event-triggered runs also send notifications there. `/workflow run` and `workflow action=run` only pass the channel for that specific execution — they do NOT update the persistent binding.
 
 Channel binding follows the same pattern as the Cron tool: `ToolChannel(ctx)` / `ToolChatID(ctx)` extract channel info from the execution context. When a workflow starts, a step begins, a step completes, or the workflow finishes, the `onStart`, `onStepStart`, `onStepComplete`, and `onComplete` callbacks send notifications to the bound channel via `msgBus.PublishOutbound`.
 
-> Each workflow execution uses an independent session (`agent:workflow-{uuid}`), no shared context. Channel info is inherited from the workflow instance's `Channel`/`ChatID` to the step executor, not hardcoded.
+> Each workflow execution uses an independent session (`agent:workflow-{uuid}`), no shared context.
 
-**YAML config fallback**:
+**YAML config**:
 
 ```yaml
-# v1 format (single channel, backward compatible)
-config:
-  notify_channel: telegram   # Default notification channel
-  notify_chat_id: "-100xxx"  # Default notification chat ID
-
-# v2 format (multi-channel, recommended)
 config:
   notify_channels:
     - channel: telegram
@@ -964,23 +959,7 @@ config:
       chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
 ```
 
-When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine falls back to notification targets from the workflow config.
-
-**Version Migration Mechanism**:
-
-The workflow engine supports configuration version management to ensure backward compatibility:
-
-- **v1 format**: Uses `notify_channel` and `notify_chat_id` fields (single channel)
-- **v2 format**: Uses `notify_channels` array field (multi-channel), while retaining v1 fields for backward compatibility
-- **Automatic migration**: When loading a workflow, if v1 format is detected and v2 format is not in use, the system automatically migrates to v2 format
-- **Version field**: Workflow definitions can optionally include a `version` field (e.g., `version: 2`), defaulting to 1 if not set
-
-Migration is fully automated with no user intervention required:
-1. **Load-time migration**: Automatically detects and migrates when reading YAML files from disk
-2. **Startup migration**: Batch migrates all loaded workflows when the service starts
-3. **Save-time migration**: Automatically migrates to the latest version before saving
-
-This design ensures that legacy configurations work without modification while providing extensibility for new features.
+When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine uses notification targets from the workflow config.
 
 ### Notification via Steps
 

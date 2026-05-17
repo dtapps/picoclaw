@@ -1018,20 +1018,12 @@ func setupWorkflowService(
 			"workflow":        inst.WorkflowName,
 			"instance_id":     inst.ID,
 			"notify_channels": inst.NotifyChannels,
-			"channel":         inst.Channel,
-			"chat_id":         inst.ChatID,
 		})
 		if len(inst.NotifyChannels) > 0 {
 			logger.InfoCF("workflow", "使用 NotifyChannels 多频道模式", map[string]any{
 				"count": len(inst.NotifyChannels),
 			})
 			sendToAllTargets(inst.NotifyChannels, content)
-		} else if inst.Channel != "" && inst.ChatID != "" {
-			logger.InfoCF("workflow", "使用 Channel/ChatID 单频道模式（向后兼容）", map[string]any{
-				"channel": inst.Channel,
-				"chat_id": inst.ChatID,
-			})
-			sendNotification(inst.Channel, inst.ChatID, content)
 		} else {
 			logger.WarnCF("workflow", "没有配置任何通知目标，跳过通知", map[string]any{
 				"workflow": inst.WorkflowName,

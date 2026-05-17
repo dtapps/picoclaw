@@ -48,7 +48,8 @@ function extractTemplateRefs(step: WorkflowStep): { refId: string; refKey: strin
 			if (typeof v === "string") check(v)
 		}
 	}
-	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	// 递归提取子步骤的模板引用
+	const subs = getSubSteps(step)
 	for (const sub of subs) refs.push(...extractTemplateRefs(sub))
 	return refs
 }
@@ -96,7 +97,7 @@ function extractFuncRefs(step: WorkflowStep): string[] {
 			if (typeof v === "string") check(v)
 		}
 	}
-	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	const subs = getSubSteps(step)
 	for (const sub of subs) refs.push(...extractFuncRefs(sub))
 	return refs
 }
@@ -106,7 +107,7 @@ function collectStepOutputKeys(step: WorkflowStep, map: Map<string, string>) {
 	if (step.action === "agent_prompt" || step.action === "tool_call") {
 		map.set(step.id, step.output_key || "result")
 	}
-	const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	const subs = getSubSteps(step)
 	for (const sub of subs) collectStepOutputKeys(sub, map)
 }
 
@@ -145,6 +146,15 @@ function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string
 	return ""
 }
 
+/** 获取步骤的子步骤（支持两种格式的 parallel） */
+function getSubSteps(step: WorkflowStep): WorkflowStep[] {
+	let subs: WorkflowStep[] = []
+	if (step.parallel && step.parallel.length > 0) {
+		subs = step.parallel.flatMap(b => b.branch)
+	}
+	return [...subs, ...(step.if_true || []), ...(step.if_false || [])]
+}
+
 /** 递归校验 tool_call 步骤的必填参数，返回错误信息或空字符串 */
 function validateToolCallArgs(steps: WorkflowStep[], toolRequiredParams: Map<string, string[]>, t: (key: string, options?: Record<string, unknown>) => string): string {
 	for (const step of steps) {
@@ -162,7 +172,7 @@ function validateToolCallArgs(steps: WorkflowStep[], toolRequiredParams: Map<str
 			}
 		}
 		// 递归校验子步骤
-		const subs = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+		const subs = getSubSteps(step)
 		const err = validateToolCallArgs(subs, toolRequiredParams, t)
 		if (err) return err
 	}
@@ -189,7 +199,7 @@ function validateStep(step: WorkflowStep, index: number, t: (key: string, option
 	if (step.action === "if" && (!step.if_true || step.if_true.length === 0) && (!step.if_false || step.if_false.length === 0))
 		return t("pages.workflows.step_no_branch", { index, label })
 	// 递归校验子步骤
-	const subSteps = step.parallel || [...(step.if_true || []), ...(step.if_false || [])]
+	const subSteps = getSubSteps(step)
 	for (let i = 0; i < subSteps.length; i++) {
 		const err = validateStep(subSteps[i], i, t, ids)
 		if (err) return err

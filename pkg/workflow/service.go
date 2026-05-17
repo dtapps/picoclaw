@@ -325,9 +325,6 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 		return err
 	}
 
-	// 确保使用 v2 格式
-	freshWf.MigrateToV2()
-
 	// 查找是否已存在相同频道的目标
 	found := false
 	for i, target := range freshWf.Config.NotifyChannels {
@@ -379,9 +376,6 @@ func (s *Service) UnbindChannel(name, channel, chatID string) error {
 		return err
 	}
 
-	// 确保使用 v2 格式
-	freshWf.MigrateToV2()
-
 	if channel == "" && chatID == "" {
 		// 清空所有通知目标
 		freshWf.Config.NotifyChannels = nil
@@ -423,8 +417,6 @@ func (s *Service) GetNotifyChannels(name string) ([]NotifyTarget, error) {
 		}
 	}
 
-	// 确保使用 v2 格式
-	wf.MigrateToV2()
 	return wf.Config.GetNotifyTargets(), nil
 }
 
@@ -765,23 +757,25 @@ func (s *Service) isCronDue(cronExpr, tz string) (bool, error) {
 	}
 	now = now.In(loc)
 
-	// 使用 gronx.NextTickAfter 计算下一次应该触发的时间
-	// 传入当前时间的前一分钟作为参考点，确保能捕获到刚刚过去的触发点
-	referenceTime := now.Add(-time.Minute)
-	nextTick, err := gronx.NextTickAfter(cronExpr, referenceTime, false)
+	// 使用 gronx.IsDue 检查当前时间是否应该触发
+	// 先检查精确时间点
+	g := gronx.New()
+	isDue, err := g.IsDue(cronExpr, now)
 	if err != nil {
 		return false, err
 	}
+	if isDue {
+		return true, nil
+	}
 
-	// 将下一次触发时间转换为相同的时区
-	nextTick = nextTick.In(loc)
-
-	// 检查下一次触发时间是否在当前分钟内（允许 0-59 秒的误差）
-	// 这样可以确保即使检查间隔不是精确的 60 秒，也不会错过触发
-	currentMinuteStart := now.Truncate(time.Minute)
-	currentMinuteEnd := currentMinuteStart.Add(time.Minute)
-
-	return !nextTick.Before(currentMinuteStart) && nextTick.Before(currentMinuteEnd), nil
+	// 如果精确时间点不匹配，检查是否在当前分钟内
+	// 将时间截断到分钟，检查这一分钟是否应该触发
+	truncated := now.Truncate(time.Minute)
+	isDue, err = g.IsDue(cronExpr, truncated)
+	if err != nil {
+		return false, err
+	}
+	return isDue, nil
 }
 
 func (s *Service) checkCronTriggers() {
@@ -1189,30 +1183,9 @@ func (s *Service) reloadWorkflowsUnsafe() error {
 		return err
 	}
 
-	// 迁移所有工作流到最新版本
-	migratedCount := 0
-	savedCount := 0
 	for _, wf := range workflows {
-		if wf.MigrateToV2() {
-			migratedCount++
-			logger.InfoCF("workflow", "工作流配置已迁移",
-				map[string]any{"workflow": wf.Name, "version": wf.Version})
-
-			// 保存迁移后的配置到磁盘
-			if err := s.store.SaveWorkflow(wf); err != nil {
-				logger.ErrorCF("workflow", "保存迁移后的工作流失败",
-					map[string]any{"workflow": wf.Name, "error": err.Error()})
-			} else {
-				savedCount++
-			}
-		}
 		// 计算运行时状态字段
 		s.computeWorkflowRuntimeState(wf)
-	}
-
-	if migratedCount > 0 {
-		logger.InfoCF("workflow", "批量迁移完成",
-			map[string]any{"total": len(workflows), "migrated": migratedCount, "saved": savedCount})
 	}
 
 	s.workflows = workflows
