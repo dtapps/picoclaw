@@ -975,19 +975,51 @@ func setupWorkflowService(
 
 	// sendToAllTargets 发送通知到所有目标频道
 	sendToAllTargets := func(targets []workflow.NotifyTarget, content string) {
-		for _, target := range targets {
+		logger.InfoCF("workflow", "开始发送多频道通知", map[string]any{
+			"target_count": len(targets),
+			"targets":      targets,
+		})
+		for i, target := range targets {
 			if target.Channel != "" && target.ChatID != "" {
+				logger.InfoCF("workflow", fmt.Sprintf("发送通知到频道 [%d/%d]", i+1, len(targets)), map[string]any{
+					"channel": target.Channel,
+					"chat_id": target.ChatID,
+				})
 				sendNotification(target.Channel, target.ChatID, content)
+			} else {
+				logger.WarnCF("workflow", "跳过无效的通知目标", map[string]any{
+					"index":   i,
+					"channel": target.Channel,
+					"chat_id": target.ChatID,
+				})
 			}
 		}
 	}
 
 	// sendToInstTargets 根据实例配置发送通知（支持多频道）
 	sendToInstTargets := func(inst *workflow.WorkflowInstance, content string) {
+		logger.InfoCF("workflow", "准备发送工作流通知", map[string]any{
+			"workflow":        inst.WorkflowName,
+			"instance_id":     inst.ID,
+			"notify_channels": inst.NotifyChannels,
+			"channel":         inst.Channel,
+			"chat_id":         inst.ChatID,
+		})
 		if len(inst.NotifyChannels) > 0 {
+			logger.InfoCF("workflow", "使用 NotifyChannels 多频道模式", map[string]any{
+				"count": len(inst.NotifyChannels),
+			})
 			sendToAllTargets(inst.NotifyChannels, content)
 		} else if inst.Channel != "" && inst.ChatID != "" {
+			logger.InfoCF("workflow", "使用 Channel/ChatID 单频道模式（向后兼容）", map[string]any{
+				"channel": inst.Channel,
+				"chat_id": inst.ChatID,
+			})
 			sendNotification(inst.Channel, inst.ChatID, content)
+		} else {
+			logger.WarnCF("workflow", "没有配置任何通知目标，跳过通知", map[string]any{
+				"workflow": inst.WorkflowName,
+			})
 		}
 	}
 
