@@ -208,9 +208,8 @@ func TestPersistStore_SaveAndLoadInstance(t *testing.T) {
 		StepOutputs: map[string]map[string]any{
 			"s1": {"result": "hello world"},
 		},
-		TriggerType: "manual",
-		Channel:     "telegram",
-		ChatID:      "-100123",
+		TriggerType:    "manual",
+		NotifyChannels: []NotifyTarget{{Channel: "telegram", ChatID: "-100123"}},
 		Logs: []LogEntry{
 			{Timestamp: now, StepID: "s1", Level: "info", Message: "step completed"},
 		},
@@ -235,8 +234,8 @@ func TestPersistStore_SaveAndLoadInstance(t *testing.T) {
 	if loaded.Status != StatusCompleted {
 		t.Fatalf("Status = %q, want %q", loaded.Status, StatusCompleted)
 	}
-	if loaded.Channel != "telegram" {
-		t.Fatalf("Channel = %q, want %q", loaded.Channel, "telegram")
+	if len(loaded.NotifyChannels) != 1 || loaded.NotifyChannels[0].Channel != "telegram" {
+		t.Fatalf("NotifyChannels = %v, want telegram", loaded.NotifyChannels)
 	}
 	if loaded.StepStates["s1"].Status != StatusCompleted {
 		t.Fatalf("StepStates[s1].Status = %q, want completed", loaded.StepStates["s1"].Status)

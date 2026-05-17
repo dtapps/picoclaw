@@ -415,47 +415,6 @@ func TestRunWorkflow_Callbacks(t *testing.T) {
 	}
 }
 
-func TestRunWorkflow_ChannelFromConfig(t *testing.T) {
-	engine, _ := setupTestEngine(t)
-
-	wf := &Workflow{
-		Name: "channel-wf",
-		Config: WorkflowConfig{
-			NotifyChannel: "telegram",
-			NotifyChatID:  "-100123",
-		},
-		Steps: []Step{
-			{ID: "s1", Action: "agent_prompt", Prompt: "hi"},
-		},
-	}
-
-	var completed bool
-	var mu sync.Mutex
-	engine.SetOnComplete(func(inst *WorkflowInstance) <-chan struct{} {
-		mu.Lock()
-		completed = true
-		mu.Unlock()
-
-		return nil
-	})
-
-	instID, _ := engine.RunWorkflow(context.Background(), wf, "manual", "", "")
-
-	waitFor(t, 2*time.Second, func() bool {
-		mu.Lock()
-		defer mu.Unlock()
-		return completed
-	})
-
-	inst, _ := engine.store.LoadInstance("channel-wf", instID)
-	if inst.Channel != "telegram" {
-		t.Fatalf("Channel = %q, want %q", inst.Channel, "telegram")
-	}
-	if inst.ChatID != "-100123" {
-		t.Fatalf("ChatID = %q, want %q", inst.ChatID, "-100123")
-	}
-}
-
 func TestRunWorkflow_DataPassingBetweenSteps(t *testing.T) {
 	engine, executor := setupTestEngine(t)
 
@@ -597,9 +556,9 @@ func TestRunWorkflow_ParallelStep(t *testing.T) {
 			{
 				ID:     "s2",
 				Action: "parallel",
-				Parallel: []Step{
-					{ID: "p1", Action: "agent_prompt", Prompt: "parallel-a", OutputKey: "a"},
-					{ID: "p2", Action: "agent_prompt", Prompt: "parallel-b", OutputKey: "b"},
+				Parallel: []ParallelBranch{
+					{Branch: []Step{{ID: "p1", Action: "agent_prompt", Prompt: "parallel-a", OutputKey: "a"}}},
+					{Branch: []Step{{ID: "p2", Action: "agent_prompt", Prompt: "parallel-b", OutputKey: "b"}}},
 				},
 			},
 		},
@@ -651,9 +610,9 @@ func TestRunWorkflow_ParallelSubStepStateTracking(t *testing.T) {
 			{
 				ID:     "s1",
 				Action: "parallel",
-				Parallel: []Step{
-					{ID: "p1", Action: "agent_prompt", Prompt: "parallel-a", OutputKey: "a"},
-					{ID: "p2", Action: "agent_prompt", Prompt: "parallel-b", OutputKey: "b"},
+				Parallel: []ParallelBranch{
+					{Branch: []Step{{ID: "p1", Action: "agent_prompt", Prompt: "parallel-a", OutputKey: "a"}}},
+					{Branch: []Step{{ID: "p2", Action: "agent_prompt", Prompt: "parallel-b", OutputKey: "b"}}},
 				},
 			},
 		},

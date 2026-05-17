@@ -113,6 +113,14 @@ func (e EventType) String() string {
 // 当步骤未设置 timeout 字段时使用此值。
 const DefaultStepTimeout = "30m"
 
+// ParallelBranch 表示并行步骤的一个分支（v2 格式）
+type ParallelBranch struct {
+	Branch []Step `yaml:"branch" json:"branch"`
+}
+
+// ParallelSteps 是 parallel 字段的类型，内部始终使用 v2 格式（分支结构）
+type ParallelSteps []ParallelBranch
+
 // Step 表示工作流中的一个执行步骤。
 // 步骤是工作流的核心执行单元，支持五种动作类型：
 //   - agent_prompt: 让 LLM agent 执行一段提示词
@@ -127,7 +135,7 @@ type Step struct {
 	Prompt    string         `yaml:"prompt,omitempty"     json:"prompt,omitempty"`     // agent_prompt 的提示词内容
 	Tool      string         `yaml:"tool,omitempty"       json:"tool,omitempty"`       // tool_call 的工具名称
 	Args      map[string]any `yaml:"args,omitempty"       json:"args,omitempty"`       // tool_call 的参数
-	Parallel  []Step         `yaml:"parallel,omitempty"   json:"parallel,omitempty"`   // parallel 的子步骤列表
+	Parallel  ParallelSteps  `yaml:"parallel,omitempty"   json:"parallel,omitempty"`   // parallel 的子步骤列表（支持 []Step 和 []{branch: Step[]} 两种格式）
 	IfTrue    []Step         `yaml:"if_true,omitempty"    json:"if_true,omitempty"`    // if 条件为 true 时执行的步骤
 	IfFalse   []Step         `yaml:"if_false,omitempty"   json:"if_false,omitempty"`   // if 条件为 false 时执行的步骤
 	Message   string         `yaml:"message,omitempty"    json:"message,omitempty"`    // notify 的消息内容（支持模板）
@@ -136,6 +144,7 @@ type Step struct {
 	Retry     *RetryConfig   `yaml:"retry,omitempty"      json:"retry,omitempty"`      // 重试配置
 	Timeout   string         `yaml:"timeout,omitempty"    json:"timeout,omitempty"`    // 超时时间，如 "30s"、"5m"，默认 30m
 	OutputKey string         `yaml:"output_key,omitempty" json:"output_key,omitempty"` // 输出键名，用于步骤间数据传递
+	Workdir   string         `yaml:"workdir,omitempty"    json:"workdir,omitempty"`    // 工作目录（前端使用，后端从 config 读取）
 	Enabled   *bool          `yaml:"enabled,omitempty"    json:"enabled,omitempty"`    // 是否启用，nil/false 为禁用
 }
 
@@ -156,54 +165,12 @@ type NotifyTarget struct {
 type WorkflowConfig struct {
 	FailureStrategy string         `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
 	NotifyChannels  []NotifyTarget `yaml:"notify_channels,omitempty"  json:"notify_channels,omitempty"`  // 通知目标列表（支持多频道）
-	NotifyChannel   string         `yaml:"notify_channel,omitempty"   json:"notify_channel,omitempty"`   // 完成通知频道（向后兼容，单频道）
-	NotifyChatID    string         `yaml:"notify_chat_id,omitempty"   json:"notify_chat_id,omitempty"`   // 完成通知聊天 ID（向后兼容，单频道）
 	Workdir         string         `yaml:"workdir,omitempty"          json:"workdir,omitempty"`          // 工作目录，tool_call 步骤执行时的默认目录
 }
 
 // GetNotifyTargets 返回通知目标列表。
-// 优先使用 notify_channels，如果为空则从旧字段 notify_channel/notify_chat_id 转换。
 func (c *WorkflowConfig) GetNotifyTargets() []NotifyTarget {
-	if len(c.NotifyChannels) > 0 {
-		return c.NotifyChannels
-	}
-	// 向后兼容：从旧字段转换
-	if c.NotifyChannel != "" && c.NotifyChatID != "" {
-		return []NotifyTarget{{Channel: c.NotifyChannel, ChatID: c.NotifyChatID}}
-	}
-	return nil
-}
-
-// MigrateToV2 将 v1 配置迁移到 v2 格式。
-// 如果 config.version 为空或 1，且使用了旧字段，则自动迁移到新格式。
-func (w *Workflow) MigrateToV2() bool {
-	// 如果已经是 v2 或更高版本，无需迁移
-	if w.Version >= 2 {
-		return false
-	}
-
-	migrated := false
-
-	// 迁移通知配置
-	if w.Config.NotifyChannel != "" && w.Config.NotifyChatID != "" {
-		// 如果还没有使用新格式，则迁移
-		if len(w.Config.NotifyChannels) == 0 {
-			w.Config.NotifyChannels = []NotifyTarget{
-				{Channel: w.Config.NotifyChannel, ChatID: w.Config.NotifyChatID},
-			}
-			migrated = true
-		}
-		// 清空旧字段（已迁移到新格式）
-		w.Config.NotifyChannel = ""
-		w.Config.NotifyChatID = ""
-	}
-
-	// 更新版本号
-	if migrated {
-		w.Version = 2
-	}
-
-	return migrated
+	return c.NotifyChannels
 }
 
 // --- 运行时状态 ---
@@ -225,9 +192,7 @@ type WorkflowInstanceSummary struct {
 	WorkflowName   string         `json:"workflow_name"`
 	Status         string         `json:"status"`
 	TriggerType    string         `json:"trigger_type"`
-	Channel        string         `json:"channel,omitempty"`         // v1 格式：向后兼容
-	ChatID         string         `json:"chat_id,omitempty"`         // v1 格式：向后兼容
-	NotifyChannels []NotifyTarget `json:"notify_channels,omitempty"` // v2 格式：多频道
+	NotifyChannels []NotifyTarget `json:"notify_channels,omitempty"` // 通知目标列表（支持多频道）
 	StartedAt      time.Time      `json:"started_at"`
 	FinishedAt     *time.Time     `json:"finished_at,omitempty"`
 	Error          string         `json:"error,omitempty"`
@@ -240,8 +205,6 @@ func (inst *WorkflowInstance) ToSummary() *WorkflowInstanceSummary {
 		WorkflowName:   inst.WorkflowName,
 		Status:         inst.Status,
 		TriggerType:    inst.TriggerType,
-		Channel:        inst.Channel,
-		ChatID:         inst.ChatID,
 		NotifyChannels: inst.NotifyChannels,
 		StartedAt:      inst.StartedAt,
 		FinishedAt:     inst.FinishedAt,
@@ -256,8 +219,6 @@ type WorkflowInstance struct {
 	StepStates     map[string]*StepState     `json:"step_states"`               // 各步骤执行状态
 	StepOutputs    map[string]map[string]any `json:"step_outputs"`              // 各步骤输出数据
 	TriggerType    string                    `json:"trigger_type"`              // 触发类型：cron | event | manual
-	Channel        string                    `json:"channel,omitempty"`         // 绑定频道（向后兼容，单频道）
-	ChatID         string                    `json:"chat_id,omitempty"`         // 绑定聊天 ID（向后兼容，单频道）
 	NotifyChannels []NotifyTarget            `json:"notify_channels,omitempty"` // 通知目标列表（支持多频道）
 	Logs           []LogEntry                `json:"logs,omitempty"`            // 执行日志
 	StartedAt      time.Time                 `json:"started_at"`                // 开始时间
@@ -428,10 +389,12 @@ func validateStep(step Step, ids map[string]bool) error {
 		}
 	}
 
-	// 递归校验子步骤
-	for _, sub := range step.Parallel {
-		if err := validateStep(sub, ids); err != nil {
-			return err
+	// 递归校验子步骤（v2 格式：每个分支包含多个步骤）
+	for _, branch := range step.Parallel {
+		for _, sub := range branch.Branch {
+			if err := validateStep(sub, ids); err != nil {
+				return err
+			}
 		}
 	}
 	for _, sub := range step.IfTrue {
@@ -493,8 +456,11 @@ func collectOutputKeys(step Step, m map[string]string) {
 	if step.OutputKey != "" {
 		m[step.ID] = step.OutputKey
 	}
-	for _, sub := range step.Parallel {
-		collectOutputKeys(sub, m)
+	// v2 格式：每个分支包含多个步骤
+	for _, branch := range step.Parallel {
+		for _, sub := range branch.Branch {
+			collectOutputKeys(sub, m)
+		}
 	}
 	for _, sub := range step.IfTrue {
 		collectOutputKeys(sub, m)
@@ -580,9 +546,12 @@ func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[
 		}
 	}
 
-	for _, sub := range step.Parallel {
-		if err := validateStepTemplateRefs(sub, vars, outputKeys); err != nil {
-			return err
+	// v2 格式：每个分支包含多个步骤
+	for _, branch := range step.Parallel {
+		for _, sub := range branch.Branch {
+			if err := validateStepTemplateRefs(sub, vars, outputKeys); err != nil {
+				return err
+			}
 		}
 	}
 	for _, sub := range step.IfTrue {
@@ -639,10 +608,12 @@ func validateStepToolCallArgs(step Step, provider ToolSchemaProvider) error {
 			return err
 		}
 	}
-	// 递归校验子步骤
-	for _, sub := range step.Parallel {
-		if err := validateStepToolCallArgs(sub, provider); err != nil {
-			return err
+	// 递归校验子步骤（v2 格式：每个分支包含多个步骤）
+	for _, branch := range step.Parallel {
+		for _, sub := range branch.Branch {
+			if err := validateStepToolCallArgs(sub, provider); err != nil {
+				return err
+			}
 		}
 	}
 	for _, sub := range step.IfTrue {

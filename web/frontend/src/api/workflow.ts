@@ -78,7 +78,11 @@ export interface Step {
   prompt?: string
   tool?: string
   args?: Record<string, unknown>
-  parallel?: Step[]
+  /**
+   * 并行步骤的子步骤
+   * - { branch: Step[] }[]: 分支格式（支持每个分支多个步骤串行执行）
+   */
+  parallel?: { branch: Step[] }[]
   if_true?: Step[]
   if_false?: Step[]
   message?: string
@@ -98,9 +102,7 @@ export interface NotifyTarget {
 
 export interface WorkflowConfig {
   failure_strategy?: string
-  notify_channels?: NotifyTarget[]  // v2 格式：多频道
-  notify_channel?: string           // v1 格式：向后兼容
-  notify_chat_id?: string           // v1 格式：向后兼容
+  notify_channels?: NotifyTarget[]
   workdir?: string
 }
 
@@ -156,9 +158,7 @@ export interface WorkflowInstanceSummary {
   workflow_name: string
   status: string
   trigger_type: string
-  channel?: string                // v1 格式：向后兼容
-  chat_id?: string                // v1 格式：向后兼容
-  notify_channels?: NotifyTarget[] // v2 格式：多频道
+  notify_channels?: NotifyTarget[]
   started_at: string
   finished_at?: string
   error?: string
@@ -171,9 +171,7 @@ export interface WorkflowInstance {
   step_states: Record<string, StepState>
   step_outputs: Record<string, Record<string, unknown>>
   trigger_type: string
-  channel?: string                          // v1 格式：向后兼容
-  chat_id?: string                          // v1 格式：向后兼容
-  notify_channels?: NotifyTarget[]          // v2 格式：多频道
+  notify_channels?: NotifyTarget[]
   logs?: LogEntry[]
   started_at: string
   finished_at?: string
@@ -300,12 +298,35 @@ export async function deleteWorkflowInstance(
   if (!res.ok) throw new Error("Failed to delete workflow instance")
 }
 
+// --- 已注册工具列表缓存 ---
+let registeredToolsCache: string[] | null = null
+let registeredToolsCacheTime = 0
+const REGISTERED_TOOLS_CACHE_TTL = 5 * 60 * 1000 // 5 分钟缓存
+
 /** 获取系统已注册的工具名称列表（从 agent registry 直接读取，名称准确） */
 export async function getRegisteredTools(): Promise<string[]> {
+  // 检查缓存是否有效
+  const now = Date.now()
+  if (registeredToolsCache && now - registeredToolsCacheTime < REGISTERED_TOOLS_CACHE_TTL) {
+    return registeredToolsCache
+  }
+
   const res = await launcherFetch("/api/workflow/registered-tools")
   if (!res.ok) throw new Error("Failed to fetch registered tools")
   const data = await res.json()
-  return data.tools || []
+  const tools = data.tools || []
+  
+  // 更新缓存
+  registeredToolsCache = tools
+  registeredToolsCacheTime = now
+  
+  return tools
+}
+
+/** 清除已注册工具列表缓存 */
+export function clearRegisteredToolsCache(): void {
+  registeredToolsCache = null
+  registeredToolsCacheTime = 0
 }
 
 // --- SSE 实时事件 ---

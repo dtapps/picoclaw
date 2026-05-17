@@ -199,7 +199,7 @@ StopInstance(instanceID)
 
 工作流是由一组有序步骤组成的可执行单元。每个工作流包含：
 
-- **版本**：配置格式版本号（`version`），当前最新版本为 2，用于自动迁移旧格式配置
+- **版本**：配置格式版本号（`version`），当前版本为 2
 - **名称**：唯一标识符，用于引用和管理，仅允许英文字母、数字、连字符和下划线（`a-zA-Z0-9_-`）
 - **描述**：工作流用途说明
 - **触发器**：定义工作流何时自动执行（手动/Cron/事件）
@@ -582,8 +582,9 @@ vars:
 config:
   failure_strategy: stop  # stop 或 continue
   workdir: "/root/.picoclaw/workspace/news"  # 可选，tool_call 步骤的默认工作目录
-  notify_channel: telegram  # 可选，默认通知频道
-  notify_chat_id: "-100xxx" # 可选，默认通知聊天 ID
+  notify_channels:        # 可选，通知目标列表
+    - channel: telegram
+      chat_id: "-100xxx"
 
 steps:
   - id: fetch_weather
@@ -938,23 +939,17 @@ last_run_status: success
 
 1. **运行时频道** — 从聊天上下文触发时（`/workflow run`、`workflow action=run`），当前频道/chatID 传递给实例，用于发送通知
 2. **持久绑定** — 无聊天上下文触发时（Web UI、cron、事件），引擎回退到通过 `/workflow bind` 或 `workflow action=bind` 设置的频道
-3. **YAML 配置回退** — 如果以上均不可用，引擎回退到工作流配置中的 `notify_channel`/`notify_chat_id`
+3. **YAML 配置** — 如果以上均不可用，引擎使用工作流配置中的 `notify_channels`
 
 > **注意**：`/workflow bind` 和 `workflow action=bind` 将频道持久化到工作流定义中，后续的 cron/事件触发也会发送通知到该频道。`/workflow run` 和 `workflow action=run` 只将频道传递给当次执行，不会更新持久绑定。
 
 频道绑定与 Cron 工具采用相同模式：`ToolChannel(ctx)`/`ToolChatID(ctx)` 从执行上下文提取频道信息。工作流开始、步骤开始、步骤完成和结束时，分别通过 `onStart`、`onStepStart`、`onStepComplete`、`onComplete` 回调经 `msgBus.PublishOutbound` 发送通知到绑定的频道。
 
-> 每次工作流执行使用独立的会话（`agent:workflow-{uuid}`），不会共享上下文。频道信息从工作流实例的 `Channel`/`ChatID` 继承到步骤执行器，而非固定值。
+> 每次工作流执行使用独立的会话（`agent:workflow-{uuid}`），不会共享上下文。
 
-**YAML 配置回退**：
+**YAML 配置**：
 
 ```yaml
-# v1 格式（单频道，向后兼容）
-config:
-  notify_channel: telegram   # 默认通知频道
-  notify_chat_id: "-100xxx"  # 默认通知聊天 ID
-
-# v2 格式（多频道，推荐）
 config:
   notify_channels:
     - channel: telegram
@@ -963,23 +958,7 @@ config:
       chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
 ```
 
-当工作流在没有频道上下文的情况下触发（如 cron 触发、事件触发或 Web UI），引擎会回退使用工作流配置中的通知目标。
-
-**版本迁移机制**：
-
-工作流引擎支持配置版本管理，确保向后兼容性：
-
-- **v1 格式**：使用 `notify_channel` 和 `notify_chat_id` 字段（单频道）
-- **v2 格式**：使用 `notify_channels` 数组字段（多频道），同时保留 v1 字段用于向后兼容
-- **自动迁移**：加载工作流时，如果检测到 v1 格式且未使用 v2 格式，系统会自动迁移到 v2 格式
-- **版本号字段**：工作流定义可选包含 `version` 字段（如 `version: 2`），未设置时默认为 1
-
-迁移过程完全自动化，无需用户干预：
-1. **加载时迁移**：从磁盘读取 YAML 文件时自动检测并迁移
-2. **启动时迁移**：服务启动时批量迁移所有已加载的工作流
-3. **保存时迁移**：保存工作流前自动迁移到最新版本
-
-这种设计确保了旧配置无需修改即可正常工作，同时为新功能提供扩展空间。
+当工作流在没有频道上下文的情况下触发（如 cron 触发、事件触发或 Web UI），引擎会使用工作流配置中的通知目标。
 
 ### 通过步骤实现通知
 

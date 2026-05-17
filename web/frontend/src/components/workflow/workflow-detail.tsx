@@ -214,7 +214,7 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                   <p className="text-muted-foreground text-xs">{t("pages.workflows.step_progress", "Step Progress")}</p>
                   <p>{stepStats.completed}/{stepStats.total}</p>
                 </div>
-                {/* 显示频道信息（v2 优先，v1 兼容） */}
+                {/* 显示频道信息 */}
                 {instance.notify_channels && instance.notify_channels.length > 0 ? (
                   <div className="min-w-0 flex-1">
                     <p className="text-muted-foreground text-xs mb-1">{t("pages.workflows.notify_channel", "Channels")}</p>
@@ -226,11 +226,6 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                         </p>
                       ))}
                     </div>
-                  </div>
-                ) : instance.channel ? (
-                  <div className="min-w-0">
-                    <p className="text-muted-foreground text-xs">{t("pages.workflows.notify_channel", "Channel")}</p>
-                    <p className="truncate">{t(`channels.name.${instance.channel}`, instance.channel)}{instance.chat_id ? `:${instance.chat_id}` : ""}</p>
                   </div>
                 ) : null}
               </div>
@@ -309,7 +304,18 @@ function formatDuration(ms: number): string {
 const FlatStepList = memo(function FlatStepList({ instance, steps, t }: { instance: WorkflowInstance; steps: Step[]; t: TFunction }) {
   const stepMap = useMemo(() => {
     const map = new Map<string, Step>()
-    function collect(s: Step[]) { for (const st of s) { map.set(st.id, st); if (st.parallel) collect(st.parallel); if (st.if_true) collect(st.if_true); if (st.if_false) collect(st.if_false); } }
+    function collect(s: Step[]) {
+      for (const st of s) {
+        map.set(st.id, st)
+        if (st.parallel) {
+          for (const b of st.parallel) {
+            if (b.branch) collect(b.branch)
+          }
+        }
+        if (st.if_true) collect(st.if_true)
+        if (st.if_false) collect(st.if_false)
+      }
+    }
     collect(steps)
     return map
   }, [steps])
@@ -698,9 +704,11 @@ const StepTreeNode = memo(function StepTreeNode({
               ))}
             </div>
           )}
-          {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
-            <StepTreeNode key={sub.id} step={sub} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={depth + 1} />
-          ))}
+          {step.action === "parallel" && step.parallel && (
+            step.parallel.flatMap(b => b.branch || []).map((sub) => (
+              <StepTreeNode key={sub.id} step={sub} stepStates={stepStates} stepOutputs={stepOutputs} t={t} depth={depth + 1} />
+            ))
+          )}
         </div>
       )}
     </div>

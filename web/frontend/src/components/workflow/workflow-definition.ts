@@ -91,13 +91,20 @@ function stepToSwd(s: WorkflowStep): Step {
     } as BranchedStep
   }
 
-  // parallel 步骤使用 BranchedStep 格式，每个子步骤作为一个分支（并排显示）
+  // parallel 步骤使用 BranchedStep 格式，每个分支可以包含多个步骤
   if (s.action === "parallel") {
-    const subSteps = s.parallel || []
     const branches: Record<string, Step[]> = {}
-    subSteps.forEach((sub, i) => {
-      branches[`step_${i}`] = [stepToSwd(sub)]
-    })
+    const parallelData = s.parallel
+    
+    // 检查是新的分支格式还是旧的扁平格式
+    if (parallelData && Array.isArray(parallelData) && parallelData.length > 0) {
+      // 格式: { branch: Step[] }[]
+      const branchArray = parallelData as unknown as { branch: WorkflowStep[] }[]
+      branchArray.forEach((b, i) => {
+        branches[`step_${i}`] = (b.branch || []).map(stepToSwd)
+      })
+    }
+    
     return {
       id: stepId,
       componentType: COMPONENT_SWITCH,
@@ -233,9 +240,22 @@ function swdToStep(s: Step): WorkflowStep {
   // BranchedStep（parallel 并行）
   if (s.componentType === COMPONENT_SWITCH && s.type === "parallel" && "branches" in s) {
     const branched = s as BranchedStep
-    const parallelSteps = Object.values(branched.branches || {})
-      .flat()
-      .map(swdToStep)
+    
+    const branches = branched.branches || {}
+    // 按分支键名排序，确保分支顺序一致（step_0, step_1, step_2...）
+    const sortedKeys = Object.keys(branches).sort()
+    
+    const parallelBranches: { branch: WorkflowStep[] }[] = []
+    for (const key of sortedKeys) {
+      const branchSteps = branches[key]
+        .filter((s): s is Step => s != null)
+        .map(swdToStep)
+        .filter((s): s is WorkflowStep => s != null)
+      if (branchSteps.length > 0) {
+        parallelBranches.push({ branch: branchSteps })
+      }
+    }
+
     return {
       id: stepId,
       name: displayName,
@@ -244,7 +264,7 @@ function swdToStep(s: Step): WorkflowStep {
       delay: (s.properties.delay as string) || undefined,
       timeout: (s.properties.timeout as string) || undefined,
       enabled: s.properties.enabled === false ? false : undefined,
-      parallel: parallelSteps,
+      parallel: parallelBranches,
     }
   }
 

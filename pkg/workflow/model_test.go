@@ -61,7 +61,7 @@ func TestValidate(t *testing.T) {
 			name: "parallel without sub-steps",
 			wf: Workflow{
 				Name:  "test",
-				Steps: []Step{{ID: "s1", Action: "parallel", Parallel: []Step{}}},
+				Steps: []Step{{ID: "s1", Action: "parallel", Parallel: []ParallelBranch{}}},
 			},
 			wantErr: true,
 			errMsg:  "至少一个子步骤",
@@ -101,7 +101,11 @@ func TestValidate(t *testing.T) {
 			wf: Workflow{
 				Name: "test",
 				Steps: []Step{
-					{ID: "s1", Action: "parallel", Parallel: []Step{{ID: "p1", Action: "agent_prompt", Prompt: "x"}}},
+					{
+						ID:       "s1",
+						Action:   "parallel",
+						Parallel: []ParallelBranch{{Branch: []Step{{ID: "p1", Action: "agent_prompt", Prompt: "x"}}}},
+					},
 				},
 			},
 			wantErr: false,
@@ -347,8 +351,8 @@ func TestValidate(t *testing.T) {
 			wf: Workflow{
 				Name: "test",
 				Steps: []Step{
-					{ID: "s1", Action: "parallel", Parallel: []Step{
-						{ID: "p1", Action: "agent_prompt", Prompt: "{{.vars.missing}}"},
+					{ID: "s1", Action: "parallel", Parallel: []ParallelBranch{
+						{Branch: []Step{{ID: "p1", Action: "agent_prompt", Prompt: "{{.vars.missing}}"}}},
 					}},
 				},
 			},
@@ -564,8 +568,8 @@ func TestValidateWithToolSchema(t *testing.T) {
 			wf: Workflow{
 				Name: "test",
 				Steps: []Step{
-					{ID: "s1", Action: "parallel", Parallel: []Step{
-						{ID: "p1", Action: "tool_call", Tool: "exec", Args: map[string]any{}},
+					{ID: "s1", Action: "parallel", Parallel: []ParallelBranch{
+						{Branch: []Step{{ID: "p1", Action: "tool_call", Tool: "exec", Args: map[string]any{}}}},
 					}},
 				},
 			},

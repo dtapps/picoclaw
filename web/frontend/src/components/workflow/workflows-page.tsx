@@ -608,8 +608,6 @@ function InstanceDialog({
             workflow_name: updated.workflow_name,
             status: updated.status,
             trigger_type: updated.trigger_type,
-            channel: updated.channel,
-            chat_id: updated.chat_id,
             notify_channels: updated.notify_channels,
             started_at: updated.started_at,
             finished_at: updated.finished_at,
@@ -637,8 +635,7 @@ function InstanceDialog({
                 workflow_name: inst.workflow_name,
                 status: inst.status,
                 trigger_type: inst.trigger_type,
-                channel: inst.channel,
-                chat_id: inst.chat_id,
+                notify_channels: inst.notify_channels,
                 started_at: inst.started_at,
                 finished_at: inst.finished_at,
                 error: inst.error,
@@ -720,9 +717,8 @@ function InstanceDialog({
                       <span className="text-xs font-mono text-muted-foreground">
                         {inst.id.slice(0, 8)}
                       </span>
-                      {/* 显示频道信息（v2 优先，v1 兼容） */}
+                      {/* 显示频道信息 */}
                       {inst.notify_channels && inst.notify_channels.length > 0 ? (
-                        // v2 格式：多频道
                         <span className="text-xs text-muted-foreground truncate max-w-[300px] flex items-center gap-1">
                           {inst.notify_channels.map((target, idx) => (
                             <span key={idx} className="inline-flex items-center">
@@ -731,11 +727,6 @@ function InstanceDialog({
                               {idx < inst.notify_channels!.length - 1 ? ", " : ""}
                             </span>
                           ))}
-                        </span>
-                      ) : inst.channel ? (
-                        // v1 格式：单频道
-                        <span className="text-xs text-muted-foreground truncate max-w-[200px]">
-                          {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
                         </span>
                       ) : null}
                     </button>
@@ -1112,9 +1103,11 @@ function CompactStepNode({
           ))}
         </div>
       )}
-      {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
-        <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
-      ))}
+      {step.action === "parallel" && step.parallel && (
+        step.parallel.flatMap(b => b.branch || []).map((sub) => (
+          <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+        ))
+      )}
     </div>
   )
 }

@@ -105,9 +105,9 @@ func TestExecute_Parallel(t *testing.T) {
 		step := Step{
 			ID:     "p1",
 			Action: "parallel",
-			Parallel: []Step{
-				{ID: "sub1", Action: "agent_prompt", Prompt: "a", OutputKey: "a"},
-				{ID: "sub2", Action: "agent_prompt", Prompt: "b", OutputKey: "b"},
+			Parallel: []ParallelBranch{
+				{Branch: []Step{{ID: "sub1", Action: "agent_prompt", Prompt: "a", OutputKey: "a"}}},
+				{Branch: []Step{{ID: "sub2", Action: "agent_prompt", Prompt: "b", OutputKey: "b"}}},
 			},
 		}
 		result := se.Execute(context.Background(), step, nil)
@@ -131,9 +131,9 @@ func TestExecute_Parallel(t *testing.T) {
 		step := Step{
 			ID:     "p1",
 			Action: "parallel",
-			Parallel: []Step{
-				{ID: "sub1", Action: "agent_prompt", Prompt: "ok"},
-				{ID: "sub2", Action: "agent_prompt", Prompt: "fail"},
+			Parallel: []ParallelBranch{
+				{Branch: []Step{{ID: "sub1", Action: "agent_prompt", Prompt: "ok"}}},
+				{Branch: []Step{{ID: "sub2", Action: "agent_prompt", Prompt: "fail"}}},
 			},
 		}
 		result := se.Execute(context.Background(), step, nil)

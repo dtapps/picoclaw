@@ -131,34 +131,62 @@ func (se *StepExecutor) executeToolCall(ctx context.Context, toolName string, ar
 	return StepResult{Output: output}
 }
 
-// executeParallel 并行执行多个子步骤。
-// 为每个子步骤启动一个 goroutine，等待全部完成后聚合结果。
+// executeParallel 并行执行多个分支。
+// v2 格式：每个分支包含多个步骤，分支内串行执行，分支间并行执行。
 func (se *StepExecutor) executeParallel(
 	ctx context.Context,
-	steps []Step,
+	branches ParallelSteps,
 	stepOutputs map[string]map[string]any,
 ) StepResult {
 	type parallelResult struct {
-		index  int
-		result StepResult
+		index   int
+		results []StepResult
 	}
 
-	ch := make(chan parallelResult, len(steps))
-	for i, step := range steps {
-		go func(idx int, s Step) {
-			ch <- parallelResult{index: idx, result: se.ExecuteWithRetry(ctx, s, stepOutputs)}
-		}(i, step)
+	ch := make(chan parallelResult, len(branches))
+	for i, branch := range branches {
+		go func(idx int, b ParallelBranch) {
+			var results []StepResult
+			for _, s := range b.Branch {
+				// 如果步骤配置了 delay，先等待
+				if s.Delay != "" {
+					if d, err := time.ParseDuration(s.Delay); err == nil && d > 0 {
+						select {
+						case <-time.After(d):
+							// 延迟完成
+						case <-ctx.Done():
+							results = append(results, StepResult{Error: ctx.Err()})
+							ch <- parallelResult{index: idx, results: results}
+							return
+						}
+					}
+				}
+				r := se.ExecuteWithRetry(ctx, s, stepOutputs)
+				results = append(results, r)
+				// 如果步骤失败，停止该分支的后续步骤
+				if r.Error != nil {
+					break
+				}
+			}
+			ch <- parallelResult{index: idx, results: results}
+		}(i, branch)
 	}
 
 	var errs []error
 	outputs := make(map[string]any)
-	for range steps {
+	for range branches {
 		r := <-ch
-		if r.result.Error != nil {
-			errs = append(errs, fmt.Errorf("步骤[%d]: %w", r.index, r.result.Error))
+		for _, result := range r.results {
+			if result.Error != nil {
+				errs = append(errs, result.Error)
+			}
 		}
-		if steps[r.index].OutputKey != "" {
-			outputs[steps[r.index].OutputKey] = r.result.Output
+		// 使用分支最后一个步骤的 OutputKey
+		if len(r.results) > 0 && len(branches[r.index].Branch) > 0 {
+			lastStep := branches[r.index].Branch[len(branches[r.index].Branch)-1]
+			if lastStep.OutputKey != "" {
+				outputs[lastStep.OutputKey] = r.results[len(r.results)-1].Output
+			}
 		}
 	}
 
@@ -171,10 +199,14 @@ func (se *StepExecutor) executeParallel(
 
 	// 合并输出
 	var combined strings.Builder
-	for _, step := range steps {
-		if step.OutputKey != "" {
-			if v, ok := outputs[step.OutputKey]; ok {
-				combined.WriteString(fmt.Sprintf("[%s] %s\n", step.OutputKey, valueToString(v)))
+	for _, branch := range branches {
+		if len(branch.Branch) == 0 {
+			continue
+		}
+		lastStep := branch.Branch[len(branch.Branch)-1]
+		if lastStep.OutputKey != "" {
+			if v, ok := outputs[lastStep.OutputKey]; ok {
+				combined.WriteString(fmt.Sprintf("[%s] %s\n", lastStep.OutputKey, valueToString(v)))
 			}
 		}
 	}
