@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-import type { Step, WorkflowInstance, WorkflowListItem, WorkflowStepEvent, CronTaskInfo } from "@/api/workflow"
+import type { WorkflowInstance, WorkflowInstanceSummary, WorkflowListItem, CronTaskInfo } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
@@ -27,7 +27,7 @@ import {
   getInstanceStatusColor,
   getCronTasks,
 } from "@/api/workflow"
-import { getWorkflowInstances, getWorkflowInstance, getWorkflow, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
+import { getWorkflowInstances, getWorkflowInstance, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -519,10 +519,10 @@ function InstanceDialog({
 }) {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [instances, setInstances] = useState<WorkflowInstance[]>([])
-  const [workflowSteps, setWorkflowSteps] = useState<Step[]>([])
+  const [instances, setInstances] = useState<WorkflowInstanceSummary[]>([])
+  const [expandedInstanceId, setExpandedInstanceId] = useState<string | null>(null) // 展开的实例 ID
+  const [expandedInstanceDetail, setExpandedInstanceDetail] = useState<WorkflowInstance | null>(null) // 展开的完整实例数据
   const [loading, setLoading] = useState(false)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
   const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
   const retryCountRef = useRef(0)
@@ -541,15 +541,31 @@ function InstanceDialog({
     setLoading(false)
   }
 
+  // 切换展开状态，并加载完整实例数据
+  const toggleExpand = async (instId: string) => {
+    if (expandedInstanceId === instId) {
+      // 已展开，则收起
+      setExpandedInstanceId(null)
+      setExpandedInstanceDetail(null)
+    } else {
+      // 展开新实例
+      setExpandedInstanceId(instId)
+      // 异步加载完整数据
+      try {
+        const detail = await getWorkflowInstance(workflowName!, instId)
+        setExpandedInstanceDetail(detail)
+      } catch (err) {
+        console.error('Failed to load instance detail:', err)
+      }
+    }
+  }
+
   // workflowName 变化时加载数据（点击历史按钮触发）
   useEffect(() => {
     if (workflowName) {
-      setExpandedId(null)
+      setExpandedInstanceId(null)
+      setExpandedInstanceDetail(null)
       loadInstances(workflowName)
-      // 同时获取工作流定义（步骤层级结构，用于树形渲染）
-      getWorkflow(workflowName)
-        .then((wf) => setWorkflowSteps(wf.steps))
-        .catch(() => setWorkflowSteps([]))
     }
   }, [workflowName])
 
@@ -562,13 +578,13 @@ function InstanceDialog({
     }
     retryCountRef.current = 0
 
-    if (!workflowName || !expandedId) return
+    if (!workflowName || !expandedInstanceId) return
 
     // 仅对运行中的实例建立 SSE
-    const expanded = instancesRef.current.find((i) => i.id === expandedId)
+    const expanded = instancesRef.current.find((i) => i.id === expandedInstanceId)
     if (!expanded || expanded.status !== "running") return
 
-    const es = createInstanceStream(workflowName, expandedId)
+    const es = createInstanceStream(workflowName, expandedInstanceId)
     esRef.current = es
 
     es.onopen = () => {
@@ -578,36 +594,52 @@ function InstanceDialog({
     es.addEventListener("snapshot", (e) => {
       try {
         const updated = JSON.parse(e.data) as WorkflowInstance
-        setInstances((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
+        // 只更新摘要字段
+        setInstances((prev) => prev.map((i) => {
+          if (i.id !== updated.id) return i
+          return {
+            id: updated.id,
+            workflow_name: updated.workflow_name,
+            status: updated.status,
+            trigger_type: updated.trigger_type,
+            channel: updated.channel,
+            chat_id: updated.chat_id,
+            notify_channels: updated.notify_channels,
+            started_at: updated.started_at,
+            finished_at: updated.finished_at,
+            error: updated.error,
+          }
+        }))
       } catch { /* ignore */ }
     })
 
-    es.addEventListener("step_update", (e) => {
-      try {
-        const evt = JSON.parse(e.data) as WorkflowStepEvent
-        const payload = evt.payload
-        if (!payload.step_id) return
-        const stepID = payload.step_id
-        setInstances((prev) =>
-          prev.map((i) => {
-            if (i.id !== expandedId) return i
-            const stepStates = { ...i.step_states }
-            stepStates[stepID] = {
-              ...stepStates[stepID],
-              status: payload.status || stepStates[stepID]?.status || "running",
-            }
-            return { ...i, step_states: stepStates }
-          }),
-        )
-      } catch { /* ignore */ }
+    es.addEventListener("step_update", () => {
+      // 列表页不处理步骤更新，只在详情页显示
+      // 这里可以忽略，或者触发一个轻量级的状态刷新
     })
 
     es.addEventListener("instance_complete", () => {
-      // 重新获取完整实例数据（包含 step_states 的 error、timing、attempts 等）
-      if (workflowName && expandedId) {
-        getWorkflowInstance(workflowName, expandedId)
+      // 实例完成时，重新获取完整数据
+      if (workflowName && expandedInstanceId) {
+        getWorkflowInstance(workflowName, expandedInstanceId)
           .then((inst) => {
-            setInstances((prev) => prev.map((i) => i.id === expandedId ? inst : i))
+            // 更新摘要列表
+            setInstances((prev) => prev.map((i) => {
+              if (i.id !== inst.id) return i
+              return {
+                id: inst.id,
+                workflow_name: inst.workflow_name,
+                status: inst.status,
+                trigger_type: inst.trigger_type,
+                channel: inst.channel,
+                chat_id: inst.chat_id,
+                started_at: inst.started_at,
+                finished_at: inst.finished_at,
+                error: inst.error,
+              }
+            }))
+            // 同时更新展开的详情
+            setExpandedInstanceDetail(inst)
           })
           .catch(() => {})
       }
@@ -627,7 +659,7 @@ function InstanceDialog({
       es.close()
       if (esRef.current === es) esRef.current = null
     }
-  }, [workflowName, expandedId])
+  }, [workflowName, expandedInstanceId])
 
   const handleOpenChange = (nextOpen: boolean) => {
     onOpenChange(nextOpen)
@@ -658,7 +690,7 @@ function InstanceDialog({
                     <button
                       type="button"
                       className="flex flex-1 items-center gap-3 text-left hover:bg-muted/50 -mx-4 -my-3 px-4 py-3"
-                      onClick={() => setExpandedId(expandedId === inst.id ? null : inst.id)}
+                      onClick={() => toggleExpand(inst.id)}
                     >
                       <Badge variant="outline" className={getInstanceStatusColor(inst.status)}>
                         {formatInstanceStatus(inst.status, t)}
@@ -682,11 +714,24 @@ function InstanceDialog({
                       <span className="text-xs font-mono text-muted-foreground">
                         {inst.id.slice(0, 8)}
                       </span>
-                      {inst.channel && (
+                      {/* 显示频道信息（v2 优先，v1 兼容） */}
+                      {inst.notify_channels && inst.notify_channels.length > 0 ? (
+                        // v2 格式：多频道
+                        <span className="text-xs text-muted-foreground truncate max-w-[300px] flex items-center gap-1">
+                          {inst.notify_channels.map((target, idx) => (
+                            <span key={idx} className="inline-flex items-center">
+                              {t(`channels.name.${target.channel}`, target.channel)}
+                              {target.chat_id ? `:${target.chat_id.slice(0, 8)}...` : ""}
+                              {idx < inst.notify_channels!.length - 1 ? ", " : ""}
+                            </span>
+                          ))}
+                        </span>
+                      ) : inst.channel ? (
+                        // v1 格式：单频道
                         <span className="text-xs text-muted-foreground truncate max-w-[200px]">
                           {t(`channels.name.${inst.channel}`, inst.channel)}{inst.chat_id ? `:${inst.chat_id}` : ""}
                         </span>
-                      )}
+                      ) : null}
                     </button>
                     <div className="flex items-center gap-1 shrink-0 ml-2">
                       <Button
@@ -710,70 +755,80 @@ function InstanceDialog({
                       </Button>
                     </div>
                   </div>
-                  {expandedId === inst.id && (
+                  {expandedInstanceId === inst.id && (
                     <div className="border-t px-4 py-3 space-y-3">
-                      {Object.entries(inst.step_states).length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium mb-2">
-                            {t("pages.workflows.step_progress", "Step Progress")}
-                          </p>
-                          <div className="space-y-1">
-                            {workflowSteps.length > 0 ? (
-                              <CompactStepTree steps={workflowSteps} stepStates={inst.step_states} />
-                            ) : (
-                              Object.entries(inst.step_states)
-                                .sort(([, a], [, b]) => {
-                                  if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
-                                  if (a.started_at) return -1
-                                  if (b.started_at) return 1
-                                  return 0
-                                })
-                                .map(([stepID, state]) => (
-                                <div key={stepID} className="flex items-center gap-2 text-xs">
-                                  <span className={getInstanceStatusColor(state.status)}>
-                                    {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
-                                  </span>
-                                  <span>{state.name || `#${stepID}`}</span>
-                                  {state.error && (
-                                    <span className="text-destructive ml-2">{state.error}</span>
-                                  )}
-                                </div>
-                              ))
-                            )}
-                          </div>
+                      {!expandedInstanceDetail ? (
+                        // 加载中
+                        <div className="py-4 text-center text-sm text-muted-foreground">
+                          {t("common.loading", "Loading...")}
                         </div>
-                      )}
-                      {inst.logs && inst.logs.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium mb-2">
-                            {t("pages.workflows.execution_logs", "Execution Logs")}
-                          </p>
-                          <div className="max-h-40 overflow-auto rounded bg-muted/30 p-2 font-mono text-xs space-y-0.5">
-                            {inst.logs.map((log, i) => (
-                              <div
-                                key={i}
-                                className={`flex gap-2 ${
-                                  log.level === "error"
-                                    ? "text-destructive"
-                                    : log.level === "warn"
-                                      ? "text-amber-600"
-                                      : "text-foreground/80"
-                                }`}
-                              >
-                                <span className="text-muted-foreground shrink-0">
-                                  {new Date(log.timestamp).toLocaleTimeString()}
-                                </span>
-                                {log.step_id && (
-                                  <span className="text-blue-600 shrink-0">[{inst.step_states?.[log.step_id]?.name || `#${log.step_id}`}]</span>
-                                )}
-                                <span>{log.message}</span>
+                      ) : (
+                        <>
+                          {/* 步骤进度 */}
+                          {Object.entries(expandedInstanceDetail.step_states).length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-2">
+                                {t("pages.workflows.step_progress", "Step Progress")}
+                              </p>
+                              <div className="space-y-1">
+                                {Object.entries(expandedInstanceDetail.step_states)
+                                  .sort(([, a], [, b]) => {
+                                    if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
+                                    if (a.started_at) return -1
+                                    if (b.started_at) return 1
+                                    return 0
+                                  })
+                                  .map(([stepID, state]) => (
+                                  <div key={stepID} className="flex items-center gap-2 text-xs">
+                                    <span className={getInstanceStatusColor(state.status)}>
+                                      {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+                                    </span>
+                                    <span>{state.name || `#${stepID}`}</span>
+                                    {state.error && (
+                                      <span className="text-destructive ml-2">{state.error}</span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                      {inst.error && (
-                        <p className="text-xs text-destructive">{inst.error}</p>
+                            </div>
+                          )}
+                          
+                          {/* 执行日志 */}
+                          {expandedInstanceDetail.logs && expandedInstanceDetail.logs.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium mb-2">
+                                {t("pages.workflows.execution_logs", "Execution Logs")}
+                              </p>
+                              <div className="max-h-40 overflow-auto rounded bg-muted/30 p-2 font-mono text-xs space-y-0.5">
+                                {expandedInstanceDetail.logs.map((log, i) => (
+                                  <div
+                                    key={i}
+                                    className={`flex gap-2 ${
+                                      log.level === "error"
+                                        ? "text-destructive"
+                                        : log.level === "warn"
+                                          ? "text-amber-600"
+                                          : "text-foreground/80"
+                                    }`}
+                                  >
+                                    <span className="text-muted-foreground shrink-0">
+                                      {new Date(log.timestamp).toLocaleTimeString()}
+                                    </span>
+                                    {log.step_id && (
+                                      <span className="text-blue-600 shrink-0">[{expandedInstanceDetail.step_states?.[log.step_id]?.name || `#${log.step_id}`}]</span>
+                                    )}
+                                    <span>{log.message}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* 错误信息 */}
+                          {expandedInstanceDetail.error && (
+                            <p className="text-xs text-destructive">{expandedInstanceDetail.error}</p>
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -976,78 +1031,5 @@ function WorkflowCard({
         </TooltipProvider>
       </CardContent>
     </Card>
-  )
-}
-
-/** 紧凑树形步骤进度（用于实例弹窗） */
-function CompactStepTree({
-  steps,
-  stepStates,
-}: {
-  steps: Step[]
-  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
-}) {
-  return (
-    <div className="space-y-1">
-      {steps.map((step) => (
-        <CompactStepNode key={step.id} step={step} stepStates={stepStates} depth={0} />
-      ))}
-    </div>
-  )
-}
-
-/** 紧凑步骤节点 */
-function CompactStepNode({
-  step,
-  stepStates,
-  depth,
-}: {
-  step: Step
-  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
-  depth: number
-}) {
-  const state = stepStates[step.id]
-  if (!state) return null
-
-  const indent = depth * 16
-
-  return (
-    <div>
-      <div className="flex items-center gap-2 text-xs" style={{ paddingLeft: indent }}>
-        <span className={getInstanceStatusColor(state.status)}>
-          {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
-        </span>
-        <span>{state.name || `#${step.id}`}</span>
-        {(step.action === "parallel" || step.action === "if") && (
-          <span className="text-muted-foreground">{step.action === "parallel" ? "∥" : "↔"}</span>
-        )}
-        {step.action === "tool_call" && step.tool && (
-          <span className="text-muted-foreground">{step.tool}</span>
-        )}
-        {state.error && (
-          <span className="text-destructive ml-1">{state.error}</span>
-        )}
-      </div>
-      {/* 递归渲染子步骤 */}
-      {step.action === "if" && step.if_true && step.if_true.length > 0 && (
-        <div>
-          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✓ true</div>
-          {step.if_true.map((sub) => (
-            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-      {step.action === "if" && step.if_false && step.if_false.length > 0 && (
-        <div>
-          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✗ false</div>
-          {step.if_false.map((sub) => (
-            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
-          ))}
-        </div>
-      )}
-      {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
-        <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
-      ))}
-    </div>
   )
 }
