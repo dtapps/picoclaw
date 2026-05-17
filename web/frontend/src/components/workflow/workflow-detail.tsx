@@ -214,12 +214,25 @@ export function WorkflowDetail({ workflowName, instanceId }: WorkflowDetailProps
                   <p className="text-muted-foreground text-xs">{t("pages.workflows.step_progress", "Step Progress")}</p>
                   <p>{stepStats.completed}/{stepStats.total}</p>
                 </div>
-                {instance.channel && (
+                {/* 显示频道信息（v2 优先，v1 兼容） */}
+                {instance.notify_channels && instance.notify_channels.length > 0 ? (
+                  <div className="min-w-0 flex-1">
+                    <p className="text-muted-foreground text-xs mb-1">{t("pages.workflows.notify_channel", "Channels")}</p>
+                    <div className="space-y-1">
+                      {instance.notify_channels.map((target, idx) => (
+                        <p key={idx} className="truncate text-xs">
+                          {t(`channels.name.${target.channel}`, target.channel)}
+                          {target.chat_id ? `:${target.chat_id}` : ""}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : instance.channel ? (
                   <div className="min-w-0">
                     <p className="text-muted-foreground text-xs">{t("pages.workflows.notify_channel", "Channel")}</p>
                     <p className="truncate">{t(`channels.name.${instance.channel}`, instance.channel)}{instance.chat_id ? `:${instance.chat_id}` : ""}</p>
                   </div>
-                )}
+                ) : null}
               </div>
             </CardContent>
           </Card>

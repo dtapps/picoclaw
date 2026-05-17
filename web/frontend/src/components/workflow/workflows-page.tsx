@@ -19,7 +19,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 
-import type { WorkflowInstance, WorkflowInstanceSummary, WorkflowListItem, CronTaskInfo } from "@/api/workflow"
+import type { Step, WorkflowInstance, WorkflowInstanceSummary, WorkflowListItem, CronTaskInfo } from "@/api/workflow"
 import {
   createInstanceStream,
   formatInstanceStatus,
@@ -27,7 +27,7 @@ import {
   getInstanceStatusColor,
   getCronTasks,
 } from "@/api/workflow"
-import { getWorkflowInstances, getWorkflowInstance, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
+import { getWorkflowInstances, getWorkflowInstance, getWorkflow, deleteWorkflowInstance, importWorkflow } from "@/api/workflow"
 import { PageHeader } from "@/components/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -522,6 +522,7 @@ function InstanceDialog({
   const [instances, setInstances] = useState<WorkflowInstanceSummary[]>([])
   const [expandedInstanceId, setExpandedInstanceId] = useState<string | null>(null) // 展开的实例 ID
   const [expandedInstanceDetail, setExpandedInstanceDetail] = useState<WorkflowInstance | null>(null) // 展开的完整实例数据
+  const [workflowSteps, setWorkflowSteps] = useState<Step[]>([]) // 工作流步骤定义（用于层级显示）
   const [loading, setLoading] = useState(false)
   const [deleteInstanceId, setDeleteInstanceId] = useState<string | null>(null)
   const esRef = useRef<EventSource | null>(null)
@@ -547,13 +548,18 @@ function InstanceDialog({
       // 已展开，则收起
       setExpandedInstanceId(null)
       setExpandedInstanceDetail(null)
+      setWorkflowSteps([])
     } else {
       // 展开新实例
       setExpandedInstanceId(instId)
-      // 异步加载完整数据
+      // 异步加载完整数据和工作流定义
       try {
-        const detail = await getWorkflowInstance(workflowName!, instId)
+        const [detail, wf] = await Promise.all([
+          getWorkflowInstance(workflowName!, instId),
+          getWorkflow(workflowName!)
+        ])
         setExpandedInstanceDetail(detail)
+        setWorkflowSteps(wf.steps)
       } catch (err) {
         console.error('Failed to load instance detail:', err)
       }
@@ -771,24 +777,30 @@ function InstanceDialog({
                                 {t("pages.workflows.step_progress", "Step Progress")}
                               </p>
                               <div className="space-y-1">
-                                {Object.entries(expandedInstanceDetail.step_states)
-                                  .sort(([, a], [, b]) => {
-                                    if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
-                                    if (a.started_at) return -1
-                                    if (b.started_at) return 1
-                                    return 0
-                                  })
-                                  .map(([stepID, state]) => (
-                                  <div key={stepID} className="flex items-center gap-2 text-xs">
-                                    <span className={getInstanceStatusColor(state.status)}>
-                                      {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
-                                    </span>
-                                    <span>{state.name || `#${stepID}`}</span>
-                                    {state.error && (
-                                      <span className="text-destructive ml-2">{state.error}</span>
-                                    )}
-                                  </div>
-                                ))}
+                                {workflowSteps.length > 0 ? (
+                                  // 有工作流定义，使用树形结构显示
+                                  <CompactStepTree steps={workflowSteps} stepStates={expandedInstanceDetail.step_states} />
+                                ) : (
+                                  // 没有工作流定义，平铺显示
+                                  Object.entries(expandedInstanceDetail.step_states)
+                                    .sort(([, a], [, b]) => {
+                                      if (a.started_at && b.started_at) return a.started_at.localeCompare(b.started_at)
+                                      if (a.started_at) return -1
+                                      if (b.started_at) return 1
+                                      return 0
+                                    })
+                                    .map(([stepID, state]) => (
+                                    <div key={stepID} className="flex items-center gap-2 text-xs">
+                                      <span className={getInstanceStatusColor(state.status)}>
+                                        {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+                                      </span>
+                                      <span>{state.name || `#${stepID}`}</span>
+                                      {state.error && (
+                                        <span className="text-destructive ml-2">{state.error}</span>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
                               </div>
                             </div>
                           )}
@@ -1031,5 +1043,78 @@ function WorkflowCard({
         </TooltipProvider>
       </CardContent>
     </Card>
+  )
+}
+
+/** 紧凑树形步骤进度（用于实例弹窗） */
+function CompactStepTree({
+  steps,
+  stepStates,
+}: {
+  steps: Step[]
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+}) {
+  return (
+    <div className="space-y-1">
+      {steps.map((step) => (
+        <CompactStepNode key={step.id} step={step} stepStates={stepStates} depth={0} />
+      ))}
+    </div>
+  )
+}
+
+/** 紧凑步骤节点 */
+function CompactStepNode({
+  step,
+  stepStates,
+  depth,
+}: {
+  step: Step
+  stepStates: Record<string, { name?: string; status: string; started_at?: string; finished_at?: string; error?: string; attempts: number }>
+  depth: number
+}) {
+  const state = stepStates[step.id]
+  if (!state) return null
+
+  const indent = depth * 16
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 text-xs" style={{ paddingLeft: indent }}>
+        <span className={getInstanceStatusColor(state.status)}>
+          {state.status === "completed" ? "✓" : state.status === "failed" ? "✗" : state.status === "running" ? "⏳" : "○"}
+        </span>
+        <span>{state.name || `#${step.id}`}</span>
+        {(step.action === "parallel" || step.action === "if") && (
+          <span className="text-muted-foreground">{step.action === "parallel" ? "∥" : "↔"}</span>
+        )}
+        {step.action === "tool_call" && step.tool && (
+          <span className="text-muted-foreground">{step.tool}</span>
+        )}
+        {state.error && (
+          <span className="text-destructive ml-1">{state.error}</span>
+        )}
+      </div>
+      {/* 递归渲染子步骤 */}
+      {step.action === "if" && step.if_true && step.if_true.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✓ true</div>
+          {step.if_true.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "if" && step.if_false && step.if_false.length > 0 && (
+        <div>
+          <div className="text-muted-foreground text-xs" style={{ paddingLeft: indent + 16 }}>✗ false</div>
+          {step.if_false.map((sub) => (
+            <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+      {step.action === "parallel" && step.parallel && step.parallel.map((sub) => (
+        <CompactStepNode key={sub.id} step={sub} stepStates={stepStates} depth={depth + 1} />
+      ))}
+    </div>
   )
 }
