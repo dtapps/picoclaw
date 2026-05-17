@@ -264,7 +264,7 @@ func (ps *PersistStore) SaveInstance(inst *WorkflowInstance) error {
 }
 
 // LoadInstances 读取指定工作流的所有运行实例。
-func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstance, error) {
+func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstanceSummary, error) {
 	ps.mu.RLock()
 	defer ps.mu.RUnlock()
 
@@ -277,7 +277,7 @@ func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstance,
 	}
 
 	prefix := sanitizeName(workflowName) + "_"
-	var instances []*WorkflowInstance
+	var summaries []*WorkflowInstanceSummary
 	for _, entry := range entries {
 		if entry.IsDir() || filepath.Ext(entry.Name()) != ".json" {
 			continue
@@ -296,11 +296,12 @@ func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstance,
 		if err := json.Unmarshal(data, &inst); err != nil {
 			continue
 		}
-		instances = append(instances, &inst)
+		// 转换为摘要格式（排除 StepOutputs、Logs 等大字段）
+		summaries = append(summaries, inst.ToSummary())
 	}
 
 	// 按 started_at 倒序排列（最新的在前）
-	slices.SortFunc(instances, func(a, b *WorkflowInstance) int {
+	slices.SortFunc(summaries, func(a, b *WorkflowInstanceSummary) int {
 		if a.StartedAt.Before(b.StartedAt) {
 			return 1
 		} else if a.StartedAt.After(b.StartedAt) {
@@ -309,7 +310,7 @@ func (ps *PersistStore) LoadInstances(workflowName string) ([]*WorkflowInstance,
 		return 0
 	})
 
-	return instances, nil
+	return summaries, nil
 }
 
 // LoadInstance 读取单个运行实例。

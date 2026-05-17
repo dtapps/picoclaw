@@ -151,6 +151,19 @@ export interface LogEntry {
   message: string
 }
 
+export interface WorkflowInstanceSummary {
+  id: string
+  workflow_name: string
+  status: string
+  trigger_type: string
+  channel?: string                // v1 格式：向后兼容
+  chat_id?: string                // v1 格式：向后兼容
+  notify_channels?: NotifyTarget[] // v2 格式：多频道
+  started_at: string
+  finished_at?: string
+  error?: string
+}
+
 export interface WorkflowInstance {
   id: string
   workflow_name: string
@@ -158,8 +171,9 @@ export interface WorkflowInstance {
   step_states: Record<string, StepState>
   step_outputs: Record<string, Record<string, unknown>>
   trigger_type: string
-  channel?: string
-  chat_id?: string
+  channel?: string                          // v1 格式：向后兼容
+  chat_id?: string                          // v1 格式：向后兼容
+  notify_channels?: NotifyTarget[]          // v2 格式：多频道
   logs?: LogEntry[]
   started_at: string
   finished_at?: string
@@ -256,7 +270,7 @@ export async function toggleWorkflow(
 
 export async function getWorkflowInstances(
   name: string,
-): Promise<{ instances: WorkflowInstance[] }> {
+): Promise<{ instances: WorkflowInstanceSummary[] }> {
   const res = await launcherFetch(
     `/api/workflows/${encodeURIComponent(name)}/instances`,
   )

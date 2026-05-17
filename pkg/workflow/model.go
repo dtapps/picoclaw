@@ -217,8 +217,38 @@ const (
 	StatusSkipped   = "skipped"   // 已跳过（条件不满足）
 )
 
+// WorkflowInstanceSummary 工作流实例摘要（用于列表展示，不包含大数据字段）
 // WorkflowInstance 表示一次工作流执行的运行实例。
 // 记录了每个步骤的执行状态和输出，用于追踪和恢复。
+type WorkflowInstanceSummary struct {
+	ID             string         `json:"id"`
+	WorkflowName   string         `json:"workflow_name"`
+	Status         string         `json:"status"`
+	TriggerType    string         `json:"trigger_type"`
+	Channel        string         `json:"channel,omitempty"`         // v1 格式：向后兼容
+	ChatID         string         `json:"chat_id,omitempty"`         // v1 格式：向后兼容
+	NotifyChannels []NotifyTarget `json:"notify_channels,omitempty"` // v2 格式：多频道
+	StartedAt      time.Time      `json:"started_at"`
+	FinishedAt     *time.Time     `json:"finished_at,omitempty"`
+	Error          string         `json:"error,omitempty"`
+}
+
+// ToSummary 将完整实例转换为摘要格式
+func (inst *WorkflowInstance) ToSummary() *WorkflowInstanceSummary {
+	return &WorkflowInstanceSummary{
+		ID:             inst.ID,
+		WorkflowName:   inst.WorkflowName,
+		Status:         inst.Status,
+		TriggerType:    inst.TriggerType,
+		Channel:        inst.Channel,
+		ChatID:         inst.ChatID,
+		NotifyChannels: inst.NotifyChannels,
+		StartedAt:      inst.StartedAt,
+		FinishedAt:     inst.FinishedAt,
+		Error:          inst.Error,
+	}
+}
+
 type WorkflowInstance struct {
 	ID             string                    `json:"id"`                        // 实例唯一 ID
 	WorkflowName   string                    `json:"workflow_name"`             // 所属工作流名称

@@ -286,6 +286,16 @@ func TestPersistStore_LoadInstances(t *testing.T) {
 	if instances[0].ID == instances[1].ID {
 		t.Fatal("instances should be sorted by started_at descending")
 	}
+
+	// 验证返回的是摘要格式（不包含大字段）
+	for _, summary := range instances {
+		if summary.ID == "" {
+			t.Error("summary ID should not be empty")
+		}
+		if summary.WorkflowName != "multi-wf" {
+			t.Errorf("summary workflow_name = %q, want %q", summary.WorkflowName, "multi-wf")
+		}
+	}
 }
 
 func TestPersistStore_DeleteInstance(t *testing.T) {

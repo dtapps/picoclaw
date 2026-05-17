@@ -660,8 +660,8 @@ func formatTriggers(triggers []Trigger) []string {
 	return result
 }
 
-// GetInstances 获取工作流的执行历史。
-func (s *Service) GetInstances(name string) ([]*WorkflowInstance, error) {
+// GetInstances 获取工作流的执行历史（返回摘要格式）。
+func (s *Service) GetInstances(name string) ([]*WorkflowInstanceSummary, error) {
 	return s.store.LoadInstances(name)
 }
 
@@ -1248,7 +1248,7 @@ func (s *Service) computeWorkflowRuntimeState(wf *Workflow) {
 	}
 
 	// 找到最近的一次运行
-	var lastInstance *WorkflowInstance
+	var lastInstance *WorkflowInstanceSummary
 	for i := range instances {
 		if lastInstance == nil || instances[i].StartedAt.After(lastInstance.StartedAt) {
 			lastInstance = instances[i]
