@@ -704,6 +704,8 @@ interface StepEditorLabels {
   enabled: string
   enabledYes: string
   enabledNo: string
+  notifyOnStart: string
+  notifyOnComplete: string
 }
 
 function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; definition: Definition }) {
@@ -769,6 +771,32 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           />
         </div>
       </div>
+      {/* 通知开关：开始执行 */}
+      <div className="sqd-editor-field sqd-step-toggle">
+        <label className="sqd-step-toggle__label">{labels.notifyOnStart}</label>
+        <div className="sqd-step-toggle__control">
+          <span>{(properties.notify_on_start as boolean) === false ? labels.enabledNo : labels.enabledYes}</span>
+          <button
+            type="button"
+            onClick={() => setProperty("notify_on_start", (properties.notify_on_start as boolean) === false)}
+            className={`sqd-step-toggle__switch${(properties.notify_on_start as boolean) === false ? "" : " sqd-step-toggle__switch--on"}`}
+          />
+        </div>
+      </div>
+      {/* 通知开关：执行完成（notify 和 agent_prompt 不需要） */}
+      {action !== "notify" && action !== "agent_prompt" && (
+        <div className="sqd-editor-field sqd-step-toggle">
+          <label className="sqd-step-toggle__label">{labels.notifyOnComplete}</label>
+          <div className="sqd-step-toggle__control">
+            <span>{(properties.notify_on_complete as boolean) === false ? labels.enabledNo : labels.enabledYes}</span>
+            <button
+              type="button"
+              onClick={() => setProperty("notify_on_complete", (properties.notify_on_complete as boolean) === false)}
+              className={`sqd-step-toggle__switch${(properties.notify_on_complete as boolean) === false ? "" : " sqd-step-toggle__switch--on"}`}
+            />
+          </div>
+        </div>
+      )}
           {isIfStep ? (
         <>
           <IfStepEditor labels={labels} />
@@ -1414,6 +1442,7 @@ function createTaskStep(action: string): Step {
     delay: "",
     timeout: "",
     enabled: true,
+    notify_on_start: true,
   }
 
   if (action === "agent_prompt") {
@@ -1425,6 +1454,7 @@ function createTaskStep(action: string): Step {
     baseProperties.args = ""
     baseProperties.output_key = "result"
     baseProperties.retry = ""
+    baseProperties.notify_on_complete = true
   } else if (action === "notify") {
     baseProperties.message = ""
   }
@@ -1449,6 +1479,8 @@ function createIfStep() {
       delay: "",
       timeout: "",
       enabled: true,
+      notify_on_start: true,
+      notify_on_complete: true,
     },
     branches: {
       true: [] as Step[],
@@ -1471,6 +1503,8 @@ function createParallelStep(): BranchedStep {
       output_key: "",
       timeout: "",
       enabled: true,
+      notify_on_start: true,
+      notify_on_complete: true,
     },
     branches: {
       step_0: [],
@@ -1639,6 +1673,8 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     enabled: t("pages.workflows.enabled", "Enabled"),
     enabledYes: t("pages.workflows.enabled_yes", "On"),
     enabledNo: t("pages.workflows.enabled_no", "Off"),
+    notifyOnStart: t("pages.workflows.notify_on_start", "Notify on Start"),
+    notifyOnComplete: t("pages.workflows.notify_on_complete", "Notify on Complete"),
   }), [t])
 
   const rootEditorLabels: RootEditorLabels = useMemo(() => ({

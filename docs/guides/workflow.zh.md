@@ -259,6 +259,8 @@ steps:
   - `delay`：重试间隔，如 `"10s"`
 - **timeout**：超时时间（可选），如 `"30s"`、`"5m"`。**默认 30 分钟**，不设置或为空时使用默认值；最小值 1 秒
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
+- **notify_on_start**：步骤开始执行时是否发送通知到绑定频道（可选，默认 `true`）。设为 `false` 时跳过"步骤开始"通知
+- **notify_on_complete**：步骤执行完成时是否发送通知到绑定频道（可选，默认 `true`）。`notify` 和 `agent_prompt` 步骤不受此字段影响：前者始终直接发送消息内容，后者始终推送 AI 响应
 
 > **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
 
@@ -641,6 +643,8 @@ steps:
         action: agent_prompt
         prompt: "..."
     output_key: result     # 可选，输出键名
+    notify_on_start: true   # 可选，步骤开始时是否发送通知（默认 true）
+    notify_on_complete: true # 可选，步骤完成时是否发送通知（默认 true；notify/agent_prompt 不受此字段影响）
     retry:                 # 可选，重试配置
       max_attempts: 3
       delay: 10s
