@@ -17,6 +17,9 @@ import (
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
+// timeNow 用于获取当前时间，测试时可以注入模拟时间
+var timeNow = time.Now
+
 // Service 管理工作流引擎的完整生命周期。
 // 负责加载工作流定义、设置触发器、协调执行，以及提供 CRUD API。
 // 对标 CronService 的设计模式。
@@ -749,8 +752,8 @@ func (s *Service) getWorkflowsForTriggerCheck() map[string]*Workflow {
 // 使用 NextTickAfter 计算下一次应该触发的时间，然后检查当前时间是否在该时间的一分钟窗口内。
 // 如果 tz 为空则使用 UTC 时区。
 func (s *Service) isCronDue(cronExpr, tz string) (bool, error) {
-	// 获取当前时间
-	now := time.Now()
+	// 获取当前时间（使用 timeNow 以便测试时可以注入）
+	now := timeNow()
 
 	// 如果指定了时区，将时间转换为该时区
 	loc := time.UTC
@@ -763,7 +766,7 @@ func (s *Service) isCronDue(cronExpr, tz string) (bool, error) {
 	now = now.In(loc)
 
 	// 使用 gronx.NextTickAfter 计算下一次应该触发的时间
-	// 传入当前时间的前一分钟作为参考点，这样可以确保不会错过刚刚过去的触发点
+	// 传入当前时间的前一分钟作为参考点，确保能捕获到刚刚过去的触发点
 	referenceTime := now.Add(-time.Minute)
 	nextTick, err := gronx.NextTickAfter(cronExpr, referenceTime, false)
 	if err != nil {
@@ -773,13 +776,12 @@ func (s *Service) isCronDue(cronExpr, tz string) (bool, error) {
 	// 将下一次触发时间转换为相同的时区
 	nextTick = nextTick.In(loc)
 
-	// 检查当前时间是否在下一次触发时间的一分钟窗口内（允许前后 30 秒的误差）
-	diff := now.Sub(nextTick)
-	if diff >= -30*time.Second && diff <= 30*time.Second {
-		return true, nil
-	}
+	// 检查下一次触发时间是否在当前分钟内（允许 0-59 秒的误差）
+	// 这样可以确保即使检查间隔不是精确的 60 秒，也不会错过触发
+	currentMinuteStart := now.Truncate(time.Minute)
+	currentMinuteEnd := currentMinuteStart.Add(time.Minute)
 
-	return false, nil
+	return !nextTick.Before(currentMinuteStart) && nextTick.Before(currentMinuteEnd), nil
 }
 
 func (s *Service) checkCronTriggers() {
@@ -855,7 +857,7 @@ func (s *Service) checkAndFireCronTrigger(wf *Workflow, index int, trigger Trigg
 
 	// 记录本次触发
 	s.lastCronFireMu.Lock()
-	s.lastCronFire[fireKey] = time.Now()
+	s.lastCronFire[fireKey] = timeNow()
 	s.lastCronFireMu.Unlock()
 
 	logger.InfoCF("workflow", "cron 触发器触发工作流",
@@ -895,7 +897,7 @@ func (s *Service) checkAndFireAtTrigger(wf *Workflow, index int, trigger Trigger
 	}
 
 	// 检查是否到达执行时间（允许 60 秒的误差窗口）
-	now := time.Now().In(loc)
+	now := timeNow().In(loc)
 	timeDiff := now.Sub(atTime)
 	if timeDiff < 0 || timeDiff > 60*time.Second {
 		logger.DebugCF("workflow", "at 触发器时间未到或已过期",
@@ -912,7 +914,7 @@ func (s *Service) checkAndFireAtTrigger(wf *Workflow, index int, trigger Trigger
 			map[string]any{"workflow": wf.Name, "at": trigger.At})
 		return
 	}
-	s.lastCronFire[fireKey] = time.Now()
+	s.lastCronFire[fireKey] = timeNow()
 	s.lastCronFireMu.Unlock()
 
 	logger.InfoCF("workflow", "at 触发器触发工作流",
@@ -945,7 +947,7 @@ func (s *Service) checkAndFireIntervalTrigger(wf *Workflow, index int, trigger T
 
 	if fired {
 		// 检查是否已经过去足够的间隔时间
-		if time.Since(lastFire) < duration {
+		if timeNow().Sub(lastFire) < duration {
 			logger.DebugCF("workflow", "interval 触发器间隔未到",
 				map[string]any{"workflow": wf.Name, "interval": trigger.Interval, "last_fire": lastFire})
 			return
@@ -954,7 +956,7 @@ func (s *Service) checkAndFireIntervalTrigger(wf *Workflow, index int, trigger T
 
 	// 记录本次触发
 	s.lastCronFireMu.Lock()
-	s.lastCronFire[fireKey] = time.Now()
+	s.lastCronFire[fireKey] = timeNow()
 	s.lastCronFireMu.Unlock()
 
 	logger.InfoCF("workflow", "interval 触发器触发工作流",

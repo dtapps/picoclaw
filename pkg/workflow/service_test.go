@@ -2,6 +2,7 @@ package workflow
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -905,5 +906,361 @@ func TestService_SetEnabled_ReadsFreshFromDisk(t *testing.T) {
 	}
 	if !loaded.Enabled {
 		t.Fatal("in-memory Enabled = false, want true")
+	}
+}
+
+// TestService_IsCronDue 测试 cron 触发时间判断逻辑
+func TestService_IsCronDue(t *testing.T) {
+	svc, _ := setupTestService(t)
+
+	tests := []struct {
+		name     string
+		cronExpr string
+		testTime time.Time
+		wantDue  bool
+		desc     string
+	}{
+		{
+			name:     "exact_match",
+			cronExpr: "0 12 * * *",
+			testTime: time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC),
+			wantDue:  true,
+			desc:     "精确匹配 12:00:00 应该触发",
+		},
+		{
+			name:     "within_minute",
+			cronExpr: "0 12 * * *",
+			testTime: time.Date(2026, 5, 17, 12, 0, 30, 0, time.UTC),
+			wantDue:  true,
+			desc:     "12:00:30 在 12:00 这一分钟内，应该触发",
+		},
+		{
+			name:     "before_trigger",
+			cronExpr: "0 12 * * *",
+			testTime: time.Date(2026, 5, 17, 11, 59, 31, 0, time.UTC),
+			wantDue:  false,
+			desc:     "11:59:31 未到 12:00，不应该触发（修复提前触发问题）",
+		},
+		{
+			name:     "after_trigger",
+			cronExpr: "0 12 * * *",
+			testTime: time.Date(2026, 5, 17, 12, 1, 0, 0, time.UTC),
+			wantDue:  false,
+			desc:     "12:01:00 已过 12:00 这一分钟，不应该触发",
+		},
+		{
+			name:     "every_minute",
+			cronExpr: "* * * * *",
+			testTime: time.Date(2026, 5, 17, 12, 30, 45, 0, time.UTC),
+			wantDue:  true,
+			desc:     "每分钟触发，12:30:45 应该触发",
+		},
+		{
+			name:     "specific_time",
+			cronExpr: "30 8 * * 1",
+			testTime: time.Date(2026, 5, 18, 8, 30, 0, 0, time.UTC), // Monday
+			wantDue:  true,
+			desc:     "周一 8:30 应该触发",
+		},
+		{
+			name:     "wrong_day",
+			cronExpr: "30 8 * * 1",
+			testTime: time.Date(2026, 5, 17, 8, 30, 0, 0, time.UTC), // Sunday
+			wantDue:  false,
+			desc:     "周日 8:30 不应该触发（配置是周一）",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// 临时修改系统时间来模拟测试时间点
+			originalNow := timeNow
+			timeNow = func() time.Time {
+				return tt.testTime
+			}
+			defer func() { timeNow = originalNow }()
+
+			got, err := svc.isCronDue(tt.cronExpr, "UTC")
+			if err != nil {
+				t.Fatalf("isCronDue(%q) returned error: %v", tt.cronExpr, err)
+			}
+			if got != tt.wantDue {
+				t.Errorf("isCronDue(%q) at %v = %v, want %v\n%s",
+					tt.cronExpr, tt.testTime.Format("15:04:05"), got, tt.wantDue, tt.desc)
+			}
+		})
+	}
+}
+
+// TestService_IsCronDue_WithTimezone 测试带时区的 cron 触发
+func TestService_IsCronDue_WithTimezone(t *testing.T) {
+	svc, _ := setupTestService(t)
+
+	// 上海时间 12:00 = UTC 04:00
+	shanghaiLoc, _ := time.LoadLocation("Asia/Shanghai")
+
+	tests := []struct {
+		name     string
+		cronExpr string
+		timezone string
+		testTime time.Time
+		wantDue  bool
+		desc     string
+	}{
+		{
+			name:     "shanghai_noon",
+			cronExpr: "0 12 * * *",
+			timezone: "Asia/Shanghai",
+			testTime: time.Date(2026, 5, 17, 4, 0, 0, 0, time.UTC), // UTC 04:00 = 上海 12:00
+			wantDue:  true,
+			desc:     "UTC 04:00 (上海 12:00) 应该触发",
+		},
+		{
+			name:     "shanghai_before",
+			cronExpr: "0 12 * * *",
+			timezone: "Asia/Shanghai",
+			testTime: time.Date(2026, 5, 17, 3, 59, 31, 0, time.UTC), // UTC 03:59:31 = 上海 11:59:31
+			wantDue:  false,
+			desc:     "UTC 03:59:31 (上海 11:59:31) 不应该触发",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			originalNow := timeNow
+			timeNow = func() time.Time {
+				return tt.testTime
+			}
+			defer func() { timeNow = originalNow }()
+
+			got, err := svc.isCronDue(tt.cronExpr, tt.timezone)
+			if err != nil {
+				t.Fatalf("isCronDue(%q, %q) returned error: %v", tt.cronExpr, tt.timezone, err)
+			}
+			if got != tt.wantDue {
+				t.Errorf("isCronDue(%q, %q) at %v (UTC) = %v, want %v\n%s",
+					tt.cronExpr, tt.timezone, tt.testTime.In(shanghaiLoc).Format("15:04:05 MST"),
+					got, tt.wantDue, tt.desc)
+			}
+		})
+	}
+}
+
+// TestService_CheckAndFireAtTrigger 测试 at 触发器逻辑
+func TestService_CheckAndFireAtTrigger(t *testing.T) {
+	svc, executor := setupTestService(t)
+
+	var executed bool
+	var mu sync.Mutex
+	executor.AgentPromptFunc = func(ctx context.Context, prompt string) (string, error) {
+		mu.Lock()
+		executed = true
+		mu.Unlock()
+		return "ok", nil
+	}
+
+	tests := []struct {
+		name     string
+		atTime   string
+		testTime time.Time
+		wantExec bool
+		desc     string
+	}{
+		{
+			name:     "exact_time",
+			atTime:   "2026-05-17 12:00:00",
+			testTime: time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC),
+			wantExec: true,
+			desc:     "精确匹配应该触发",
+		},
+		{
+			name:     "within_window",
+			atTime:   "2026-05-17 12:00:00",
+			testTime: time.Date(2026, 5, 17, 12, 0, 30, 0, time.UTC),
+			wantExec: true,
+			desc:     "在 60 秒窗口内应该触发",
+		},
+		{
+			name:     "before_time",
+			atTime:   "2026-05-17 12:00:00",
+			testTime: time.Date(2026, 5, 17, 11, 59, 30, 0, time.UTC),
+			wantExec: false,
+			desc:     "未到时间不应该触发",
+		},
+		{
+			name:     "after_window",
+			atTime:   "2026-05-17 12:00:00",
+			testTime: time.Date(2026, 5, 17, 12, 1, 1, 0, time.UTC),
+			wantExec: false,
+			desc:     "超过 60 秒窗口不应该触发",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// 重置执行标志
+			mu.Lock()
+			executed = false
+			mu.Unlock()
+
+			wf := &Workflow{
+				Name:     fmt.Sprintf("at-test-wf-%s", tt.name),
+				Enabled:  true,
+				Triggers: []Trigger{{At: tt.atTime}},
+				Steps:    []Step{{ID: "s1", Action: "agent_prompt", Prompt: "test"}},
+			}
+			svc.CreateWorkflow(wf)
+
+			// 临时修改系统时间
+			originalNow := timeNow
+			timeNow = func() time.Time {
+				return tt.testTime
+			}
+
+			// 调用检查函数
+			svc.checkAndFireAtTrigger(wf, 0, wf.Triggers[0])
+
+			// 恢复时间函数
+			timeNow = originalNow
+
+			// 等待可能的异步执行
+			time.Sleep(50 * time.Millisecond)
+
+			mu.Lock()
+			gotExec := executed
+			mu.Unlock()
+
+			if gotExec != tt.wantExec {
+				t.Errorf("at trigger at %v (test time: %v) executed=%v, want %v\n%s",
+					tt.atTime, tt.testTime.Format("15:04:05"), gotExec, tt.wantExec, tt.desc)
+			}
+
+			// 清理工作流和去重记录
+			svc.DeleteWorkflow(wf.Name)
+			fireKey := wf.Name + "|at|" + tt.atTime
+			svc.lastCronFireMu.Lock()
+			delete(svc.lastCronFire, fireKey)
+			svc.lastCronFireMu.Unlock()
+		})
+	}
+}
+
+// TestService_CheckAndFireIntervalTrigger 测试 interval 触发器逻辑
+func TestService_CheckAndFireIntervalTrigger(t *testing.T) {
+	svc, executor := setupTestService(t)
+
+	var execCount int
+	var mu sync.Mutex
+	executor.AgentPromptFunc = func(ctx context.Context, prompt string) (string, error) {
+		mu.Lock()
+		execCount++
+		mu.Unlock()
+		return "ok", nil
+	}
+
+	tests := []struct {
+		name       string
+		interval   string
+		firstExec  time.Time
+		secondExec time.Time
+		wantSecond bool
+		desc       string
+	}{
+		{
+			name:       "interval_elapsed",
+			interval:   "1m",
+			firstExec:  time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC),
+			secondExec: time.Date(2026, 5, 17, 12, 1, 1, 0, time.UTC), // 61 秒后
+			wantSecond: true,
+			desc:       "间隔已过应该触发",
+		},
+		{
+			name:       "interval_not_elapsed",
+			interval:   "1m",
+			firstExec:  time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC),
+			secondExec: time.Date(2026, 5, 17, 12, 0, 30, 0, time.UTC), // 30 秒后
+			wantSecond: false,
+			desc:       "间隔未到不应该触发",
+		},
+		{
+			name:       "first_execution",
+			interval:   "30s",
+			firstExec:  time.Time{}, // 从未执行过
+			secondExec: time.Date(2026, 5, 17, 12, 0, 0, 0, time.UTC),
+			wantSecond: true,
+			desc:       "首次执行应该触发（只执行一次）",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// 重置执行计数
+			mu.Lock()
+			execCount = 0
+			mu.Unlock()
+
+			wfName := fmt.Sprintf("interval-test-wf-%s", tt.name)
+			wf := &Workflow{
+				Name:     wfName,
+				Enabled:  true,
+				Triggers: []Trigger{{Interval: tt.interval}},
+				Steps:    []Step{{ID: "s1", Action: "agent_prompt", Prompt: "test"}},
+			}
+			svc.CreateWorkflow(wf)
+
+			fireKey := wf.Name + "|interval|" + tt.interval
+
+			// 第一次执行（如果有）
+			if !tt.firstExec.IsZero() {
+				originalNow := timeNow
+				timeNow = func() time.Time {
+					return tt.firstExec
+				}
+				svc.checkAndFireIntervalTrigger(wf, 0, wf.Triggers[0])
+				time.Sleep(50 * time.Millisecond)
+				timeNow = originalNow
+
+				mu.Lock()
+				firstExecCount := execCount
+				mu.Unlock()
+
+				if firstExecCount != 1 {
+					t.Fatalf("first execution: expected 1 execution, got %d", firstExecCount)
+				}
+			}
+
+			// 第二次执行
+			originalNow := timeNow
+			timeNow = func() time.Time {
+				return tt.secondExec
+			}
+			svc.checkAndFireIntervalTrigger(wf, 0, wf.Triggers[0])
+			time.Sleep(50 * time.Millisecond)
+			timeNow = originalNow
+
+			mu.Lock()
+			totalExecCount := execCount
+			mu.Unlock()
+
+			// 计算期望的执行次数
+			expectedCount := 0
+			if !tt.firstExec.IsZero() {
+				expectedCount = 1 // 第一次执行
+			}
+			if tt.wantSecond {
+				expectedCount++ // 第二次执行
+			}
+
+			if totalExecCount != expectedCount {
+				t.Errorf("interval trigger executed %d times, want %d\n%s",
+					totalExecCount, expectedCount, tt.desc)
+			}
+
+			// 清理
+			svc.DeleteWorkflow(wfName)
+			svc.lastCronFireMu.Lock()
+			delete(svc.lastCronFire, fireKey)
+			svc.lastCronFireMu.Unlock()
+		})
 	}
 }
