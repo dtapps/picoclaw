@@ -1162,6 +1162,15 @@
       "fn_date": "Data atual (UTC)",
       "fn_date_tz": "Data atual (fuso horário)",
       "fn_unix": "Timestamp Unix",
+      "fn_days_ago": "Data N dias atrás",
+      "fn_days_from_now": "Data N dias a partir de agora",
+      "fn_hours_ago": "Hora N horas atrás",
+      "fn_hours_from_now": "Hora N horas a partir de agora",
+      "fn_minutes_ago": "Hora N minutos atrás",
+      "fn_minutes_from_now": "Hora N minutos a partir de agora",
+      "fn_weeks_ago": "Data N semanas atrás",
+      "fn_day_of_week": "Dia da semana (1=Segunda, 7=Domingo)",
+      "fn_format_time": "Formatar hora com padrão personalizado",
       "fn_env": "Variável de ambiente"
     }
   },

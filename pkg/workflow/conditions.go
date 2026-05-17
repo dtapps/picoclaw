@@ -70,7 +70,7 @@ func evaluateComparison(expr string, outputs map[string]map[string]any) bool {
 
 // resolveTemplate 解析单个 {{.step_id.key}}、{{.vars.key}} 或 {{.fn.xxx}} 模板引用。
 // 从 stepOutputs 中查找对应步骤的输出值；"vars" 是工作流全局变量的特殊键；
-// "fn" 是内置模板函数（如 now、now_tz、date、date_tz、unix、env）。
+// "fn" 是内置模板函数（如 now、date、unix、days_ago、hours_ago、minutes_ago、weeks_ago、day_of_week、format_time、env）。
 // 如果引用无法解析（步骤不存在、键不存在），返回原始模板字符串。
 func resolveTemplate(tmpl string, outputs map[string]map[string]any) string {
 	if len(tmpl) < 5 || !strings.HasPrefix(tmpl, "{{.") || !strings.HasSuffix(tmpl, "}}") {

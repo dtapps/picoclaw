@@ -1313,6 +1313,15 @@
       "fn_date": "Current date (UTC)",
       "fn_date_tz": "Current date (timezone)",
       "fn_unix": "Unix timestamp",
+      "fn_days_ago": "Date N days ago",
+      "fn_days_from_now": "Date N days from now",
+      "fn_hours_ago": "Time N hours ago",
+      "fn_hours_from_now": "Time N hours from now",
+      "fn_minutes_ago": "Time N minutes ago",
+      "fn_minutes_from_now": "Time N minutes from now",
+      "fn_weeks_ago": "Date N weeks ago",
+      "fn_day_of_week": "Day of week (1=Monday, 7=Sunday)",
+      "fn_format_time": "Format time with custom pattern",
       "fn_env": "Environment variable"
     }
   },
