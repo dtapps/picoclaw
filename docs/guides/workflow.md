@@ -306,22 +306,29 @@ Triggers determine when a workflow auto-executes:
 - **event**: Triggered by listening for specific event types on the event bus
 
 #### Cron Trigger
-- After Service starts, checks all enabled workflows' cron expressions every 10 seconds
-- Uses `gronx` library to determine if a cron expression is due
-- Only one instance of a workflow can run at a time (dedup)
+- After Service starts, checks all enabled workflows' cron expressions every 60 seconds
+- Uses `gronx.NextTickAfter` to calculate the next trigger time and verifies if current time is within the matching minute window
+- **Precision**: Triggers only when the current time falls within the exact minute specified by the cron expression (e.g., `0 12 * * *` triggers between 12:00:00-12:00:59)
+- **No early triggering**: Will NOT trigger before the scheduled time (e.g., won't trigger at 11:59:31 for a 12:00 schedule)
+- Only one instance of a workflow can run at a time (deduplication with 90-second window)
 - Supports timezone setting (`tz` field)
+- Deduplication: Same workflow + same cron expression won't re-trigger within 90 seconds
 
 #### At Trigger (One-time)
 - Executes once at the specified date and time
 - Time format: `2025-05-15 09:00:00` or `2025-05-15 09:00`
+- **Execution window**: Triggers if current time is within 60 seconds after the scheduled time (e.g., for `12:00:00`, triggers between 12:00:00-12:01:00)
 - Supports timezone setting (`tz` field)
 - Automatically marked as completed after execution, won't trigger again
+- Deduplication: Each `at` trigger executes only once
 
 #### Interval Trigger
 - Repeatedly executes at fixed time intervals
 - Format: Go duration format, e.g., `30m` (30 minutes), `1h` (1 hour), `2h30m` (2 hours 30 minutes)
+- **First execution**: Triggers immediately when service starts (if no previous execution recorded)
+- **Subsequent executions**: Triggers only after the specified interval has elapsed since last execution
 - Supports timezone setting (`tz` field)
-- First trigger occurs after the interval, then repeats at the interval period
+- Deduplication: Tracks last execution time per workflow + interval combination
 
 #### Event Trigger
 
@@ -368,6 +375,36 @@ triggers:
     event_filters:
       tool: "git_commit"  # Only respond to git_commit tool completion events
 ```
+
+### Trigger Precision and Timing
+
+**How triggers are evaluated:**
+- The workflow service runs a polling loop that checks all enabled workflows every 60 seconds
+- For each trigger type, the service uses time-based logic to determine if execution should occur:
+
+| Trigger Type | Check Logic | Precision |
+|-------------|-------------|----------|
+| **cron** | Uses `gronx.NextTickAfter` to calculate next trigger time, then verifies current time is within the matching minute window | ±0-59 seconds (within the cron minute) |
+| **at** | Checks if current time is within 60 seconds after the scheduled time | ±0-60 seconds after scheduled time |
+| **interval** | Checks if time since last execution >= configured interval | Exact interval enforcement |
+
+**Example: Cron Trigger Behavior**
+```yaml
+triggers:
+  - cron: "0 12 * * *"  # Daily at 12:00
+    tz: "Asia/Shanghai"
+```
+
+With this configuration:
+- ✅ Will trigger at 12:00:00, 12:00:30, 12:00:59 (any time within the 12:00 minute)
+- ❌ Will NOT trigger at 11:59:31 (before the scheduled time)
+- ❌ Will NOT trigger at 12:01:00 (after the 12:00 minute has passed)
+
+**Deduplication:**
+- Each trigger type has built-in deduplication to prevent multiple executions:
+  - `cron`: Same workflow + same cron expression won't re-trigger within 90 seconds
+  - `at`: Each at-time trigger executes only once
+  - `interval`: Tracks last execution time per workflow + interval combination
 
 ### Condition Expressions
 
@@ -420,14 +457,30 @@ steps:
 
 Template references support built-in functions via `{{.fn.function_name}}` or `{{.fn.function_name "argument"}}` syntax. These are evaluated at step execution time to dynamically insert values such as the current time, date, or environment variables — without requiring an extra step.
 
+**Time and Date Functions:**
+
 | Function | Syntax | Description | Example Output |
 |----------|--------|-------------|----------------|
-| `{{.fn.now}}` | Current UTC time | `2026-05-13 08:30:00` |
-| `{{.fn.now_tz "Asia/Shanghai"}}` | Current time in specified timezone | `2026-05-13 16:30:00` |
-| `{{.fn.date}}` | Current UTC date | `2026-05-13` |
-| `{{.fn.date_tz "Asia/Shanghai"}}` | Current date in specified timezone | `2026-05-13` |
-| `{{.fn.unix}}` | Current Unix timestamp | `1747170600` |
-| `{{.fn.env "HOME"}}` | Get environment variable value | `/root` |
+| `now` | Current UTC time | `2026-05-13 08:30:00` |
+| `now_tz` | `{{.fn.now_tz "Asia/Shanghai"}}` | Current time in specified timezone | `2026-05-13 16:30:00` |
+| `date` | Current UTC date | `2026-05-13` |
+| `date_tz` | `{{.fn.date_tz "Asia/Shanghai"}}` | Current date in specified timezone | `2026-05-13` |
+| `unix` | Current Unix timestamp | `1747170600` |
+| `days_ago` | `{{.fn.days_ago 7}}` | Date N days ago | `2026-05-06` |
+| `days_from_now` | `{{.fn.days_from_now 3}}` | Date N days from now | `2026-05-16` |
+| `hours_ago` | `{{.fn.hours_ago 24}}` | Time N hours ago | `2026-05-12 08:30:00` |
+| `hours_from_now` | `{{.fn.hours_from_now 2}}` | Time N hours from now | `2026-05-13 10:30:00` |
+| `minutes_ago` | `{{.fn.minutes_ago 30}}` | Time N minutes ago | `2026-05-13 08:00:00` |
+| `minutes_from_now` | `{{.fn.minutes_from_now 15}}` | Time N minutes from now | `2026-05-13 08:45:00` |
+| `weeks_ago` | `{{.fn.weeks_ago 2}}` | Date N weeks ago | `2026-04-29` |
+| `day_of_week` | Day of week (1=Monday, 7=Sunday) | `6` |
+| `format_time` | `{{.fn.format_time "2006/01/02"}}` | Custom time format | `2026/05/13` |
+
+**Other Functions:**
+
+| Function | Syntax | Description | Example Output |
+|----------|--------|-------------|----------------|
+| `env` | `{{.fn.env "HOME"}}` | Get environment variable value | `/root` |
 
 Template functions are evaluated in real time at step execution and can be used in `prompt`, `args`, and `when` fields. For example:
 

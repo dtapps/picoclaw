@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -96,6 +97,15 @@ func resolveTemplate(tmpl string, outputs map[string]map[string]any) string {
 //   - date_tz "timezone": 指定时区的当前日期
 //   - unix: 当前 Unix 时间戳
 //   - env "key": 获取环境变量值
+//   - days_ago N: N 天前的日期，格式 "2006-01-02"
+//   - days_from_now N: N 天后的日期，格式 "2006-01-02"
+//   - hours_ago N: N 小时前的时间，格式 "2006-01-02 15:04:05"
+//   - hours_from_now N: N 小时后的时间，格式 "2006-01-02 15:04:05"
+//   - minutes_ago N: N 分钟前的时间，格式 "2006-01-02 15:04:05"
+//   - minutes_from_now N: N 分钟后的时间，格式 "2006-01-02 15:04:05"
+//   - weeks_ago N: N 周前的日期，格式 "2006-01-02"
+//   - day_of_week: 当前星期几（1=Monday, 7=Sunday）
+//   - format_time "format": 按指定格式格式化当前时间
 func resolveFuncTemplate(funcExpr string, originalTmpl string) string {
 	now := time.Now().UTC()
 
@@ -145,6 +155,84 @@ func resolveFuncTemplate(funcExpr string, originalTmpl string) string {
 		return val
 	}
 
+	// 时间计算函数：days_ago, days_from_now
+	if strings.HasPrefix(funcExpr, "days_ago ") {
+		n := parseNumberArg(funcExpr[len("days_ago "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.AddDate(0, 0, -n)
+		return target.Format("2006-01-02")
+	}
+	if strings.HasPrefix(funcExpr, "days_from_now ") {
+		n := parseNumberArg(funcExpr[len("days_from_now "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.AddDate(0, 0, n)
+		return target.Format("2006-01-02")
+	}
+
+	// 时间计算函数：hours_ago, hours_from_now
+	if strings.HasPrefix(funcExpr, "hours_ago ") {
+		n := parseNumberArg(funcExpr[len("hours_ago "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.Add(-time.Duration(n) * time.Hour)
+		return target.Format("2006-01-02 15:04:05")
+	}
+	if strings.HasPrefix(funcExpr, "hours_from_now ") {
+		n := parseNumberArg(funcExpr[len("hours_from_now "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.Add(time.Duration(n) * time.Hour)
+		return target.Format("2006-01-02 15:04:05")
+	}
+
+	// 时间计算函数：minutes_ago, minutes_from_now
+	if strings.HasPrefix(funcExpr, "minutes_ago ") {
+		n := parseNumberArg(funcExpr[len("minutes_ago "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.Add(-time.Duration(n) * time.Minute)
+		return target.Format("2006-01-02 15:04:05")
+	}
+	if strings.HasPrefix(funcExpr, "minutes_from_now ") {
+		n := parseNumberArg(funcExpr[len("minutes_from_now "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.Add(time.Duration(n) * time.Minute)
+		return target.Format("2006-01-02 15:04:05")
+	}
+
+	// 时间计算函数：weeks_ago
+	if strings.HasPrefix(funcExpr, "weeks_ago ") {
+		n := parseNumberArg(funcExpr[len("weeks_ago "):])
+		if n < 0 {
+			return originalTmpl
+		}
+		target := now.AddDate(0, 0, -n*7)
+		return target.Format("2006-01-02")
+	}
+
+	// day_of_week: 返回星期几（1=Monday, 7=Sunday）
+	if funcExpr == "day_of_week" {
+		return fmt.Sprintf("%d", now.Weekday()+1)
+	}
+
+	// format_time: 自定义格式
+	if strings.HasPrefix(funcExpr, "format_time ") {
+		format := extractQuotedArg(funcExpr[len("format_time "):])
+		if format == "" {
+			return originalTmpl
+		}
+		return now.Format(format)
+	}
+
 	return originalTmpl
 }
 
@@ -159,6 +247,20 @@ func extractQuotedArg(s string) string {
 		return s[1 : len(s)-1]
 	}
 	return ""
+}
+
+// parseNumberArg 从函敳参数表达式中提取数字。
+// 例如：` 7` → `7`, ` 30` → `30`
+func parseNumberArg(s string) int {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return -1
+	}
+	n, err := strconv.Atoi(s)
+	if err != nil {
+		return -1
+	}
+	return n
 }
 
 // ResolveStepTemplates 替换字符串中所有 {{.step_id.key}} 和 {{.vars.key}} 模板引用。

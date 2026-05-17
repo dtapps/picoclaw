@@ -1,6 +1,7 @@
 package workflow
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -384,6 +385,111 @@ func TestResolveStepTemplatesWithFuncs(t *testing.T) {
 			got := ResolveStepTemplates(tt.input, outputs)
 			if got != tt.want {
 				t.Fatalf("ResolveStepTemplates(%q) = %q, want %q", tt.input, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestResolveStepTemplatesWithTimeFuncs 测试新增的时间函数
+func TestResolveStepTemplatesWithTimeFuncs(t *testing.T) {
+	outputs := map[string]map[string]any{}
+	now := time.Now().UTC()
+
+	tests := []struct {
+		name     string
+		input    string
+		validate func(result string) bool
+		desc     string
+	}{
+		{
+			name:  "days_ago",
+			input: "{{.fn.days_ago 7}}",
+			validate: func(result string) bool {
+				expected := now.AddDate(0, 0, -7).Format("2006-01-02")
+				return result == expected
+			},
+			desc: "7天前应该是 " + now.AddDate(0, 0, -7).Format("2006-01-02"),
+		},
+		{
+			name:  "days_from_now",
+			input: "{{.fn.days_from_now 3}}",
+			validate: func(result string) bool {
+				expected := now.AddDate(0, 0, 3).Format("2006-01-02")
+				return result == expected
+			},
+			desc: "3天后应该是 " + now.AddDate(0, 0, 3).Format("2006-01-02"),
+		},
+		{
+			name:  "hours_ago",
+			input: "{{.fn.hours_ago 24}}",
+			validate: func(result string) bool {
+				expected := now.Add(-24 * time.Hour).Format("2006-01-02 15:04:05")
+				return result == expected
+			},
+			desc: "24小时前应该匹配",
+		},
+		{
+			name:  "hours_from_now",
+			input: "{{.fn.hours_from_now 2}}",
+			validate: func(result string) bool {
+				expected := now.Add(2 * time.Hour).Format("2006-01-02 15:04:05")
+				return result == expected
+			},
+			desc: "2小时后应该匹配",
+		},
+		{
+			name:  "minutes_ago",
+			input: "{{.fn.minutes_ago 30}}",
+			validate: func(result string) bool {
+				expected := now.Add(-30 * time.Minute).Format("2006-01-02 15:04:05")
+				return result == expected
+			},
+			desc: "30分钟前应该匹配",
+		},
+		{
+			name:  "weeks_ago",
+			input: "{{.fn.weeks_ago 2}}",
+			validate: func(result string) bool {
+				expected := now.AddDate(0, 0, -14).Format("2006-01-02")
+				return result == expected
+			},
+			desc: "2周前应该是 " + now.AddDate(0, 0, -14).Format("2006-01-02"),
+		},
+		{
+			name:  "day_of_week",
+			input: "{{.fn.day_of_week}}",
+			validate: func(result string) bool {
+				expected := fmt.Sprintf("%d", now.Weekday()+1)
+				return result == expected
+			},
+			desc: fmt.Sprintf("今天是星期%d", now.Weekday()+1),
+		},
+		{
+			name:  "format_time",
+			input: `{{.fn.format_time "2006/01/02"}}`,
+			validate: func(result string) bool {
+				expected := now.Format("2006/01/02")
+				return result == expected
+			},
+			desc: "自定义格式应该正确",
+		},
+		{
+			name:  "mixed_functions",
+			input: "Today: {{.fn.date}}, 7 days ago: {{.fn.days_ago 7}}, Next week: {{.fn.days_from_now 7}}",
+			validate: func(result string) bool {
+				return strings.Contains(result, now.Format("2006-01-02")) &&
+					strings.Contains(result, now.AddDate(0, 0, -7).Format("2006-01-02")) &&
+					strings.Contains(result, now.AddDate(0, 0, 7).Format("2006-01-02"))
+			},
+			desc: "混合使用多个时间函数",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ResolveStepTemplates(tt.input, outputs)
+			if !tt.validate(got) {
+				t.Errorf("ResolveStepTemplates(%q) = %q\n%s", tt.input, got, tt.desc)
 			}
 		})
 	}
