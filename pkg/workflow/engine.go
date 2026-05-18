@@ -282,8 +282,11 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	}
 
 	// 将频道信息和 session key 注入上下文，供步骤执行器回调时读取
-	if len(inst.NotifyChannels) > 0 {
-		ctx = withChannelCtx(ctx, inst.NotifyChannels[0].Channel, inst.NotifyChannels[0].ChatID, inst.SessionKey)
+	// 如果开启了 ReuseSession，注入固定的 session key 以复用 LLM 会话历史
+	// 注意：使用固定的 channel/chatID（workflow/default），不依赖通知频道配置
+	// 这样即使修改通知频道，LLM 会话也能保持一致
+	if wf.Config.ReuseSession && inst.SessionKey != "" {
+		ctx = withChannelCtx(ctx, "workflow", "default", inst.SessionKey)
 	}
 
 	// 将工作流变量注入 stepOutputs，使 {{.vars.key}} 可在步骤中引用

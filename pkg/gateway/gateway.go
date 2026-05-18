@@ -952,7 +952,22 @@ func setupWorkflowService(
 			}
 			ctx = toolshared.WithToolContext(ctx, "cli", "workflow")
 			result := tool.Execute(ctx, args)
-			return result.ForLLM, result.IsError, nil
+			output := result.ForLLM
+			// 如果 ForLLM 是占位符（大文本被省略），尝试从 ArtifactTags 读取真实数据
+			if strings.Contains(output, "omitted from model context") && len(result.ArtifactTags) > 0 {
+				// 从 ArtifactTags 中提取文件路径并读取内容
+				for _, tag := range result.ArtifactTags {
+					if strings.HasPrefix(tag, "[file:") && strings.HasSuffix(tag, "]") {
+						path := strings.TrimPrefix(tag, "[file:")
+						path = strings.TrimSuffix(path, "]")
+						if data, err := os.ReadFile(path); err == nil {
+							output = string(data)
+							break
+						}
+					}
+				}
+			}
+			return output, result.IsError, nil
 		},
 	}
 
