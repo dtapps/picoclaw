@@ -260,7 +260,7 @@ steps:
 - **timeout**：超时时间（可选），如 `"30s"`、`"5m"`。**默认 30 分钟**，不设置或为空时使用默认值；最小值 1 秒
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
 - **notify_on_start**：步骤开始执行时是否发送通知到绑定频道（可选，默认 `true`）。设为 `false` 时跳过"步骤开始"通知
-- **notify_on_complete**：步骤执行完成时是否发送通知到绑定频道（可选，默认 `true`）。`notify` 和 `agent_prompt` 步骤不受此字段影响：前者始终直接发送消息内容，后者始终推送 AI 响应
+- **notify_on_complete**：步骤执行完成时是否发送通知到绑定频道（可选，默认 `true`）。`notify` 步骤不受此字段影响，始终直接发送消息内容
 
 > **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
 
@@ -958,9 +958,16 @@ config:
   notify_channels:
     - channel: telegram
       chat_id: "-100xxx"
+      bound_at: "2026-05-18T10:30:00+08:00"  # 绑定时间（只读，自动记录）
     - channel: dingtalk
       chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
+      bound_at: "2026-05-18T10:35:00+08:00"
 ```
+
+每个通知目标包含以下字段：
+- **channel**：频道名称，如 `telegram`、`dingtalk`
+- **chat_id**：聊天 ID，如 `-100xxx`、`cid...`。注意：所有频道的 chat_id 都可能包含前缀（如 `group:` 或 `direct:`），用于区分群组和私聊
+- **bound_at**：绑定时间（只读），记录该频道何时被绑定到工作流，帮助追踪通知目标的添加时间
 
 当工作流在没有频道上下文的情况下触发（如 cron 触发、事件触发或 Web UI），引擎会使用工作流配置中的通知目标。
 

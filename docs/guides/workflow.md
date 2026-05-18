@@ -259,7 +259,7 @@ Each step supports the following configuration:
 - **timeout**: Timeout duration (optional), e.g., `"30s"`, `"5m"`. **Defaults to 30 minutes** when omitted or empty; minimum value is 1 second
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
 - **notify_on_start**: Whether to send a "step started" notification to the bound channel (optional; defaults to `true`). When set to `false`, the start notification is skipped
-- **notify_on_complete**: Whether to send a "step completed" notification to the bound channel (optional; defaults to `true`). `notify` and `agent_prompt` steps are not affected by this field: the former always sends the message content directly, and the latter always pushes the AI response
+- **notify_on_complete**: Whether to send a "step completed" notification to the bound channel (optional; defaults to `true`). The `notify` step is not affected by this field and always sends the message content directly
 
 > **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
 
@@ -959,9 +959,16 @@ config:
   notify_channels:
     - channel: telegram
       chat_id: "-100xxx"
+      bound_at: "2026-05-18T10:30:00+08:00"  # Binding time (read-only, auto-recorded)
     - channel: dingtalk
       chat_id: "cidSkk33JUIC1Od8i6iLuExy/x8z5ceMX5oFLqfIL1hmqs="
+      bound_at: "2026-05-18T10:35:00+08:00"
 ```
+
+Each notification target contains the following fields:
+- **channel**: Channel name, e.g., `telegram`, `dingtalk`
+- **chat_id**: Chat ID, e.g., `-100xxx`, `cid...`. Note: All channels may include a prefix in the chat_id (such as `group:` or `direct:`) to distinguish between group and private chats
+- **bound_at**: Binding time (read-only), records when the channel was bound to the workflow, helping track when notification targets were added
 
 When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine uses notification targets from the workflow config.
 

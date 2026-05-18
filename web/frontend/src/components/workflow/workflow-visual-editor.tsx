@@ -784,8 +784,8 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           />
         </div>
       </div>
-      {/* 通知开关：执行完成（notify 和 agent_prompt 不需要） */}
-      {action !== "notify" && action !== "agent_prompt" && (
+      {/* 通知开关：执行完成（notify 不需要） */}
+      {action !== "notify" && (
         <div className="sqd-editor-field sqd-step-toggle">
           <label className="sqd-step-toggle__label">{labels.notifyOnComplete}</label>
           <div className="sqd-step-toggle__control">
@@ -1465,6 +1465,7 @@ function createTaskStep(action: string): Step {
     baseProperties.prompt = ""
     baseProperties.output_key = "result"
     baseProperties.retry = ""
+    baseProperties.notify_on_complete = true
   } else if (action === "tool_call") {
     baseProperties.tool = ""
     baseProperties.args = ""

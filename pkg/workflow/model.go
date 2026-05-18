@@ -159,8 +159,9 @@ type RetryConfig struct {
 
 // NotifyTarget 定义通知目标（频道 + 聊天 ID）。
 type NotifyTarget struct {
-	Channel string `yaml:"channel" json:"channel"` // 频道名称，如 "dingtalk"、"telegram"
-	ChatID  string `yaml:"chat_id" json:"chat_id"` // 聊天 ID，如 "cid..."、"-100123"
+	Channel string    `yaml:"channel"  json:"channel"`  // 频道名称，如 "dingtalk"、"telegram"
+	ChatID  string    `yaml:"chat_id"  json:"chat_id"`  // 聊天 ID，如 "cid..."、"-100123"
+	BoundAt time.Time `yaml:"bound_at" json:"bound_at"` // 绑定时间，用于追踪何时添加的此通知频道
 }
 
 // WorkflowConfig 包含工作流的全局配置。

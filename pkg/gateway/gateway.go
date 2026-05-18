@@ -1123,17 +1123,27 @@ func setupWorkflowService(
 			return
 		}
 
-		// agent_prompt 步骤：始终推送 AI 响应，不受完成通知开关控制
+		// agent_prompt 步骤：始终推送 AI 响应（主要输出）
 		if step.Action == "agent_prompt" {
-			if result.Error != nil || result.Output == "" {
-				return
+			if result.Error == nil && result.Output != "" {
+				sendToInstTargets(inst, result.Output)
 			}
-			sendToInstTargets(inst, result.Output)
+			// 继续检查是否需要发送"步骤完成"额外通知
+		}
+
+		// 检查完成通知开关（nil 或 true 为启用）
+		if step.NotifyOnComplete != nil && !*step.NotifyOnComplete {
 			return
 		}
 
-		// 其他步骤（tool_call / parallel / if）检查完成通知开关
-		if step.NotifyOnComplete != nil && !*step.NotifyOnComplete {
+		// agent_prompt 步骤已处理过 AI 响应，这里只发送"步骤完成"额外通知
+		if step.Action == "agent_prompt" {
+			stepLabel := workflow.StepLabel(step)
+			if result.Error != nil {
+				sendToInstTargets(inst, fmt.Sprintf("❌ Agent 步骤 '%s' 执行失败", stepLabel))
+			} else {
+				sendToInstTargets(inst, fmt.Sprintf("✅ Agent 步骤 '%s' 执行完成", stepLabel))
+			}
 			return
 		}
 
@@ -1160,10 +1170,24 @@ func setupWorkflowService(
 
 		// parallel / if 步骤的完成通知
 		stepLabel := workflow.StepLabel(step)
-		if result.Error != nil {
-			sendToInstTargets(inst, fmt.Sprintf("❌ 步骤 '%s' 执行失败", stepLabel))
+		if step.Action == "parallel" {
+			if result.Error != nil {
+				sendToInstTargets(inst, fmt.Sprintf("❌ 并行步骤 '%s' 执行失败", stepLabel))
+			} else {
+				sendToInstTargets(inst, fmt.Sprintf("✅ 并行步骤 '%s' 执行完成", stepLabel))
+			}
+		} else if step.Action == "if" {
+			if result.Error != nil {
+				sendToInstTargets(inst, fmt.Sprintf("❌ 条件步骤 '%s' 执行失败", stepLabel))
+			} else {
+				sendToInstTargets(inst, fmt.Sprintf("✅ 条件步骤 '%s' 执行完成", stepLabel))
+			}
 		} else {
-			sendToInstTargets(inst, fmt.Sprintf("✅ 步骤 '%s' 执行完成", stepLabel))
+			if result.Error != nil {
+				sendToInstTargets(inst, fmt.Sprintf("❌ 步骤 '%s' 执行失败", stepLabel))
+			} else {
+				sendToInstTargets(inst, fmt.Sprintf("✅ 步骤 '%s' 执行完成", stepLabel))
+			}
 		}
 	})
 
