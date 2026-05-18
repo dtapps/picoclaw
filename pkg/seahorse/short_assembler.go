@@ -71,8 +71,8 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 	// Budget-aware selection of evictable items
 	remainingBudget := input.Budget - freshTailTokens
 	if remainingBudget < 0 {
-		// Fresh tail exceeds budget - truncate from oldest to fit within budget
-		logger.Warnf("seahorse assemble: fresh tail exceeds budget (%d > %d), truncating",
+		// 最新消息超过预算，从最旧的消息开始截断以适配预算
+		logger.Warnf("seahorse assemble: 最新消息超过预算 (%d > %d)，正在截断",
 			freshTailTokens, input.Budget)
 		var truncated []resolvedItem
 		accum := 0
