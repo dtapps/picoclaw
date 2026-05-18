@@ -68,7 +68,7 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 		freshTailTokens += r.tokenCount
 	}
 
-	// Budget-aware selection of evictable items
+	// 预算感知的消息选择
 	remainingBudget := input.Budget - freshTailTokens
 	if remainingBudget < 0 {
 		// 最新消息超过预算，从最旧的消息开始截断以适配预算
@@ -85,7 +85,7 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 			}
 		}
 		freshTail = truncated
-		freshTailTokens = accum
+		_ = accum // 截断后的 token 数量，用于后续日志记录
 		remainingBudget = 0
 	}
 
