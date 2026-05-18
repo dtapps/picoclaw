@@ -144,6 +144,37 @@
   left: 18px;
 }
 
+/* 复用 Session 开关 — 横向布局，与步骤启用开关类似 */
+.sqd-editor .sqd-editor-field.sqd-reuse-session-toggle {
+  flex-direction: row;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background: oklch(from var(--muted) l c h / 0.05);
+  border-radius: var(--radius);
+  border: 1px solid oklch(from var(--border) l c h / 0.5);
+}
+
+.sqd-reuse-session-toggle__label {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sqd-reuse-session-toggle__desc {
+  margin: 0;
+  margin-left: auto;
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+  max-width: 200px;
+  text-align: right;
+}
+
 /* 工具箱步骤描述 — 显示在步骤标签下方 */
 .sqd-toolbox {
   width: 200px !important;

@@ -17,9 +17,10 @@ import (
 type contextKey string
 
 const (
-	channelCtxKey contextKey = "workflow_channel"
-	chatIDCtxKey  contextKey = "workflow_chat_id"
-	workdirCtxKey contextKey = "workflow_workdir"
+	channelCtxKey    contextKey = "workflow_channel"
+	chatIDCtxKey     contextKey = "workflow_chat_id"
+	workdirCtxKey    contextKey = "workflow_workdir"
+	sessionKeyCtxKey contextKey = "workflow_session_key"
 )
 
 // ChannelFromCtx 从上下文中提取工作流绑定的频道名称。
@@ -35,10 +36,17 @@ func ChatIDFromCtx(ctx context.Context) (string, bool) {
 }
 
 // withChannelCtx 将频道信息注入上下文，供步骤执行器回调时读取。
-func withChannelCtx(ctx context.Context, channel, chatID string) context.Context {
+func withChannelCtx(ctx context.Context, channel, chatID, sessionKey string) context.Context {
 	ctx = context.WithValue(ctx, channelCtxKey, channel)
 	ctx = context.WithValue(ctx, chatIDCtxKey, chatID)
+	ctx = context.WithValue(ctx, sessionKeyCtxKey, sessionKey)
 	return ctx
+}
+
+// SessionKeyFromCtx 从上下文中提取工作流的 session key。
+func SessionKeyFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(sessionKeyCtxKey).(string)
+	return v, ok
 }
 
 // WorkdirFromCtx 从上下文中提取工作流的工作目录。
@@ -133,6 +141,11 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 		TriggerType:  triggerType,
 		Logs:         make([]LogEntry, 0),
 		StartedAt:    time.Now(),
+	}
+
+	// 如果配置为复用 session，则生成固定的 session key
+	if wf.Config.ReuseSession {
+		inst.SessionKey = fmt.Sprintf("agent:workflow:%s", wf.Name)
 	}
 
 	// 频道绑定：始终使用工作流配置的通知目标
@@ -266,6 +279,11 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 将工作目录注入上下文，供 tool_call 步骤自动注入 cwd
 	if wf.Config.Workdir != "" {
 		ctx = withWorkdirCtx(ctx, wf.Config.Workdir)
+	}
+
+	// 将频道信息和 session key 注入上下文，供步骤执行器回调时读取
+	if len(inst.NotifyChannels) > 0 {
+		ctx = withChannelCtx(ctx, inst.NotifyChannels[0].Channel, inst.NotifyChannels[0].ChatID, inst.SessionKey)
 	}
 
 	// 将工作流变量注入 stepOutputs，使 {{.vars.key}} 可在步骤中引用

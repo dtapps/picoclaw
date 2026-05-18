@@ -168,6 +168,7 @@ type WorkflowConfig struct {
 	FailureStrategy string         `yaml:"failure_strategy,omitempty" json:"failure_strategy,omitempty"` // 失败策略：stop（中止）| continue（继续）
 	NotifyChannels  []NotifyTarget `yaml:"notify_channels,omitempty"  json:"notify_channels,omitempty"`  // 通知目标列表（支持多频道）
 	Workdir         string         `yaml:"workdir,omitempty"          json:"workdir,omitempty"`          // 工作目录，tool_call 步骤执行时的默认目录
+	ReuseSession    bool           `yaml:"reuse_session,omitempty"    json:"reuse_session,omitempty"`    // 是否复用 session，false 表示每次执行创建新 session
 }
 
 // GetNotifyTargets 返回通知目标列表。
@@ -226,6 +227,7 @@ type WorkflowInstance struct {
 	StartedAt      time.Time                 `json:"started_at"`                // 开始时间
 	FinishedAt     *time.Time                `json:"finished_at,omitempty"`     // 结束时间
 	Error          string                    `json:"error,omitempty"`           // 错误信息
+	SessionKey     string                    `json:"session_key,omitempty"`     // 复用的 session key，为空则创建新 session
 
 	mu sync.Mutex `json:"-"` // 保护 StepStates/StepOutputs/Logs 等字段的并发访问
 

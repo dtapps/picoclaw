@@ -909,7 +909,7 @@ func TestStopInstance_NotFound(t *testing.T) {
 
 func TestChannelFromCtx(t *testing.T) {
 	t.Run("value present", func(t *testing.T) {
-		ctx := withChannelCtx(context.Background(), "telegram", "chat-123")
+		ctx := withChannelCtx(context.Background(), "telegram", "chat-123", "session-key-123")
 		ch, ok := ChannelFromCtx(ctx)
 		if !ok || ch != "telegram" {
 			t.Fatalf("ChannelFromCtx() = (%q, %v), want (%q, true)", ch, ok, "telegram")
@@ -917,6 +917,10 @@ func TestChannelFromCtx(t *testing.T) {
 		cid, ok := ChatIDFromCtx(ctx)
 		if !ok || cid != "chat-123" {
 			t.Fatalf("ChatIDFromCtx() = (%q, %v), want (%q, true)", cid, ok, "chat-123")
+		}
+		sk, ok := SessionKeyFromCtx(ctx)
+		if !ok || sk != "session-key-123" {
+			t.Fatalf("SessionKeyFromCtx() = (%q, %v), want (%q, true)", sk, ok, "session-key-123")
 		}
 	})
 

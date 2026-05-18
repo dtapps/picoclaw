@@ -907,7 +907,11 @@ func setupWorkflowService(
 	executor := &workflow.StepExecutor{
 		// agent_prompt 类型步骤的回调：通过 AgentLoop 直接执行提示词
 		AgentPromptFunc: func(ctx context.Context, prompt string) (string, error) {
+			// 从上下文中提取 session key，如果没有则创建新的
 			sessionKey := fmt.Sprintf("agent:workflow-%s", uuid.New().String())
+			if sk, ok := workflow.SessionKeyFromCtx(ctx); ok && sk != "" {
+				sessionKey = sk
+			}
 			// 从上下文中提取频道信息，由 Engine 在执行时注入
 			channel := "cli"
 			chatID := "workflow"

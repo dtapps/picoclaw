@@ -1210,6 +1210,8 @@
       "strategy_stop": "Stop on failure",
       "strategy_continue": "Continue on failure",
       "workdir": "Working Directory",
+      "reuse_session": "Reuse Session",
+      "reuse_session_desc": "When enabled, workflow executions will use the same session to maintain context continuity",
       "vars": "Variables",
       "vars_key": "Key",
       "vars_value": "Value",
