@@ -1205,6 +1205,8 @@
       "strategy_stop": "失败即停止",
       "strategy_continue": "失败后继续",
       "workdir": "工作目录",
+      "reuse_session": "复用 Session",
+      "reuse_session_desc": "开启后，工作流每次执行将使用同一个 Session，保持上下文连续",
       "vars": "变量",
       "vars_key": "键名",
       "vars_value": "值",

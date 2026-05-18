@@ -34,6 +34,7 @@ import {
 import { getTools, type ToolParamProperty } from "@/api/tools"
 import { getMCPConfig, getMCPServerDetails } from "@/api/mcp"
 import { EventTypeGroups, getRegisteredTools } from "@/api/workflow"
+import { Switch } from "@/components/ui/switch"
 
 // --- 步骤图标 ---
 
@@ -1265,6 +1266,8 @@ interface RootEditorLabels {
   strategyStop: string
   strategyContinue: string
   workdir: string
+  reuseSession: string
+  reuseSessionDesc: string
   vars: string
   varsKey: string
   varsValue: string
@@ -1374,6 +1377,19 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
           onChange={(e) => setProperty("workdir", e.target.value)}
           placeholder="/path/to/project"
         />
+      </div>
+      <div className="sqd-editor-field sqd-reuse-session-toggle">
+        <Switch
+          id="reuse-session"
+          checked={(properties.reuseSession as boolean) || false}
+          onCheckedChange={(checked) => setProperty("reuseSession", checked)}
+        />
+        <label htmlFor="reuse-session" className="sqd-reuse-session-toggle__label">
+          {labels.reuseSession}
+        </label>
+        <span className="sqd-reuse-session-toggle__desc">
+          {labels.reuseSessionDesc}
+        </span>
       </div>
       <div className="sqd-editor-field">
         <label>{labels.vars}</label>
@@ -1702,6 +1718,8 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     strategyStop: t("pages.workflows.strategy_stop", "Stop on failure"),
     strategyContinue: t("pages.workflows.strategy_continue", "Continue on failure"),
     workdir: t("pages.workflows.workdir", "Working Directory"),
+    reuseSession: t("pages.workflows.reuse_session", "Reuse Session"),
+    reuseSessionDesc: t("pages.workflows.reuse_session_desc", "Reuse the same session for each execution"),
     vars: t("pages.workflows.vars", "Variables"),
     varsKey: t("pages.workflows.vars_key", "Key"),
     varsValue: t("pages.workflows.vars_value", "Value"),

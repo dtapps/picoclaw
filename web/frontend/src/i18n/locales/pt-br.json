@@ -1065,6 +1065,8 @@
       "strategy_stop": "Parar ao falhar",
       "strategy_continue": "Continuar ao falhar",
       "workdir": "Diretório de Trabalho",
+      "reuse_session": "Reutilizar Sessão",
+      "reuse_session_desc": "Quando ativado, as execuções do fluxo de trabalho usarão a mesma sessão para manter a continuidade do contexto",
       "vars": "Variáveis",
       "vars_key": "Chave",
       "vars_value": "Valor",

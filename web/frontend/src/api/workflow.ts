@@ -106,6 +106,7 @@ export interface WorkflowConfig {
   failure_strategy?: string
   notify_channels?: NotifyTarget[]
   workdir?: string
+  reuse_session?: boolean
 }
 
 export interface Workflow {

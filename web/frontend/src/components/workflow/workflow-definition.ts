@@ -58,6 +58,7 @@ export function workflowToDefinition(wf: Workflow): Definition {
       triggers,
       failureStrategy: wf.config?.failure_strategy || "stop",
       workdir: wf.config?.workdir || "",
+      reuseSession: wf.config?.reuse_session || false,
       vars: wf.vars || {},
     },
     sequence,
@@ -218,6 +219,7 @@ export function definitionToWorkflow(def: Definition): {
     config: {
       failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop",
       workdir: (props.workdir as string) || undefined,
+      reuse_session: (props.reuseSession as boolean) || undefined,
     },
   }
 }
@@ -337,6 +339,7 @@ export function createEmptyDefinition(): Definition {
       triggers: [{ type: "manual" }],
       failureStrategy: "stop",
       workdir: "",
+      reuseSession: false,
       vars: {},
     },
     sequence: [],
