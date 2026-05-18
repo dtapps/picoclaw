@@ -6,9 +6,6 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/caarlos0/env/v11"
-	"gopkg.in/yaml.v3"
-
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -38,6 +35,7 @@ const (
 	ChannelSlackWebHook   = "slack_webhook"
 	ChannelWeibo          = "weibo"
 	ChannelYuanbao        = "yuanbao"
+	ChannelSC3Bot         = "sc3bot"
 )
 
 func initChannel() {
@@ -650,6 +648,7 @@ var channelSettingsFactory = map[string]any{
 	ChannelSlackWebHook:   (SlackWebhookSettings{}),
 	ChannelWeibo:          (WeiboSettings{}),
 	ChannelYuanbao:        (YuanbaoSettings{}),
+	ChannelSC3Bot:         (SC3BotSettings{}),
 }
 
 // newChannelSettings creates a fresh zero-value pointer for the given channel type.

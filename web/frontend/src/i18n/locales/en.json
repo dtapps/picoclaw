@@ -497,7 +497,8 @@
       "weibo": "Weibo",
       "yuanbao": "Yuanbao",
       "heartbeat": "Heartbeat",
-      "main": "Cron"
+      "main": "Cron",
+      "sc3bot": "Server酱³ Bot"
     },
     "weixin": {
       "bindTitle": "WeChat Account Binding",

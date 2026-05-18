@@ -586,6 +586,11 @@ func defaultChannels() ChannelsConfig {
 		"weibo":   map[string]any{},
 		"yuanbao": map[string]any{},
 		"browser": map[string]any{},
+		"sc3bot": map[string]any{
+			"settings": map[string]any{
+				"token": "",
+			},
+		},
 	}
 
 	channels := make(ChannelsConfig, len(defs))

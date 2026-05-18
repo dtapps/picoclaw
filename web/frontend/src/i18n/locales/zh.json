@@ -498,7 +498,8 @@
       "weibo": "微博",
       "yuanbao": "元宝",
       "heartbeat": "心跳",
-      "main": "定时任务"
+      "main": "定时任务",
+      "sc3bot": "Server酱³ Bot"
     },
     "weixin": {
       "bindTitle": "微信账号绑定",

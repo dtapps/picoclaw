@@ -34,6 +34,7 @@ var channelCatalog = []channelCatalogItem{
 	{Name: "mqtt", ConfigKey: "mqtt"},
 	{Name: "weibo", ConfigKey: "weibo"},
 	{Name: "yuanbao", ConfigKey: "yuanbao"},
+	{Name: "sc3bot", ConfigKey: "sc3bot"},
 }
 
 type channelConfigResponse struct {
@@ -114,6 +115,7 @@ var channelSecretFieldMap = map[string][]string{
 	"mqtt":            {"username", "password"},
 	"weibo":           {"app_secret"},
 	"yuanbao":         {"app_secret"},
+	"sc3bot":          {"token"},
 }
 
 func buildChannelConfigResponse(cfg *config.Config, item channelCatalogItem) channelConfigResponse {

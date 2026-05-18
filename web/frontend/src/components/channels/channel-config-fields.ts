@@ -38,6 +38,7 @@ const CHANNEL_SECRET_FIELDS: Record<string, string[]> = {
   mqtt: ["username", "password"],
   weibo: ["app_secret"],
   yuanbao: ["app_secret"],
+  sc3bot: ["token"],
 }
 
 const SECRET_FIELD_SET = new Set(Object.keys(SECRET_FIELD_MAP))
