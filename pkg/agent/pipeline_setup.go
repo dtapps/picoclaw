@@ -70,6 +70,22 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
 			messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 			messages = resolveMediaRefs(messages, p.MediaStore, maxMediaSize)
+
+			// 压缩后二次检查：若仍超预算则强制截断历史消息
+			if isOverContextBudget(ts.agent.ContextWindow, messages, toolDefs, ts.agent.MaxTokens) {
+				logger.WarnCF("agent", "压缩后仍超预算，强制截断历史消息",
+					map[string]any{"session_key": ts.sessionKey})
+				// 仅保留 system + 最新 N 条消息以适配预算
+				maxHistoryLen := len(messages) - 2 // 保留 system + user 消息
+				for maxHistoryLen > 0 {
+					testMsgs := append([]providers.Message{messages[0]}, messages[len(messages)-maxHistoryLen:]...)
+					if !isOverContextBudget(ts.agent.ContextWindow, testMsgs, toolDefs, ts.agent.MaxTokens) {
+						messages = testMsgs
+						break
+					}
+					maxHistoryLen--
+				}
+			}
 		}
 	}
 

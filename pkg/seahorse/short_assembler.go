@@ -68,17 +68,24 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 		freshTailTokens += r.tokenCount
 	}
 
-	// Budget-aware selection of evictable items
+	// 预算感知的消息选择
 	remainingBudget := input.Budget - freshTailTokens
 	if remainingBudget < 0 {
-		// Fresh tail alone exceeds budget - we keep it anyway (design decision)
-		// Log for debugging retry/overflow issues
-		logger.InfoCF("seahorse", "assemble: fresh tail exceeds budget", map[string]any{
-			"budget":            input.Budget,
-			"fresh_tail_tokens": freshTailTokens,
-			"fresh_tail_count":  len(freshTail),
-			"over_budget_by":    freshTailTokens - input.Budget,
-		})
+		// 最新消息超过预算，从最旧的消息开始截断以适配预算
+		logger.Warnf("seahorse assemble: 最新消息超过预算 (%d > %d)，正在截断",
+			freshTailTokens, input.Budget)
+		var truncated []resolvedItem
+		accum := 0
+		for i := len(freshTail) - 1; i >= 0; i-- {
+			if accum+freshTail[i].tokenCount <= input.Budget {
+				truncated = append([]resolvedItem{freshTail[i]}, truncated...)
+				accum += freshTail[i].tokenCount
+			} else {
+				break
+			}
+		}
+		freshTail = truncated
+		_ = accum // 截断后的 token 数量，用于后续日志记录
 		remainingBudget = 0
 	}
 

@@ -98,6 +98,8 @@ func (m *seahorseContextManager) Assemble(ctx context.Context, req *AssembleRequ
 
 	// Reserve space for model response (spec lines 1400-1410)
 	effectiveBudget := budget - req.MaxTokens
+	logger.Warnf("[预算调试] session=%s, config_budget=%d, max_tokens=%d, effectiveBudget=%d",
+		req.SessionKey[:min(len(req.SessionKey), 40)], budget, req.MaxTokens, effectiveBudget)
 	if effectiveBudget <= 0 {
 		// MaxTokens >= budget is a configuration problem
 		// Use 50% as minimum to avoid guaranteed overflow

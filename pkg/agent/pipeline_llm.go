@@ -388,6 +388,28 @@ func (p *Pipeline) CallLLM(
 			rebuildPromptReq := promptBuildRequestForTurn(ts, exec.history, exec.summary, "", nil)
 			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
 			exec.messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
+
+			// 重试后二次检查：若仍超预算则强制截断历史消息
+			if retryToolDefs := ts.agent.Tools.ToProviderDefs(); isOverContextBudget(
+				ts.agent.ContextWindow,
+				exec.messages,
+				retryToolDefs,
+				ts.agent.MaxTokens,
+			) {
+				logger.WarnCF("agent", "重试后仍超预算，强制截断历史消息",
+					map[string]any{"session_key": ts.sessionKey})
+				maxHistoryLen := len(exec.messages) - 1 // 保留 system 消息
+				for maxHistoryLen > 0 {
+					testMsgs := append(
+						[]providers.Message{exec.messages[0]},
+						exec.messages[len(exec.messages)-maxHistoryLen:]...)
+					if !isOverContextBudget(ts.agent.ContextWindow, testMsgs, retryToolDefs, ts.agent.MaxTokens) {
+						exec.messages = testMsgs
+						break
+					}
+					maxHistoryLen--
+				}
+			}
 			exec.callMessages = exec.messages
 			if exec.gracefulTerminal {
 				msgs := append([]providers.Message(nil), exec.messages...)
