@@ -71,14 +71,21 @@ func (a *Assembler) Assemble(ctx context.Context, convID int64, input AssembleIn
 	// Budget-aware selection of evictable items
 	remainingBudget := input.Budget - freshTailTokens
 	if remainingBudget < 0 {
-		// Fresh tail alone exceeds budget - we keep it anyway (design decision)
-		// Log for debugging retry/overflow issues
-		logger.InfoCF("seahorse", "assemble: fresh tail exceeds budget", map[string]any{
-			"budget":            input.Budget,
-			"fresh_tail_tokens": freshTailTokens,
-			"fresh_tail_count":  len(freshTail),
-			"over_budget_by":    freshTailTokens - input.Budget,
-		})
+		// Fresh tail exceeds budget - truncate from oldest to fit within budget
+		logger.Warnf("seahorse assemble: fresh tail exceeds budget (%d > %d), truncating",
+			freshTailTokens, input.Budget)
+		var truncated []resolvedItem
+		accum := 0
+		for i := len(freshTail) - 1; i >= 0; i-- {
+			if accum+freshTail[i].tokenCount <= input.Budget {
+				truncated = append([]resolvedItem{freshTail[i]}, truncated...)
+				accum += freshTail[i].tokenCount
+			} else {
+				break
+			}
+		}
+		freshTail = truncated
+		freshTailTokens = accum
 		remainingBudget = 0
 	}
 

@@ -70,6 +70,22 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
 			messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 			messages = resolveMediaRefs(messages, p.MediaStore, maxMediaSize)
+
+			// Post-compaction recheck: if still over budget, force truncate history
+			if isOverContextBudget(ts.agent.ContextWindow, messages, toolDefs, ts.agent.MaxTokens) {
+				logger.WarnCF("agent", "Post-compaction still over budget, truncating history",
+					map[string]any{"session_key": ts.sessionKey})
+				// Keep only system + last N messages to fit within budget
+				maxHistoryLen := len(messages) - 2 // keep system + user
+				for maxHistoryLen > 0 {
+					testMsgs := append([]providers.Message{messages[0]}, messages[len(messages)-maxHistoryLen:]...)
+					if !isOverContextBudget(ts.agent.ContextWindow, testMsgs, toolDefs, ts.agent.MaxTokens) {
+						messages = testMsgs
+						break
+					}
+					maxHistoryLen--
+				}
+			}
 		}
 	}
 
