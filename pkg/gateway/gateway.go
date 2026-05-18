@@ -912,6 +912,13 @@ func setupWorkflowService(
 			sessionKey := fmt.Sprintf("agent:workflow-%s", uuid.New().String())
 			if sk, ok := workflow.SessionKeyFromCtx(ctx); ok && sk != "" {
 				sessionKey = sk
+				logger.InfoCF("workflow", "AgentPromptFunc 使用复用的 SessionKey", map[string]any{
+					"session_key": sessionKey,
+				})
+			} else {
+				logger.InfoCF("workflow", "AgentPromptFunc 生成新 SessionKey（未从 context 获取到）", map[string]any{
+					"session_key": sessionKey,
+				})
 			}
 			// 从上下文中提取频道信息，由 Engine 在执行时注入
 			channel := "cli"

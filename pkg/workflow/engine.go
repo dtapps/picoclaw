@@ -146,6 +146,10 @@ func (e *Engine) RunWorkflow(ctx context.Context, wf *Workflow, triggerType, cha
 	// 如果配置为复用 session，则生成固定的 session key
 	if wf.Config.ReuseSession {
 		inst.SessionKey = fmt.Sprintf("agent:workflow:%s", wf.Name)
+		logger.InfoCF("workflow", "ReuseSession 启用，使用固定 SessionKey", map[string]any{
+			"workflow":    wf.Name,
+			"session_key": inst.SessionKey,
+		})
 	}
 
 	// 频道绑定：始终使用工作流配置的通知目标
@@ -286,6 +290,11 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 注意：使用固定的 channel/chatID（workflow/default），不依赖通知频道配置
 	// 这样即使修改通知频道，LLM 会话也能保持一致
 	if wf.Config.ReuseSession && inst.SessionKey != "" {
+		logger.InfoCF("workflow", "注入 SessionKey 到上下文", map[string]any{
+			"session_key": inst.SessionKey,
+			"channel":     "workflow",
+			"chat_id":     "default",
+		})
 		ctx = withChannelCtx(ctx, "workflow", "default", inst.SessionKey)
 	}
 
