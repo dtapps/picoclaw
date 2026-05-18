@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/caarlos0/env/v11"
+	"gopkg.in/yaml.v3"
+
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 

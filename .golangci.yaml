@@ -150,6 +150,9 @@ linters:
       - linters:
           - nolintlint
         path: 'pkg/tools/(i2c\.go|spi\.go)$'
+      - linters:
+          - canonicalheader
+        path: 'pkg/channels/sc3bot/'
 
 issues:
   max-issues-per-linter: 0
