@@ -384,6 +384,8 @@
       "thinkingLevelHint": "Extended thinking budget: off, low, medium, high, xhigh, adaptive.",
       "maxTokens": "Max Tokens",
       "maxTokensHint": "Maximum tokens allowed for a single request. 0 = use default configuration.",
+      "contextWindow": "Context Window Size",
+      "contextWindowHint": "Maximum context window size allowed for this request. 0 = use default configuration.",
       "maxTokensField": "Max Tokens Field",
       "maxTokensFieldHint": "Override the request field name for max tokens, e.g. max_completion_tokens.",
       "toolSchemaTransform": "Tool Schema Transform",

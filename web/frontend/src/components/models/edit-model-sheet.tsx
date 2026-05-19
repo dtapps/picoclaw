@@ -58,6 +58,7 @@ interface EditForm {
   workspace: string
   rpm: string
   maxTokens: string
+  contextWindow: string
   maxTokensField: string
   requestTimeout: string
   thinkingLevel: string
@@ -117,6 +118,7 @@ function buildInitialEditForm(model: ModelInfo): EditForm {
     workspace: model.workspace ?? "",
     rpm: model.rpm ? String(model.rpm) : "",
     maxTokens: model.max_tokens ? String(model.max_tokens) : "",
+    contextWindow: model.context_window ? String(model.context_window) : "",
     maxTokensField: model.max_tokens_field ?? "",
     requestTimeout: model.request_timeout ? String(model.request_timeout) : "",
     thinkingLevel: model.thinking_level ?? "",
@@ -150,6 +152,7 @@ export function EditModelSheet({
     workspace: "",
     rpm: "",
     maxTokens: "",
+    contextWindow: "",
     maxTokensField: "",
     requestTimeout: "",
     thinkingLevel: "",
@@ -324,6 +327,7 @@ export function EditModelSheet({
         workspace: form.workspace || undefined,
         rpm: form.rpm ? Number(form.rpm) : undefined,
         max_tokens: form.maxTokens ? Number(form.maxTokens) : undefined,
+        context_window: form.contextWindow ? Number(form.contextWindow) : undefined,
         max_tokens_field: form.maxTokensField || undefined,
         request_timeout: form.requestTimeout
           ? Number(form.requestTimeout)
@@ -636,6 +640,19 @@ export function EditModelSheet({
                 <Input
                   value={form.maxTokens}
                   onChange={setField("maxTokens")}
+                  placeholder="0"
+                  type="number"
+                  min={0}
+                />
+              </Field>
+
+              <Field
+                label={t("models.field.contextWindow")}
+                hint={t("models.field.contextWindowHint")}
+              >
+                <Input
+                  value={form.contextWindow}
+                  onChange={setField("contextWindow")}
                   placeholder="0"
                   type="number"
                   min={0}

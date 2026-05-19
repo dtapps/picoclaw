@@ -57,17 +57,18 @@ type modelResponse struct {
 	Proxy      string `json:"proxy,omitempty"`
 	AuthMethod string `json:"auth_method,omitempty"`
 	// Advanced fields
-	ConnectMode         string            `json:"connect_mode,omitempty"`
-	Workspace           string            `json:"workspace,omitempty"`
-	RPM                 int               `json:"rpm,omitempty"`
-	MaxTokens           int               `json:"max_tokens,omitempty"`
-	MaxTokensField      string            `json:"max_tokens_field,omitempty"`
-	RequestTimeout      int               `json:"request_timeout,omitempty"`
-	ThinkingLevel       string            `json:"thinking_level,omitempty"`
-	ToolSchemaTransform string            `json:"tool_schema_transform,omitempty"`
+	ConnectMode         string                      `json:"connect_mode,omitempty"`
+	Workspace           string                      `json:"workspace,omitempty"`
+	RPM                 int                         `json:"rpm,omitempty"`
+	MaxTokens           int                         `json:"max_tokens,omitempty"`
+	ContextWindow       int                         `json:"context_window,omitempty"`
+	MaxTokensField      string                      `json:"max_tokens_field,omitempty"`
+	RequestTimeout      int                         `json:"request_timeout,omitempty"`
+	ThinkingLevel       string                      `json:"thinking_level,omitempty"`
+	ToolSchemaTransform string                      `json:"tool_schema_transform,omitempty"`
 	Streaming           config.ModelStreamingConfig `json:"streaming,omitempty"`
-	ExtraBody           map[string]any    `json:"extra_body,omitempty"`
-	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`
+	ExtraBody           map[string]any              `json:"extra_body,omitempty"`
+	CustomHeaders       map[string]string           `json:"custom_headers,omitempty"`
 	// Meta
 	Enabled             bool   `json:"enabled"`
 	Available           bool   `json:"available"`
@@ -292,6 +293,7 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 			Workspace:           m.Workspace,
 			RPM:                 m.RPM,
 			MaxTokens:           m.MaxTokens,
+			ContextWindow:       m.ContextWindow,
 			MaxTokensField:      m.MaxTokensField,
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,
