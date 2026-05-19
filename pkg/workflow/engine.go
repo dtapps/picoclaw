@@ -663,15 +663,19 @@ func (e *Engine) executeStepWithState(ctx context.Context, step Step, inst *Work
 	now2 := time.Now()
 	state.FinishedAt = &now2
 
+	// 存储步骤状态和输出，供后续步骤引用
+	if inst.StepOutputs[step.ID] == nil {
+		inst.StepOutputs[step.ID] = make(map[string]any)
+	}
+	// 始终存储状态信息（_status 和 _error）
 	if result.Error != nil {
 		state.Status = StatusFailed
 		state.Error = result.Error.Error()
+		inst.StepOutputs[step.ID]["_status"] = StatusFailed
+		inst.StepOutputs[step.ID]["_error"] = result.Error.Error()
 	} else {
 		state.Status = StatusCompleted
-		// 存储步骤输出，供后续步骤引用
-		if inst.StepOutputs[step.ID] == nil {
-			inst.StepOutputs[step.ID] = make(map[string]any)
-		}
+		inst.StepOutputs[step.ID]["_status"] = StatusCompleted
 		// 使用配置的 output_key，如果没有设置则使用默认键名 "result"
 		key := step.OutputKey
 		if key == "" {

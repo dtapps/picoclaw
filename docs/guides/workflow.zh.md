@@ -442,6 +442,40 @@ triggers:
 3. 替换模板为实际输出内容
 4. 同时应用于 `prompt`、`args`、`when` 字段
 
+**步骤状态引用（`_status` 和 `_error`）**：
+
+每个步骤执行后，系统会自动存储其执行状态，可通过特殊的 `_status` 和 `_error` 键访问：
+
+| 字段 | 说明 | 可能的值 |
+|------|------|---------|
+| `_status` | 步骤执行状态 | `completed`（成功）、`failed`（失败） |
+| `_error` | 错误信息 | 失败时的错误描述，成功时为空 |
+
+使用示例：
+
+```yaml
+steps:
+  - id: task1
+    action: agent_prompt
+    prompt: "执行某个任务"
+    
+  - id: check_result
+    action: agent_prompt
+    prompt: "task1 的状态是: {{.task1._status}}"
+    
+  - id: handle_success
+    action: agent_prompt
+    when: "{{.task1._status}} == completed"
+    prompt: "task1 执行成功，继续处理"
+    
+  - id: handle_failure
+    action: agent_prompt
+    when: "{{.task1._status}} == failed"
+    prompt: "task1 执行失败，错误信息: {{.task1._error}}"
+```
+
+> **注意**：`_status` 和 `_error` 是系统保留字段，无需在 `output_key` 中定义即可使用。
+
 **自身属性引用（`self`）**：
 
 步骤可在模板中通过 `{{.self.name}}` 和 `{{.self.id}}` 引用自身属性（仅支持这两个字段），避免重复硬编码：
@@ -502,7 +536,8 @@ steps:
 
 > **模板引用校验**：保存工作流时会自动校验所有模板引用，包括：
 > - `{{.vars.key}}` 中的 key 必须在 `vars` 中定义
-> - `{{.step_id.key}}` 中的 step_id 必须是已定义 `output_key` 的步骤，且 key 必须等于该步骤的 `output_key` 值
+> - `{{.step_id.key}}` 中的 step_id 必须是已存在的步骤，且 key 必须等于该步骤的 `output_key` 值（或默认的 `result`）
+> - `{{.step_id._status}}` 和 `{{.step_id._error}}` 是系统保留字段，用于访问步骤执行状态，无需定义即可使用
 > - `{{.self.key}}` 中的 key 仅支持 `id` 和 `name`
 > - `{{.fn.xxx}}` 中的函数名必须是支持的模板函数（now、now_tz、date、date_tz、unix、days_ago、days_from_now、hours_ago、hours_from_now、minutes_ago、minutes_from_now、weeks_ago、day_of_week、format_time、env）
 > - 引用不存在的变量、步骤、输出键或函数名将报错，防止运行时静默保留原文

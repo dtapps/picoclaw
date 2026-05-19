@@ -25,6 +25,7 @@ import "sequential-workflow-designer/css/designer-dark.css"
 import "./workflow-editor.css"
 
 import { wrapDefinition } from "./workflow-definition"
+import { ExpandableTextarea } from "./expandable-textarea"
 
 import {
   COMPONENT_TASK,
@@ -870,11 +871,11 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           {action === "agent_prompt" && (
             <div className="sqd-editor-field">
               <label>{labels.prompt}</label>
-              <textarea
+              <ExpandableTextarea
                 value={(properties.prompt as string) || ""}
-                onChange={(e) => setProperty("prompt", e.target.value)}
+                onChange={(value) => setProperty("prompt", value)}
                 rows={3}
-                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.self.name}} 模板引用"
+                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.step_id._status}}、{{.self.name}} 模板引用"
               />
             </div>
           )}
@@ -884,11 +885,11 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
           {action === "notify" && (
             <div className="sqd-editor-field">
               <label>{labels.message}</label>
-              <textarea
+              <ExpandableTextarea
                 value={(properties.message as string) || ""}
-                onChange={(e) => setProperty("message", e.target.value)}
+                onChange={(value) => setProperty("message", value)}
                 rows={3}
-                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.self.name}} 模板引用"
+                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.step_id._status}}、{{.self.name}} 模板引用"
               />
             </div>
           )}
@@ -1352,9 +1353,9 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
       </div>
       <div className="sqd-editor-field">
         <label>{labels.description}</label>
-        <textarea
+        <ExpandableTextarea
           value={(properties.description as string) || ""}
-          onChange={(e) => setProperty("description", e.target.value)}
+          onChange={(value) => setProperty("description", value)}
           rows={2}
         />
       </div>

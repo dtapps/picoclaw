@@ -286,7 +286,7 @@ func TestValidate(t *testing.T) {
 			errMsg:  "不存在的步骤",
 		},
 		{
-			name: "invalid step reference - step has no output_key",
+			name: "valid step reference - step uses default output_key",
 			wf: Workflow{
 				Name: "test",
 				Steps: []Step{
@@ -294,8 +294,7 @@ func TestValidate(t *testing.T) {
 					{ID: "s2", Action: "agent_prompt", Prompt: "{{.s1.result}}"},
 				},
 			},
-			wantErr: true,
-			errMsg:  "不存在的步骤",
+			wantErr: false,
 		},
 		{
 			name: "invalid output_key mismatch",
@@ -387,6 +386,38 @@ func TestValidate(t *testing.T) {
 			},
 			wantErr: true,
 			errMsg:  "不存在的自身属性",
+		},
+		// _status 和 _error 内部字段校验
+		{
+			name: "valid _status reference passes",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi"},
+					{ID: "s2", Action: "agent_prompt", Prompt: "status={{.s1._status}}"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "valid _error reference passes",
+			wf: Workflow{
+				Name: "test",
+				Steps: []Step{
+					{ID: "s1", Action: "agent_prompt", Prompt: "hi"},
+					{ID: "s2", Action: "agent_prompt", Prompt: "error={{.s1._error}}"},
+				},
+			},
+			wantErr: false,
+		},
+		{
+			name: "invalid _status reference to nonexistent step fails",
+			wf: Workflow{
+				Name:  "test",
+				Steps: []Step{{ID: "s1", Action: "agent_prompt", Prompt: "{{.nonexistent._status}}"}},
+			},
+			wantErr: true,
+			errMsg:  "不存在的步骤",
 		},
 	}
 

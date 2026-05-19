@@ -458,8 +458,13 @@ func init() {
 
 // collectOutputKeys 递归收集步骤及其子步骤的 OutputKey 映射。
 func collectOutputKeys(step Step, m map[string]string) {
-	if step.OutputKey != "" {
-		m[step.ID] = step.OutputKey
+	// 总是收集步骤，使用配置的 output_key 或默认的 "result"
+	if step.Action == "agent_prompt" || step.Action == "tool_call" {
+		if step.OutputKey != "" {
+			m[step.ID] = step.OutputKey
+		} else {
+			m[step.ID] = "result"
+		}
 	}
 	// v2 格式：每个分支包含多个步骤
 	for _, branch := range step.Parallel {
@@ -510,6 +515,16 @@ func validateStepTemplateRefs(step Step, vars map[string]string, outputKeys map[
 			case "fn":
 				// fn 引用由 templateFuncRefRe 单独校验，此处跳过
 			default:
+				// 检查是否是内部状态字段（_status, _error）
+				if refKey == "_status" || refKey == "_error" {
+					// 这些字段在运行时自动提供，只需验证步骤是否存在
+					if _, ok := outputKeys[refID]; !ok {
+						return validationError(fmt.Sprintf(
+							"工作流校验：步骤「%s」%s 引用了不存在的步骤 {{.%s.%s}}",
+							label, field, refID, refKey))
+					}
+					continue
+				}
 				actualKey, ok := outputKeys[refID]
 				if !ok {
 					return validationError(fmt.Sprintf(

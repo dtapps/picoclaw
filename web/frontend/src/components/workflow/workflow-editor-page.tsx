@@ -20,6 +20,7 @@ import {
   type WrappedDefinition,
 } from "./workflow-definition"
 import { useWorkflows } from "./use-workflows"
+import { TemplateReferencePanel } from "./template-reference-panel"
 
 /** 检查工作流名称是否合法（仅允许 a-zA-Z0-9_-，且非空） */
 function isValidWorkflowName(name: string): boolean {
@@ -132,6 +133,10 @@ function validateTemplateRefs(steps: WorkflowStep[], vars: Record<string, string
 				const actualKey = outputKeys.get(refId)
 				if (!actualKey)
 					return t("pages.workflows.invalid_step_ref", { step: step.name || step.id, refId })
+				// 允许访问内部状态字段（_status, _error）
+				if (refKey === "_status" || refKey === "_error") {
+					continue
+				}
 				if (refKey !== actualKey)
 					return t("pages.workflows.invalid_output_key_ref", { step: step.name || step.id, refId, refKey, actualKey })
 			}
@@ -384,14 +389,19 @@ export function WorkflowEditorPage() {
         </Button>
       </PageHeader>
 
-      <div className="flex-1 overflow-hidden p-2" style={{ minHeight: 500 }}>
-        {loading ? (
-          <div className="flex h-full items-center justify-center">
-            <div className="bg-card h-48 w-full animate-pulse rounded-lg border" />
-          </div>
-        ) : (
-          <WorkflowVisualEditor value={definition} onChange={setDefinition} isEdit={isEdit} />
-        )}
+      <div className="flex flex-1 gap-2 overflow-hidden p-2" style={{ minHeight: 500 }}>
+        <div className="flex-1 overflow-hidden">
+          {loading ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="bg-card h-48 w-full animate-pulse rounded-lg border" />
+            </div>
+          ) : (
+            <WorkflowVisualEditor value={definition} onChange={setDefinition} isEdit={isEdit} />
+          )}
+        </div>
+        <div className="w-72 shrink-0 overflow-y-auto">
+          <TemplateReferencePanel />
+        </div>
       </div>
     </div>
   )

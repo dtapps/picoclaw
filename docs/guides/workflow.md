@@ -441,6 +441,40 @@ Template resolution logic (`conditions.go`):
 3. Replace template with actual output content
 4. Applied to `prompt`, `args`, and `when` fields
 
+**Step Status References (`_status` and `_error`)**:
+
+After each step executes, the system automatically stores its execution status, accessible via the special `_status` and `_error` keys:
+
+| Field | Description | Possible Values |
+|-------|-------------|-----------------|
+| `_status` | Step execution status | `completed` (success), `failed` (failure) |
+| `_error` | Error message | Error description on failure, empty on success |
+
+Usage example:
+
+```yaml
+steps:
+  - id: task1
+    action: agent_prompt
+    prompt: "Execute a task"
+    
+  - id: check_result
+    action: agent_prompt
+    prompt: "task1 status: {{.task1._status}}"
+    
+  - id: handle_success
+    action: agent_prompt
+    when: "{{.task1._status}} == completed"
+    prompt: "task1 succeeded, continue processing"
+    
+  - id: handle_failure
+    action: agent_prompt
+    when: "{{.task1._status}} == failed"
+    prompt: "task1 failed, error: {{.task1._error}}"
+```
+
+> **Note**: `_status` and `_error` are system-reserved fields that can be used without defining them in `output_key`.
+
 **Self-property references (`self`)**:
 
 A step can reference its own properties via `{{.self.name}}` and `{{.self.id}}` in templates (only these two fields are supported), avoiding duplicate hardcoding:
@@ -501,7 +535,8 @@ steps:
 
 > **Template reference validation**: All template references are validated when saving a workflow:
 > - `{{.vars.key}}` — the key must be defined in `vars`
-> - `{{.step_id.key}}` — the step_id must be a step with an `output_key` defined, and the key must match that step's `output_key` value
+> - `{{.step_id.key}}` — the step_id must be an existing step, and the key must match that step's `output_key` value (or the default `result`)
+> - `{{.step_id._status}}` and `{{.step_id._error}}` — system-reserved fields for accessing step execution status, usable without definition
 > - `{{.self.key}}` — the key only supports `id` and `name`
 > - `{{.fn.xxx}}` — the function name must be a supported template function (now, now_tz, date, date_tz, unix, days_ago, days_from_now, hours_ago, hours_from_now, minutes_ago, minutes_from_now, weeks_ago, day_of_week, format_time, env)
 > - Referencing non-existent variables, steps, output keys, or functions will raise an error, preventing silent template passthrough at runtime
