@@ -30,6 +30,7 @@ export function LogsPanel({
   const scrollAreaRef = useRef<HTMLDivElement>(null)
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const shouldStickToBottomRef = useRef(true)
+  const rafRef = useRef<number | null>(null)
 
   useEffect(() => {
     const scrollArea = scrollAreaRef.current
@@ -71,7 +72,21 @@ export function LogsPanel({
     }
 
     if (shouldStickToBottomRef.current) {
-      viewport.scrollTop = viewport.scrollHeight
+      // 使用 requestAnimationFrame 优化滚动，减少闪屏
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+      rafRef.current = requestAnimationFrame(() => {
+        viewport.scrollTop = viewport.scrollHeight
+        rafRef.current = null
+      })
+    }
+
+    return () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+        rafRef.current = null
+      }
     }
   }, [logs])
 

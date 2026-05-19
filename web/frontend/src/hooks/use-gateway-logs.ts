@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react"
 import { clearGatewayLogs, getGatewayLogs } from "@/api/gateway"
 import { gatewayAtom } from "@/store/gateway"
 
+const LOG_POLL_INTERVAL_MS = 1000
+
 export function useGatewayLogs() {
   const [logs, setLogs] = useState<string[]>([])
   const [clearing, setClearing] = useState(false)
@@ -42,7 +44,7 @@ export function useGatewayLogs() {
         )
       ) {
         if (mounted) {
-          timeout = setTimeout(fetchLogs, 1000)
+          timeout = setTimeout(fetchLogs, LOG_POLL_INTERVAL_MS)
         }
         return
       }
@@ -69,7 +71,14 @@ export function useGatewayLogs() {
           }
         } else if (data.logs && data.logs.length > 0) {
           const nextLogs = data.logs
-          setLogs((prev) => [...prev, ...nextLogs])
+          setLogs((prev) => {
+            const newLogs = [...prev, ...nextLogs]
+            // 限制日志数量，避免内存溢出和性能问题
+            if (newLogs.length > 5000) {
+              return newLogs.slice(-2500)
+            }
+            return newLogs
+          })
           logOffsetRef.current =
             data.log_total || logOffsetRef.current + nextLogs.length
         }
@@ -77,7 +86,7 @@ export function useGatewayLogs() {
         // Ignore simple fetch errors during polling.
       } finally {
         if (mounted) {
-          timeout = setTimeout(fetchLogs, 1000)
+          timeout = setTimeout(fetchLogs, LOG_POLL_INTERVAL_MS)
         }
       }
     }
