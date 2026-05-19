@@ -385,6 +385,8 @@
       "thinkingLevelHint": "Orçamento de pensamento estendido: off, low, medium, high, xhigh, adaptive.",
       "maxTokens": "Máximo de Tokens",
       "maxTokensHint": "Máximo de tokens permitidos para uma única requisição. 0 = usar configuração padrão.",
+      "contextWindow": "Tamanho do Contexto",
+      "contextWindowHint": "Tamanho máximo do contexto permitido para esta requisição. 0 = usar configuração padrão.",
       "maxTokensField": "Campo de Max Tokens",
       "maxTokensFieldHint": "Sobrescreve o nome do campo de max tokens na requisição, ex: max_completion_tokens.",
       "toolSchemaTransform": "Transformação de Schema de Ferramentas",

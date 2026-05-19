@@ -54,6 +54,7 @@ interface AddForm {
   workspace: string
   rpm: string
   maxTokens: string
+  contextWindow: string
   maxTokensField: string
   requestTimeout: string
   thinkingLevel: string
@@ -75,6 +76,7 @@ const EMPTY_ADD_FORM: AddForm = {
   workspace: "",
   rpm: "",
   maxTokens: "",
+  contextWindow: "",
   maxTokensField: "",
   requestTimeout: "",
   thinkingLevel: "",
@@ -674,6 +676,19 @@ export function AddModelSheet({
                   min={0}
                 />
               </Field>
+
+                <Field
+                  label={t("models.field.contextWindow")}
+                  hint={t("models.field.contextWindowHint")}
+                >
+                  <Input
+                    value={form.contextWindow}
+                    onChange={setField("contextWindow")}
+                  placeholder="0"
+                  type="number"
+                  min={0}
+                  />
+                </Field>
 
                 <Field
                   label={t("models.field.maxTokensField")}

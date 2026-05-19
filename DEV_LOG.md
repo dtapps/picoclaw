@@ -34,6 +34,7 @@
 | **核心逻辑**  | LLM 请求无追踪标识                      | **新增请求追踪（Tracing）**        | 将上下文字段（session_key、turn_id、agent_id 等 10 个字段）映射为自定义 HTTP 请求头，发给 LLM 时自动携带，支持 AxonHub/OpenTelemetry 等追踪系统，含 Web UI 配置 | [feature/tracing](https://github.com/dtapps/picoclaw/tree/feature/tracing) |
 | **频道**      | [已提交 PR #2893](https://github.com/sipeed/picoclaw/pull/2893) | **新增 SC3Bot 频道**               | 接入 SC3Bot 消息通道，支持接收和发送消息                                                | [feat/sc3bot-channel](https://github.com/dtapps/picoclaw/tree/feat/sc3bot-channel) |
 | **UI/日志**   | 日志滚动时出现闪屏                                              | **优化滚动和渲染逻辑**             | 使用 RAF 优化滚动、移除 CSS 过渡效果、防抖处理尺寸变化，减少闪屏现象                   | [feature/fix-log-flicker](https://github.com/dtapps/picoclaw/tree/feature/fix-log-flicker) |
+| **模型配置**  | 仅支持全局 `context_window`                                     | **支持 per-model `context_window`** | 每个模型可独立配置上下文窗口大小，未配置时使用 AgentDefaults 的值                     | [feat/per-model-context-window](https://github.com/dtapps/picoclaw/tree/feat/per-model-context-window)                                                                                            |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>

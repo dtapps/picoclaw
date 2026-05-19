@@ -860,16 +860,16 @@ type ModelConfig struct {
 	Workspace   string `json:"workspace,omitempty"`    // Workspace path for CLI-based providers
 
 	// Optional optimizations
-	RPM                 int               `json:"rpm,omitempty"`              // 每分钟请求数限制
-	MaxTokens           int               `json:"max_tokens,omitempty"`       // 每次请求的最大 token 数量
-	ContextWindow       int               `json:"context_window,omitempty"`   // 最大上下文窗口大小（token 数）
-	MaxTokensField      string            `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
-	RequestTimeout      int               `json:"request_timeout,omitempty"`
-	ThinkingLevel       string            `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
-	ToolSchemaTransform string            `json:"tool_schema_transform,omitempty"` // Optional tool schema compatibility transform (e.g. "simple")
+	RPM                 int                  `json:"rpm,omitempty"`              // 每分钟请求数限制
+	MaxTokens           int                  `json:"max_tokens,omitempty"`       // 每次请求的最大 token 数量
+	ContextWindow       int                  `json:"context_window,omitempty"`   // 最大上下文窗口大小（token 数）
+	MaxTokensField      string               `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
+	RequestTimeout      int                  `json:"request_timeout,omitempty"`
+	ThinkingLevel       string               `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
+	ToolSchemaTransform string               `json:"tool_schema_transform,omitempty"` // Optional tool schema compatibility transform (e.g. "simple")
 	Streaming           ModelStreamingConfig `json:"streaming,omitzero"`              // Opt-in for provider streaming on this model entry
-	ExtraBody           map[string]any    `json:"extra_body,omitempty"`            // Additional fields to inject into request body
-	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`        // Additional headers to inject into every HTTP request
+	ExtraBody           map[string]any       `json:"extra_body,omitempty"`            // Additional fields to inject into request body
+	CustomHeaders       map[string]string    `json:"custom_headers,omitempty"`        // Additional headers to inject into every HTTP request
 
 	APIKeys SecureStrings `json:"api_keys,omitzero" yaml:"api_keys,omitempty"` // API authentication keys (multiple keys for failover)
 
@@ -1931,6 +1931,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 				Workspace:           m.Workspace,
 				RPM:                 m.RPM,
 				MaxTokens:           m.MaxTokens,
+				ContextWindow:       m.ContextWindow,
 				MaxTokensField:      m.MaxTokensField,
 				RequestTimeout:      m.RequestTimeout,
 				ThinkingLevel:       m.ThinkingLevel,
@@ -1957,6 +1958,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 			Workspace:           m.Workspace,
 			RPM:                 m.RPM,
 			MaxTokens:           m.MaxTokens,
+			ContextWindow:       m.ContextWindow,
 			MaxTokensField:      m.MaxTokensField,
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,
