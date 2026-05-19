@@ -32,6 +32,7 @@
 | **工具集**    | 无                                      | **新增 `browser_ext` 工具**        | 通过浏览器扩展执行操作（get_page_info/click/type/fill/scroll/screenshot 等），仅限 browser 频道使用 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 | **工作流**    | 无                                      | **新增工作流引擎**                 | 声明式多步骤任务编排，支持 Cron/事件/手动触发、变量、条件分支、并行执行、重试超时、频道通知，含 Web UI 可视化编辑 | [feature/workflow-engine](https://github.com/dtapps/picoclaw/tree/feature/workflow-engine) |
 | **核心逻辑**  | LLM 请求无追踪标识                      | **新增请求追踪（Tracing）**        | 将上下文字段（session_key、turn_id、agent_id 等 10 个字段）映射为自定义 HTTP 请求头，发给 LLM 时自动携带，支持 AxonHub/OpenTelemetry 等追踪系统，含 Web UI 配置 | [feature/tracing](https://github.com/dtapps/picoclaw/tree/feature/tracing) |
+| **频道**      | [已提交 PR #2893](https://github.com/sipeed/picoclaw/pull/2893) | **新增 SC3Bot 频道**               | 接入 SC3Bot 消息通道，支持接收和发送消息                                                | [feat/sc3bot-channel](https://github.com/dtapps/picoclaw/tree/feat/sc3bot-channel) |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>
