@@ -708,6 +708,8 @@ interface StepEditorLabels {
   enabledNo: string
   notifyOnStart: string
   notifyOnComplete: string
+  sendTools: string
+  sendToolsDesc: string
 }
 
 function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; definition: Definition }) {
@@ -869,15 +871,28 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
             />
           </div>
           {action === "agent_prompt" && (
-            <div className="sqd-editor-field">
-              <label>{labels.prompt}</label>
-              <ExpandableTextarea
-                value={(properties.prompt as string) || ""}
-                onChange={(value) => setProperty("prompt", value)}
-                rows={3}
-                placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.step_id._status}}、{{.self.name}} 模板引用"
-              />
-            </div>
+            <>
+              <div className="sqd-editor-field">
+                <label>{labels.prompt}</label>
+                <ExpandableTextarea
+                  value={(properties.prompt as string) || ""}
+                  onChange={(value) => setProperty("prompt", value)}
+                  rows={3}
+                  placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.step_id._status}}、{{.self.name}} 模板引用"
+                />
+              </div>
+              <div className="sqd-editor-field sqd-step-toggle">
+                <label className="sqd-step-toggle__label">{labels.sendTools}</label>
+                <div className="sqd-step-toggle__control">
+                  <span>{(properties.send_tools as boolean) === false ? labels.enabledNo : labels.enabledYes}</span>
+                  <button
+                    type="button"
+                    onClick={() => setProperty("send_tools", (properties.send_tools as boolean) === false)}
+                    className={`sqd-step-toggle__switch${(properties.send_tools as boolean) === false ? "" : " sqd-step-toggle__switch--on"}`}
+                  />
+                </div>
+              </div>
+            </>
           )}
           {action === "tool_call" && (
             <ToolCallEditor labels={labels} />
@@ -1693,6 +1708,8 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     enabledNo: t("pages.workflows.enabled_no", "Off"),
     notifyOnStart: t("pages.workflows.notify_on_start", "Notify on Start"),
     notifyOnComplete: t("pages.workflows.notify_on_complete", "Notify on Complete"),
+    sendTools: t("pages.workflows.send_tools", "发送工具列表"),
+    sendToolsDesc: t("pages.workflows.send_tools_desc", "关闭后不发送工具定义给 AI，可节省 token（适合数据已由前置步骤准备好的场景）"),
   }), [t])
 
   const rootEditorLabels: RootEditorLabels = useMemo(() => ({

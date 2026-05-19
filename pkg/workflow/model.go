@@ -133,6 +133,7 @@ type Step struct {
 	Name             string         `yaml:"name,omitempty"               json:"name,omitempty"`               // 步骤显示名称（可选，支持任意字符）
 	Action           string         `yaml:"action"                       json:"action"`                       // 动作类型：agent_prompt | tool_call | parallel | if | notify
 	Prompt           string         `yaml:"prompt,omitempty"             json:"prompt,omitempty"`             // agent_prompt 的提示词内容
+	SendTools        *bool          `yaml:"send_tools,omitempty"         json:"send_tools,omitempty"`         // 是否发送工具列表给 AI（默认 true，设为 false 节省 token）
 	Tool             string         `yaml:"tool,omitempty"               json:"tool,omitempty"`               // tool_call 的工具名称
 	Args             map[string]any `yaml:"args,omitempty"               json:"args,omitempty"`               // tool_call 的参数
 	Parallel         ParallelSteps  `yaml:"parallel,omitempty"           json:"parallel,omitempty"`           // parallel 的子步骤列表（支持 []Step 和 []{branch: Step[]} 两种格式）

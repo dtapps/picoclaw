@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { IconMaximize, IconMinimize } from "@tabler/icons-react"
 
@@ -19,10 +19,12 @@ export function ExpandableTextarea({
 }: ExpandableTextareaProps) {
   const { t } = useTranslation()
   const [isExpanded, setIsExpanded] = useState(false)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   return (
     <div className={`relative ${className}`}>
       <textarea
+        ref={textareaRef}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={isExpanded ? 15 : rows}

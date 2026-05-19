@@ -76,6 +76,7 @@ export interface Step {
   name?: string
   action: "agent_prompt" | "tool_call" | "parallel" | "if" | "notify"
   prompt?: string
+  send_tools?: boolean   // 是否发送工具列表给 AI（默认 true，关闭可节省 token）
   tool?: string
   args?: Record<string, unknown>
   /**

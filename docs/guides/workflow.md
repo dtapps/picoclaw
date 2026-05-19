@@ -241,7 +241,7 @@ A step is the basic execution unit, supporting four action types:
 
 | Action Type | Description | Key Parameters |
 |-------------|-------------|----------------|
-| `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template) |
+| `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template), `send_tools` (whether to send tool definitions, default true) |
 | `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters; required params must not be empty) |
 | `parallel` | Execute sub-steps concurrently | `parallel` (sub-step list) |
 | `if` | Conditional branch — execute true or false branch | `when` (condition), `if_true`/`if_false` (branch steps) |
@@ -660,6 +660,7 @@ steps:
     action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
     enabled: true          # Optional, whether enabled (default true); false skips this step (status = skipped)
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
+    send_tools: true       # Optional for agent_prompt, whether to send tool definitions to AI (default true); disabling saves tokens (useful when data is already prepared by previous steps)
     tool: tool_name        # Required for tool_call, registered tool name
     args:                  # Optional for tool_call, tool parameters (values support template references; required param values must not be empty)
       key: value

@@ -241,7 +241,7 @@ steps:
 
 | 动作类型 | 说明 | 关键参数 |
 |---------|------|---------|
-| `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板） |
+| `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板）、`send_tools`（是否发送工具定义，默认 true） |
 | `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数，必填参数不能为空） |
 | `parallel` | 并行执行多个子步骤 | `parallel`（子步骤列表） |
 | `if` | 条件判断，执行 true 或 false 分支 | `when`（条件表达式）、`if_true`/`if_false`（分支步骤） |
@@ -659,6 +659,7 @@ steps:
     action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if
     enabled: true          # 可选，是否启用（默认 true），false 时跳过该步骤
     prompt: "..."          # agent_prompt 必填，提示词模板，支持 {{.step_id.key}} 引用
+    send_tools: true       # agent_prompt 可选，是否向 AI 发送工具定义（默认 true），关闭后可节省 token（适合数据已由前置步骤准备好的场景）
     tool: tool_name        # tool_call 必填，已注册的工具名称
     args:                  # tool_call 可选，工具参数，值支持模板引用；必填参数的值不能为空
       key: value
