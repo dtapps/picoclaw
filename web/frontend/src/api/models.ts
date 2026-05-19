@@ -21,6 +21,9 @@ export interface ModelInfo {
   request_timeout?: number
   thinking_level?: string
   tool_schema_transform?: string
+  streaming?: {
+    enabled?: boolean
+  }
   extra_body?: Record<string, unknown>
   custom_headers?: Record<string, string>
   // Meta
@@ -150,6 +153,7 @@ export async function testModelInline(
 export interface UpstreamModel {
   id: string
   owned_by?: string
+  extra?: Record<string, unknown>
 }
 
 export interface FetchModelsRequest {

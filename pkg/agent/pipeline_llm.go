@@ -99,15 +99,21 @@ func (p *Pipeline) CallLLM(
 		switch decision.normalizedAction() {
 		case HookActionContinue, HookActionModify:
 			if llmReq != nil {
+				prevModel := exec.llmModel
 				exec.llmModel = llmReq.Model
 				exec.callMessages = llmReq.Messages
 				exec.providerToolDefs = llmReq.Tools
 				exec.llmOpts = llmReq.Options
+				if strings.TrimSpace(exec.llmModel) != "" && exec.llmModel != prevModel {
+					p.applyBeforeLLMModelRewrite(ts, exec)
+				}
 			}
 		case HookActionAbortTurn:
+			cancelConfiguredStreamingLLM(turnCtx, exec)
 			exec.abortedByHook = true
 			return ControlBreak, nil
 		case HookActionHardAbort:
+			cancelConfiguredStreamingLLM(turnCtx, exec)
 			_ = ts.requestHardAbort()
 			exec.abortedByHardAbort = true
 			return ControlBreak, nil
@@ -171,14 +177,30 @@ func (p *Pipeline) CallLLM(
 		al.activeRequests.Add(1)
 		defer al.activeRequests.Done()
 
+		if response, handled, streamErr := p.tryConfiguredStreamingLLM(
+			providerCtx,
+			ts,
+			exec,
+			messagesForCall,
+			toolDefsForCall,
+		); handled {
+			return response, streamErr
+		}
+
 		if len(exec.activeCandidates) > 1 && p.Fallback != nil {
 			fbResult, fbErr := p.Fallback.Execute(
 				providerCtx,
 				exec.activeCandidates,
 				func(ctx context.Context, provider, model string) (*providers.LLMResponse, error) {
-					candidateProvider := exec.activeProvider
-					if cp, ok := ts.agent.CandidateProviders[providers.ModelKey(provider, model)]; ok {
-						candidateProvider = cp
+					candidateProvider, err := providerForFallbackCandidate(
+						ts.agent,
+						exec.activeProvider,
+						exec.activeCandidates,
+						provider,
+						model,
+					)
+					if err != nil {
+						return nil, err
 					}
 					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, exec.llmOpts)
 				},
@@ -218,6 +240,9 @@ func (p *Pipeline) CallLLM(
 			_ = ts.requestHardAbort()
 			exec.abortedByHardAbort = true
 			return ControlBreak, nil
+		}
+		if isConfiguredStreamingVisibleError(err) {
+			break
 		}
 
 		// Retry without media if vision is unsupported
@@ -578,9 +603,11 @@ func (p *Pipeline) CallLLM(
 				exec.response = llmResp.Response
 			}
 		case HookActionAbortTurn:
+			cancelConfiguredStreamingLLM(turnCtx, exec)
 			exec.abortedByHook = true
 			return ControlBreak, nil
 		case HookActionHardAbort:
+			cancelConfiguredStreamingLLM(turnCtx, exec)
 			_ = ts.requestHardAbort()
 			exec.abortedByHardAbort = true
 			return ControlBreak, nil
@@ -601,10 +628,20 @@ func (p *Pipeline) CallLLM(
 		// Pico tool-call turns publish their reasoning/content/tool summary as a
 		// structured sequence after the tool-call payload is normalized below.
 	} else if ts.channel == "pico" {
-		// Publish pico thoughts before the turn context is canceled at return time.
-		// The async variant can race with turn teardown and intermittently drop the
-		// thought message in CI even though the LLM produced reasoning content.
-		al.publishPicoReasoning(turnCtx, reasoningContent, ts.chatID)
+		if exec.streamingPublisher != nil && exec.streamingPublisher.ReasoningPublished() {
+			if err := exec.streamingPublisher.FinalizeReasoning(turnCtx, reasoningContent); err != nil {
+				logger.WarnCF("agent", "Failed to finalize streamed pico reasoning", map[string]any{
+					"channel": ts.channel,
+					"chat_id": ts.chatID,
+					"error":   err.Error(),
+				})
+			}
+		} else {
+			// Publish pico thoughts before the turn context is canceled at return time.
+			// The async variant can race with turn teardown and intermittently drop the
+			// thought message in CI even though the LLM produced reasoning content.
+			al.publishPicoReasoning(turnCtx, reasoningContent, ts.chatID, ts.sessionKey)
+		}
 	} else {
 		go al.handleReasoning(
 			turnCtx,
@@ -646,6 +683,7 @@ func (p *Pipeline) CallLLM(
 			responseContent = exec.response.ReasoningContent
 		}
 		if steerMsgs := al.dequeueSteeringMessagesForScope(ts.sessionKey); len(steerMsgs) > 0 {
+			cancelConfiguredStreamingLLM(turnCtx, exec)
 			logger.InfoCF("agent", "Steering arrived after direct LLM response; continuing turn",
 				map[string]any{
 					"agent_id":       ts.agent.ID,
@@ -655,6 +693,7 @@ func (p *Pipeline) CallLLM(
 			exec.pendingMessages = append(exec.pendingMessages, steerMsgs...)
 			return ControlContinue, nil
 		}
+
 		exec.finalContent = responseContent
 		logger.InfoCF("agent", "LLM response without tool calls (direct answer)",
 			map[string]any{
@@ -664,6 +703,7 @@ func (p *Pipeline) CallLLM(
 			})
 		return ControlBreak, nil
 	}
+	cancelConfiguredStreamingLLM(turnCtx, exec)
 
 	// Tool-call path: normalize and prepare for tool execution
 	exec.normalizedToolCalls = make([]providers.ToolCall, 0, len(exec.response.ToolCalls))
@@ -737,4 +777,45 @@ func (p *Pipeline) CallLLM(
 	}
 
 	return ControlToolLoop, nil
+}
+
+func (p *Pipeline) applyBeforeLLMModelRewrite(ts *turnState, exec *turnExecution) {
+	if p == nil || ts == nil || ts.agent == nil || exec == nil {
+		return
+	}
+	rawModel := strings.TrimSpace(exec.llmModel)
+	if rawModel == "" {
+		return
+	}
+
+	defaultProvider := "openai"
+	if p.Cfg != nil {
+		if provider := strings.TrimSpace(p.Cfg.Agents.Defaults.Provider); provider != "" {
+			defaultProvider = provider
+		}
+	}
+	defaultProvider = effectiveDefaultProvider(defaultProvider)
+	candidates := resolveModelCandidates(p.Cfg, defaultProvider, rawModel, nil)
+	exec.activeCandidates = candidates
+	exec.activeModel = resolvedCandidateModel(candidates, rawModel)
+	exec.llmModel = exec.activeModel
+	exec.activeModelConfig = resolveActiveModelConfig(p.Cfg, ts.agent.Workspace, candidates, rawModel, defaultProvider)
+}
+
+func providerForFallbackCandidate(
+	agent *AgentInstance,
+	activeProvider providers.LLMProvider,
+	activeCandidates []providers.FallbackCandidate,
+	provider string,
+	model string,
+) (providers.LLMProvider, error) {
+	if agent != nil {
+		if cp, ok := agent.CandidateProviders[providers.ModelKey(provider, model)]; ok && cp != nil {
+			return cp, nil
+		}
+	}
+	if activeProvider == nil {
+		return nil, fmt.Errorf("fallback model %q has no active provider", model)
+	}
+	return activeProvider, nil
 }

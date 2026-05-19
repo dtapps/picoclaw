@@ -559,9 +559,25 @@ func (p *PlaceholderConfig) GetRandomText() string {
 }
 
 type StreamingConfig struct {
-	Enabled         bool `json:"enabled,omitempty"          env:"PICOCLAW_CHANNELS_TELEGRAM_STREAMING_ENABLED"`
-	ThrottleSeconds int  `json:"throttle_seconds,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_STREAMING_THROTTLE_SECONDS"`
-	MinGrowthChars  int  `json:"min_growth_chars,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_STREAMING_MIN_GROWTH_CHARS"`
+	Enabled         bool `json:"enabled,omitempty"`
+	ThrottleSeconds int  `json:"throttle_seconds,omitempty"`
+	MinGrowthChars  int  `json:"min_growth_chars,omitempty"`
+}
+
+func (c StreamingConfig) IsZero() bool {
+	return !c.Enabled && c.ThrottleSeconds == 0 && c.MinGrowthChars == 0
+}
+
+func (c StreamingConfig) WithDefaults(throttleSeconds, minGrowthChars int) StreamingConfig {
+	if c.Enabled {
+		if c.ThrottleSeconds == 0 {
+			c.ThrottleSeconds = throttleSeconds
+		}
+		if c.MinGrowthChars == 0 {
+			c.MinGrowthChars = minGrowthChars
+		}
+	}
+	return c
 }
 
 type WhatsAppSettings struct {
@@ -575,7 +591,7 @@ type TelegramSettings struct {
 	Token             SecureString    `json:"token,omitzero"       yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_TELEGRAM_TOKEN"`
 	BaseURL           string          `json:"base_url"             yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_BASE_URL"`
 	Proxy             string          `json:"proxy"                yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_PROXY"`
-	Streaming         StreamingConfig `json:"streaming,omitempty"  yaml:"-"`
+	Streaming         StreamingConfig `json:"streaming,omitzero"   yaml:"-"`
 	UseMarkdownV2     bool            `json:"use_markdown_v2"      yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_USE_MARKDOWN_V2"`
 	MediaGroupDelayMS int             `json:"media_group_delay_ms" yaml:"-"               env:"PICOCLAW_CHANNELS_TELEGRAM_MEDIA_GROUP_DELAY_MS"`
 }
@@ -649,10 +665,11 @@ type WeComGroupConfig struct {
 }
 
 type WeComSettings struct {
-	BotID               string       `json:"bot_id"                  yaml:"-"                env:"BOT_ID"`
-	Secret              SecureString `json:"secret,omitzero"         yaml:"secret,omitempty" env:"SECRET"`
-	WebSocketURL        string       `json:"websocket_url,omitempty" yaml:"-"                env:"WEBSOCKET_URL"`
-	SendThinkingMessage bool         `json:"send_thinking_message"   yaml:"-"                env:"SEND_THINKING_MESSAGE"`
+	BotID               string          `json:"bot_id"                  yaml:"-"                env:"BOT_ID"`
+	Secret              SecureString    `json:"secret,omitzero"         yaml:"secret,omitempty" env:"SECRET"`
+	WebSocketURL        string          `json:"websocket_url,omitempty" yaml:"-"                env:"WEBSOCKET_URL"`
+	SendThinkingMessage bool            `json:"send_thinking_message"   yaml:"-"                env:"SEND_THINKING_MESSAGE"`
+	Streaming           StreamingConfig `json:"streaming,omitzero"      yaml:"-"`
 }
 
 func (c *WeComSettings) SetSecret(secret string) {
@@ -673,13 +690,14 @@ func (c *WeixinSettings) SetToken(token string) {
 }
 
 type PicoSettings struct {
-	Token           SecureString `json:"token,omitzero"              yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_PICO_TOKEN"`
-	AllowTokenQuery bool         `json:"allow_token_query,omitempty" yaml:"-"`
-	AllowOrigins    []string     `json:"allow_origins,omitempty"     yaml:"-"`
-	PingInterval    int          `json:"ping_interval,omitempty"     yaml:"-"`
-	ReadTimeout     int          `json:"read_timeout,omitempty"      yaml:"-"`
-	WriteTimeout    int          `json:"write_timeout,omitempty"     yaml:"-"`
-	MaxConnections  int          `json:"max_connections,omitempty"   yaml:"-"`
+	Token           SecureString    `json:"token,omitzero"              yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_PICO_TOKEN"`
+	AllowTokenQuery bool            `json:"allow_token_query,omitempty" yaml:"-"`
+	AllowOrigins    []string        `json:"allow_origins,omitempty"     yaml:"-"`
+	Streaming       StreamingConfig `json:"streaming,omitzero"          yaml:"-"`
+	PingInterval    int             `json:"ping_interval,omitempty"     yaml:"-"`
+	ReadTimeout     int             `json:"read_timeout,omitempty"      yaml:"-"`
+	WriteTimeout    int             `json:"write_timeout,omitempty"     yaml:"-"`
+	MaxConnections  int             `json:"max_connections,omitempty"   yaml:"-"`
 }
 
 // BrowserSettings 浏览器扩展频道配置。
@@ -810,6 +828,14 @@ type VoiceConfig struct {
 	ElevenLabsAPIKey  string `json:"elevenlabs_api_key,omitempty" env:"PICOCLAW_VOICE_ELEVENLABS_API_KEY"`
 }
 
+type ModelStreamingConfig struct {
+	Enabled bool `json:"enabled,omitempty"`
+}
+
+func (c ModelStreamingConfig) IsZero() bool {
+	return !c.Enabled
+}
+
 // ModelConfig represents a model-centric provider configuration.
 // It allows adding new providers (especially OpenAI-compatible ones) via configuration only.
 // The Model field may be either a plain model identifier or a provider-prefixed
@@ -841,6 +867,7 @@ type ModelConfig struct {
 	RequestTimeout      int               `json:"request_timeout,omitempty"`
 	ThinkingLevel       string            `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
 	ToolSchemaTransform string            `json:"tool_schema_transform,omitempty"` // Optional tool schema compatibility transform (e.g. "simple")
+	Streaming           ModelStreamingConfig `json:"streaming,omitzero"`              // Opt-in for provider streaming on this model entry
 	ExtraBody           map[string]any    `json:"extra_body,omitempty"`            // Additional fields to inject into request body
 	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`        // Additional headers to inject into every HTTP request
 
@@ -1908,6 +1935,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 				RequestTimeout:      m.RequestTimeout,
 				ThinkingLevel:       m.ThinkingLevel,
 				ToolSchemaTransform: m.ToolSchemaTransform,
+				Streaming:           m.Streaming,
 				ExtraBody:           m.ExtraBody,
 				CustomHeaders:       m.CustomHeaders,
 				UserAgent:           m.UserAgent,
@@ -1933,6 +1961,7 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,
 			ToolSchemaTransform: m.ToolSchemaTransform,
+			Streaming:           m.Streaming,
 			ExtraBody:           m.ExtraBody,
 			CustomHeaders:       m.CustomHeaders,
 			UserAgent:           m.UserAgent,

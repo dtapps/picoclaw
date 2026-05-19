@@ -34,13 +34,13 @@ var fetchableProviders = map[string]bool{
 // registerModelRoutes binds model list management endpoints to the ServeMux.
 func (h *Handler) registerModelRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/models", h.handleListModels)
+	mux.HandleFunc("POST /api/models/fetch", h.handleFetchModels)
+	mux.HandleFunc("GET /api/models/catalog", h.handleListCatalogs)
+	mux.HandleFunc("DELETE /api/models/catalog/{id}", h.handleDeleteCatalog)
 	mux.HandleFunc("POST /api/models", h.handleAddModel)
 	mux.HandleFunc("POST /api/models/default", h.handleSetDefaultModel)
 	mux.HandleFunc("PUT /api/models/{index}", h.handleUpdateModel)
 	mux.HandleFunc("DELETE /api/models/{index}", h.handleDeleteModel)
-	mux.HandleFunc("POST /api/models/fetch", h.handleFetchModels)
-	mux.HandleFunc("GET /api/models/catalog", h.handleListCatalogs)
-	mux.HandleFunc("DELETE /api/models/catalog/{id}", h.handleDeleteCatalog)
 	mux.HandleFunc("POST /api/models/{index}/test", h.handleTestModel)
 	mux.HandleFunc("POST /api/models/test-inline", h.handleTestInlineModel)
 }
@@ -65,6 +65,7 @@ type modelResponse struct {
 	RequestTimeout      int               `json:"request_timeout,omitempty"`
 	ThinkingLevel       string            `json:"thinking_level,omitempty"`
 	ToolSchemaTransform string            `json:"tool_schema_transform,omitempty"`
+	Streaming           config.ModelStreamingConfig `json:"streaming,omitempty"`
 	ExtraBody           map[string]any    `json:"extra_body,omitempty"`
 	CustomHeaders       map[string]string `json:"custom_headers,omitempty"`
 	// Meta
@@ -295,6 +296,7 @@ func (h *Handler) handleListModels(w http.ResponseWriter, r *http.Request) {
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,
 			ToolSchemaTransform: m.ToolSchemaTransform,
+			Streaming:           m.Streaming,
 			ExtraBody:           m.ExtraBody,
 			CustomHeaders:       m.CustomHeaders,
 			Enabled:             m.Enabled,
@@ -442,6 +444,9 @@ func (h *Handler) handleUpdateModel(w http.ResponseWriter, r *http.Request) {
 	}
 	if _, ok := rawFields["tool_schema_transform"]; !ok {
 		mc.ToolSchemaTransform = cfg.ModelList[idx].ToolSchemaTransform
+	}
+	if _, ok := rawFields["streaming"]; !ok {
+		mc.Streaming = cfg.ModelList[idx].Streaming
 	}
 	// Preserve the existing Provider when the caller omits it. This keeps the
 	// update API backward-compatible for clients that haven't started sending

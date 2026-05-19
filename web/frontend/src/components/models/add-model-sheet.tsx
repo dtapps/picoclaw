@@ -58,6 +58,7 @@ interface AddForm {
   requestTimeout: string
   thinkingLevel: string
   toolSchemaTransform: string
+  streamingEnabled: boolean
   extraBody: string
   customHeaders: string
 }
@@ -78,6 +79,7 @@ const EMPTY_ADD_FORM: AddForm = {
   requestTimeout: "",
   thinkingLevel: "",
   toolSchemaTransform: "",
+  streamingEnabled: false,
   extraBody: "",
   customHeaders: "",
 }
@@ -256,7 +258,9 @@ export function AddModelSheet({
       debouncedValidateModel(form.model, provider)
     }
     // Clear setAsDefault if the new provider doesn't support being default
-    const allowed = providerOptions?.find((o) => o.id === provider)?.default_model_allowed ?? false
+    const allowed =
+      providerOptions?.find((o) => o.id === provider)?.default_model_allowed ??
+      false
     if (!allowed) {
       setSetAsDefault(false)
     }
@@ -291,7 +295,8 @@ export function AddModelSheet({
   const providerDef = PROVIDER_MAP.get(form.provider)
   const commonModels = providerDef?.commonModels || []
   const defaultModelAllowed = form.provider
-    ? (providerOptions?.find((o) => o.id === form.provider)?.default_model_allowed ?? false)
+    ? (providerOptions?.find((o) => o.id === form.provider)
+        ?.default_model_allowed ?? false)
     : false
 
   const handleSave = async () => {
@@ -348,6 +353,7 @@ export function AddModelSheet({
           : undefined,
         thinking_level: form.thinkingLevel.trim() || undefined,
         tool_schema_transform: form.toolSchemaTransform.trim() || undefined,
+        streaming: form.streamingEnabled ? { enabled: true } : undefined,
         extra_body: extraBody,
         custom_headers: customHeaders,
       })
@@ -386,7 +392,10 @@ export function AddModelSheet({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollContainerRef}>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            ref={scrollContainerRef}
+          >
             <div className="space-y-5 px-6 py-5">
               <Field
                 label={t("models.add.modelName")}
@@ -511,17 +520,18 @@ export function AddModelSheet({
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  {form.provider && FETCHABLE_PROVIDER_KEYS.has(form.provider) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setFetchOpen(true)}
-                    >
-                      <IconDownload className="size-3" />
-                      {t("models.fetch.title")}
-                    </Button>
-                  )}
+                  {form.provider &&
+                    FETCHABLE_PROVIDER_KEYS.has(form.provider) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setFetchOpen(true)}
+                      >
+                        <IconDownload className="size-3" />
+                        {t("models.fetch.title")}
+                      </Button>
+                    )}
                   {!form.provider && (
                     <span className="text-muted-foreground text-xs">
                       {t("models.field.selectProviderFirst")}
@@ -686,6 +696,16 @@ export function AddModelSheet({
                     placeholder="google"
                   />
                 </Field>
+
+                <SwitchCardField
+                  label={t("models.field.streamingEnabled")}
+                  hint={t("models.field.streamingEnabledHint")}
+                  checked={form.streamingEnabled}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, streamingEnabled: checked }))
+                  }
+                  ariaLabel={t("models.field.streamingEnabled")}
+                />
 
                 <Field
                   label={t("models.field.extraBody")}

@@ -40,7 +40,11 @@ import { FetchModelsDialog } from "./fetch-models-dialog"
 import { type FieldValidation, validateModelField } from "./model-validation"
 import { ProviderCombobox } from "./provider-combobox"
 import { getProviderKey } from "./provider-label"
-import { FETCHABLE_PROVIDER_KEYS, PROVIDER_API_BASES, PROVIDER_MAP } from "./provider-registry"
+import {
+  FETCHABLE_PROVIDER_KEYS,
+  PROVIDER_API_BASES,
+  PROVIDER_MAP,
+} from "./provider-registry"
 import { TestModelDialog } from "./test-model-dialog"
 
 interface EditForm {
@@ -58,6 +62,7 @@ interface EditForm {
   requestTimeout: string
   thinkingLevel: string
   toolSchemaTransform: string
+  streamingEnabled: boolean
   extraBody: string
   customHeaders: string
 }
@@ -115,7 +120,8 @@ function buildInitialEditForm(model: ModelInfo): EditForm {
     maxTokensField: model.max_tokens_field ?? "",
     requestTimeout: model.request_timeout ? String(model.request_timeout) : "",
     thinkingLevel: model.thinking_level ?? "",
-    toolSchemaTransform: model.tool_schema_transform ?? "", // <-- AGGIUNGI QUESTA RIGA
+    toolSchemaTransform: model.tool_schema_transform ?? "",
+    streamingEnabled: model.streaming?.enabled === true,
     extraBody: model.extra_body
       ? JSON.stringify(model.extra_body, null, 2)
       : "",
@@ -148,6 +154,7 @@ export function EditModelSheet({
     requestTimeout: "",
     thinkingLevel: "",
     toolSchemaTransform: "",
+    streamingEnabled: false,
     extraBody: "",
     customHeaders: "",
   })
@@ -226,7 +233,9 @@ export function EditModelSheet({
     if (form.modelId) {
       debouncedValidateModel(form.modelId, provider)
     }
-    const allowed = providerOptions?.find((o) => o.id === provider)?.default_model_allowed ?? false
+    const allowed =
+      providerOptions?.find((o) => o.id === provider)?.default_model_allowed ??
+      false
     if (!allowed) {
       setSetAsDefault(false)
     }
@@ -255,7 +264,8 @@ export function EditModelSheet({
   const providerDef = PROVIDER_MAP.get(form.provider)
   const commonModels = providerDef?.commonModels || []
   const defaultModelAllowed = form.provider
-    ? (providerOptions?.find((o) => o.id === form.provider)?.default_model_allowed ?? false)
+    ? (providerOptions?.find((o) => o.id === form.provider)
+        ?.default_model_allowed ?? false)
     : false
 
   const handleSave = async () => {
@@ -298,6 +308,10 @@ export function EditModelSheet({
     try {
       const modelId = form.modelId.trim()
       const provider = form.provider.trim()
+      const streaming =
+        model.streaming?.enabled === true || form.streamingEnabled
+          ? { enabled: form.streamingEnabled }
+          : undefined
       await updateModel(model.index, {
         model_name: model.model_name,
         provider: provider,
@@ -316,6 +330,7 @@ export function EditModelSheet({
           : undefined,
         thinking_level: form.thinkingLevel || undefined,
         tool_schema_transform: form.toolSchemaTransform.trim() || undefined,
+        streaming,
         extra_body: extraBody,
         custom_headers: customHeaders,
       })
@@ -363,7 +378,10 @@ export function EditModelSheet({
             </SheetDescription>
           </SheetHeader>
 
-          <div className="min-h-0 flex-1 overflow-y-auto" ref={scrollContainerRef}>
+          <div
+            className="min-h-0 flex-1 overflow-y-auto"
+            ref={scrollContainerRef}
+          >
             <div className="space-y-5 px-6 py-5">
               <Field
                 label={t("models.field.provider")}
@@ -463,17 +481,18 @@ export function EditModelSheet({
                   </div>
                 )}
                 <div className="flex items-center gap-2">
-                  {form.provider && FETCHABLE_PROVIDER_KEYS.has(form.provider) && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => setFetchOpen(true)}
-                    >
-                      <IconDownload className="size-3" />
-                      {t("models.fetch.title")}
-                    </Button>
-                  )}
+                  {form.provider &&
+                    FETCHABLE_PROVIDER_KEYS.has(form.provider) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => setFetchOpen(true)}
+                      >
+                        <IconDownload className="size-3" />
+                        {t("models.fetch.title")}
+                      </Button>
+                    )}
                 </div>
               </Field>
 
@@ -668,6 +687,16 @@ export function EditModelSheet({
                     placeholder="google"
                   />
                 </Field>
+
+                <SwitchCardField
+                  label={t("models.field.streamingEnabled")}
+                  hint={t("models.field.streamingEnabledHint")}
+                  checked={form.streamingEnabled}
+                  onCheckedChange={(checked) =>
+                    setForm((f) => ({ ...f, streamingEnabled: checked }))
+                  }
+                  ariaLabel={t("models.field.streamingEnabled")}
+                />
               </AdvancedSection>
 
               {error && (

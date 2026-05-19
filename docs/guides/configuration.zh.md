@@ -310,7 +310,7 @@ PicoClaw 默认在沙箱环境中运行。Agent 只能访问配置的工作区�
 | `tools.exec.custom_deny_patterns` | string[] | `[]` | 自定义阻止的正则表达式模式 |
 | `tools.exec.custom_allow_patterns` | string[] | `[]` | 自定义允许的正则表达式模式 |
 
-> **安全提示：** Symlink 保护默认启用——所有文件路径在白名单匹配前都会通过 `filepath.EvalSymlinks` 解析，防止符号链接逃逸攻击。
+> **安全提示：** Symlink 保护默认启用——所有文件路径在允许列表匹配前都会通过 `filepath.EvalSymlinks` 解析，防止符号链接逃逸攻击。
 
 #### 已知限制：构建工具的子进程
 
@@ -553,6 +553,55 @@ Agent 读取 HEARTBEAT.md
 - 如果设置了 `provider`，PicoClaw 会将 `model` 原样发送。
 - 如果未设置 `provider`，PicoClaw 会把 `model` 第一个 `/` 之前的字段当作 provider，并把第一个 `/` 之后的全部内容当作最终模型 ID。
 - 这意味着 `"model": "openrouter/openai/gpt-5.4"` 这样的兼容写法仍然可用，并会把 `openai/gpt-5.4` 发送给 OpenRouter。
+
+#### 流式输出配置
+
+Provider 流式输出采用双开关，默认关闭。只有当前 channel 的 `settings.streaming.enabled` 和当前模型条目的 `streaming.enabled` 都为 `true`，并且 provider 与 channel 都支持流式能力时，Agent 才会尝试流式请求；任一条件不满足时仍使用普通非流式请求。
+
+当前完整落地的是 Pico WebUI。Pico 使用已有的 `message.create` 创建第一条 assistant 消息，随后用 `message.update` 更新同一条消息，不新增协议消息类型。
+
+不需要流式时请省略 `streaming` 配置块。省略表示关闭，不需要写 `"streaming": {"enabled": false}`。
+
+开启示例：
+
+```json
+{
+  "model_list": [
+    {
+      "model_name": "gpt-5.4",
+      "provider": "openai",
+      "model": "gpt-5.4",
+      "api_keys": ["sk-your-openai-key"],
+      "streaming": {
+        "enabled": true
+      }
+    }
+  ],
+  "channel_list": {
+    "pico": {
+      "enabled": true,
+      "type": "pico",
+      "settings": {
+        "token": "YOUR_PICO_TOKEN",
+        "streaming": {
+          "enabled": true
+        }
+      }
+    }
+  }
+}
+```
+
+| 字段 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `channel_list.<name>.settings.streaming.enabled` | bool | `false` | 是否允许该 channel 尝试展示 provider 流式输出 |
+| `channel_list.<name>.settings.streaming.throttle_seconds` | int | Pico 开启后默认 `0` | 中间更新的最小时间间隔，最终内容不受此限制 |
+| `channel_list.<name>.settings.streaming.min_growth_chars` | int | Pico 开启后默认 `1` | 中间更新相比上次发送至少增长的字符数，最终内容不受此限制 |
+| `model_list[].streaming.enabled` | bool | `false` | 是否允许该模型条目尝试 provider 流式请求 |
+
+Telegram 旧环境变量仍兼容：`PICOCLAW_CHANNELS_TELEGRAM_STREAMING_ENABLED`、`PICOCLAW_CHANNELS_TELEGRAM_STREAMING_THROTTLE_SECONDS`、`PICOCLAW_CHANNELS_TELEGRAM_STREAMING_MIN_GROWTH_CHARS`。这些环境变量只作用于 Telegram settings，不会开启或修改 Pico 的 `settings.streaming`。
+
+失败处理保持保守：如果还没有任何可见 chunk 就失败，PicoClaw 会回退到普通 `Chat()` 路径重试一次；如果已经有 chunk 展示给用户，则不会再发送一条非流式最终答案，避免界面重复输出。
 
 #### 各厂商配置示例
 
