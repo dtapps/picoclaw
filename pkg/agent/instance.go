@@ -177,24 +177,12 @@ func NewAgentInstance(
 		maxIter = 20
 	}
 
-	maxTokens := defaults.MaxTokens
-	if mc, err := cfg.GetModelConfig(defaults.OriginalModelName); err == nil {
-		maxTokens = mc.MaxTokens
-	}
-	if maxTokens == 0 {
-		maxTokens = 8192
-	}
+	// 获取模型配置以读取 token 设置
+	modelCfg := lookupModelConfigByRef(cfg, model)
 
-	contextWindow := defaults.ContextWindow
-	if contextWindow == 0 {
-		// Default heuristic: 4x the output token limit.
-		// Most models have context windows well above their output limits
-		// (e.g., GPT-4o 128k ctx / 16k out, Claude 200k ctx / 8k out).
-		// 4x is a conservative lower bound that avoids premature
-		// summarization while remaining safe — the reactive
-		// forceCompression handles any overshoot.
-		contextWindow = maxTokens * 4
-	}
+	// 使用 GetMaxTokens 和 GetContextWindow 方法，支持回退逻辑
+	maxTokens := modelCfg.GetMaxTokens(defaults)
+	contextWindow := modelCfg.GetContextWindow(defaults)
 
 	temperature := 0.7
 	if defaults.Temperature != nil {
@@ -202,8 +190,8 @@ func NewAgentInstance(
 	}
 
 	var thinkingLevelStr string
-	if mc, err := cfg.GetModelConfig(defaults.OriginalModelName); err == nil {
-		thinkingLevelStr = mc.ThinkingLevel
+	if modelCfg != nil {
+		thinkingLevelStr = modelCfg.ThinkingLevel
 	}
 	thinkingLevel := parseThinkingLevel(thinkingLevelStr)
 

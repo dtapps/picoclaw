@@ -26,6 +26,9 @@ var rrCounter atomic.Uint64
 // CurrentVersion is the latest config schema version
 const CurrentVersion = 3
 
+// DefaultMaxTokens 是每次请求的默认最大 token 数量。
+const DefaultMaxTokens = 8192
+
 func init() {
 	initChannel()
 }
@@ -460,7 +463,6 @@ type AgentDefaults struct {
 	ContextManagerConfig      json.RawMessage          `json:"context_manager_config,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_CONTEXT_MANAGER_CONFIG"`
 	MaxLLMRetries             int                      `json:"max_llm_retries,omitempty"        env:"PICOCLAW_AGENTS_DEFAULTS_MAX_LLM_RETRIES"`
 	LLMRetryBackoffSecs       int                      `json:"llm_retry_backoff_secs,omitempty" env:"PICOCLAW_AGENTS_DEFAULTS_LLM_RETRY_BACKOFF_SECS"`
-	OriginalModelName         string                   `json:"-"`
 }
 
 const DefaultMaxMediaSize = 20 * 1024 * 1024 // 20 MB
@@ -832,8 +834,9 @@ type ModelConfig struct {
 	Workspace   string `json:"workspace,omitempty"`    // Workspace path for CLI-based providers
 
 	// Optional optimizations
-	RPM                 int               `json:"rpm,omitempty"`              // Requests per minute limit
-	MaxTokens           int               `json:"max_tokens,omitempty"`       // Maximum number of tokens per request
+	RPM                 int               `json:"rpm,omitempty"`              // 每分钟请求数限制
+	MaxTokens           int               `json:"max_tokens,omitempty"`       // 每次请求的最大 token 数量
+	ContextWindow       int               `json:"context_window,omitempty"`   // 最大上下文窗口大小（token 数）
 	MaxTokensField      string            `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
 	RequestTimeout      int               `json:"request_timeout,omitempty"`
 	ThinkingLevel       string            `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
@@ -903,6 +906,30 @@ func (c *ModelConfig) SetAPIKey(value string) {
 	} else {
 		c.APIKeys = append(c.APIKeys, NewSecureString(value))
 	}
+}
+
+// GetMaxTokens 返回此模型配置的最大 token 数。
+// 如果未设置，则依次回退到 defaults.MaxTokens、DefaultMaxTokens。
+func (c *ModelConfig) GetMaxTokens(defaults *AgentDefaults) int {
+	if c != nil && c.MaxTokens > 0 {
+		return c.MaxTokens
+	}
+	if defaults != nil && defaults.MaxTokens > 0 {
+		return defaults.MaxTokens
+	}
+	return DefaultMaxTokens
+}
+
+// GetContextWindow 返回此模型配置的上下文窗口大小。
+// 如果未设置，则依次回退到 defaults.ContextWindow、maxTokens * 4。
+func (c *ModelConfig) GetContextWindow(defaults *AgentDefaults) int {
+	if c != nil && c.ContextWindow > 0 {
+		return c.ContextWindow
+	}
+	if defaults != nil && defaults.ContextWindow > 0 {
+		return defaults.ContextWindow
+	}
+	return c.GetMaxTokens(defaults) * 4
 }
 
 type ToolDiscoveryConfig struct {
