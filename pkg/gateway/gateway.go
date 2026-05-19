@@ -926,6 +926,16 @@ func setupWorkflowService(
 			if cid, ok := workflow.ChatIDFromCtx(ctx); ok {
 				chatID = cid
 			}
+
+			// 根据 Step.SendTools 配置决定是否发送工具列表
+			sendTools := true // 默认发送
+			if st, has := workflow.SendToolsFromCtx(ctx); has {
+				sendTools = st
+			}
+			if !sendTools {
+				ctx = agent.WithNoTools(ctx, true)
+			}
+
 			return agentLoop.ProcessDirectWithChannel(ctx, prompt, sessionKey, channel, chatID)
 		},
 		// tool_call 类型步骤的回调：通过工具注册表查找并执行指定工具

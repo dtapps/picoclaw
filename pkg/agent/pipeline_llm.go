@@ -37,7 +37,12 @@ func (p *Pipeline) CallLLM(
 
 	// PreLLM: graceful terminal handling
 	exec.gracefulTerminal, _ = ts.gracefulInterruptRequested()
-	exec.providerToolDefs = ts.agent.Tools.ToProviderDefs()
+	// PreLLM: 工具定义（如果上下文中设置了 NoTools 标志则跳过）
+	if NoToolsFromCtx(turnCtx) {
+		exec.providerToolDefs = nil
+	} else {
+		exec.providerToolDefs = ts.agent.Tools.ToProviderDefs()
+	}
 
 	// Native web search support
 	webSearchEnabled := al.cfg.Tools.IsToolEnabled("web")
@@ -415,7 +420,11 @@ func (p *Pipeline) CallLLM(
 			exec.messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 
 			// 重试后二次检查：若仍超预算则强制截断历史消息
-			if retryToolDefs := ts.agent.Tools.ToProviderDefs(); isOverContextBudget(
+			var retryToolDefs []providers.ToolDefinition
+			if !NoToolsFromCtx(turnCtx) {
+				retryToolDefs = ts.agent.Tools.ToProviderDefs()
+			}
+			if isOverContextBudget(
 				ts.agent.ContextWindow,
 				exec.messages,
 				retryToolDefs,

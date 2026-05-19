@@ -1111,6 +1111,8 @@
       "output_key": "Chave de Saída",
       "delay": "Atraso antes da execução",
       "timeout": "Tempo Limite",
+      "send_tools": "Enviar Definições de Ferramentas",
+      "send_tools_desc": "Quando desativado, as definições das ferramentas não serão enviadas à IA, economizando tokens (útil quando os dados já foram preparados por etapas anteriores)",
       "trigger_agent": "Prompt do Agente",
       "trigger_tool": "Chamada de Ferramenta",
       "trigger_notify": "Notificar",

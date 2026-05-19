@@ -76,6 +76,12 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 
 	switch step.Action {
 	case "agent_prompt":
+		// 将 send_tools 配置注入 context，供 AgentPromptFunc 使用
+		sendTools := true // 默认发送
+		if step.SendTools != nil {
+			sendTools = *step.SendTools
+		}
+		ctx = withSendToolsCtx(ctx, sendTools)
 		return se.executeAgentPrompt(ctx, prompt)
 	case "tool_call":
 		if _, hasCwd := args["cwd"]; !hasCwd {

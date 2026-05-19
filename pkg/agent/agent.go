@@ -147,6 +147,20 @@ const (
 	metadataKeyParentPeerID    = "parent_peer_id"
 )
 
+// 用于控制是否向 LLM 发送工具定义的 context key
+type ctxKeyNoTools struct{}
+
+// NoToolsFromCtx 检查上下文是否要求跳过发送工具定义到 LLM
+func NoToolsFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeyNoTools{}).(bool)
+	return ok && v
+}
+
+// WithNoTools 在上下文中设置标志，用于跳过向 LLM 发送工具定义
+func WithNoTools(ctx context.Context, noTools bool) context.Context {
+	return context.WithValue(ctx, ctxKeyNoTools{}, noTools)
+}
+
 // registerSharedTools registers tools that are shared across all agents (web, message, spawn).
 
 func (al *AgentLoop) Run(ctx context.Context) error {

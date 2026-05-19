@@ -1,7 +1,6 @@
 import { useState } from "react"
 import { useTranslation } from "react-i18next"
-import { IconCopy, IconChevronDown, IconChevronUp, IconFunction, IconAlertCircle, IconVariable, IconHash } from "@tabler/icons-react"
-import { toast } from "sonner"
+import { IconChevronDown, IconChevronUp, IconFunction, IconAlertCircle, IconVariable, IconHash } from "@tabler/icons-react"
 
 import { Card, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -51,15 +50,6 @@ export function TemplateReferencePanel({ className }: TemplateReferencePanelProp
   const [statusOpen, setStatusOpen] = useState(true)
   const [varOpen, setVarOpen] = useState(false)
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text)
-      toast.success(t("common.copiedLabel"))
-    } catch {
-      toast.error(t("common.copyFailed"))
-    }
-  }
-
   return (
     <Card className={className}>
       <CardHeader className="pb-3">
@@ -95,22 +85,12 @@ export function TemplateReferencePanel({ className }: TemplateReferencePanelProp
                   {BUILTIN_TEMPLATE_FUNCTIONS.map((fn) => (
                     <div
                       key={fn.name}
-                      className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
+                      className="rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <code className="font-mono text-primary">{fn.example}</code>
-                        <span className="text-[10px] text-muted-foreground">
-                          {t(`pages.workflows.${fn.descKey}`)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground opacity-100 hover:border-border hover:bg-muted hover:text-foreground"
-                        onClick={() => copyToClipboard(fn.example)}
-                        title={t("common.copy")}
-                      >
-                        <IconCopy className="h-3 w-3" />
-                      </button>
+                      <code className="font-mono text-primary">{fn.example}</code>
+                      <span className="ml-2 text-[10px] text-muted-foreground">
+                        {t(`pages.workflows.${fn.descKey}`)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -134,27 +114,15 @@ export function TemplateReferencePanel({ className }: TemplateReferencePanelProp
                   {STEP_STATUS_FIELDS.map((field) => (
                     <div
                       key={field.name}
-                      className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
+                      className="rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <div className="flex items-center gap-2">
-                          <code className="font-mono text-primary">{field.example}</code>
-                          <Badge variant="secondary" className="h-4 text-[9px]">
-                            {field.values}
-                          </Badge>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">
-                          {t(`pages.workflows.${field.descKey}`)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground opacity-100 hover:border-border hover:bg-muted hover:text-foreground"
-                        onClick={() => copyToClipboard(field.example)}
-                        title={t("common.copy")}
-                      >
-                        <IconCopy className="h-3 w-3" />
-                      </button>
+                      <code className="font-mono text-primary">{field.example}</code>
+                      <Badge variant="secondary" className="ml-2 h-4 text-[9px]">
+                        {field.values}
+                      </Badge>
+                      <span className="ml-2 text-[10px] text-muted-foreground">
+                        {t(`pages.workflows.${field.descKey}`)}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -176,42 +144,22 @@ export function TemplateReferencePanel({ className }: TemplateReferencePanelProp
               {varOpen && (
                 <div className="mt-2 space-y-1.5">
                   {/* vars */}
-                  <div className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50">
-                    <div className="flex flex-col gap-0.5">
-                      <code className="font-mono text-primary">{VAR_REFERENCE.example}</code>
-                      <span className="text-[10px] text-muted-foreground">
-                        {t(`pages.workflows.${VAR_REFERENCE.descKey}`)}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground opacity-100 hover:border-border hover:bg-muted hover:text-foreground"
-                      onClick={() => copyToClipboard(VAR_REFERENCE.example)}
-                      title={t("common.copy")}
-                    >
-                      <IconCopy className="h-3 w-3" />
-                    </button>
+                  <div className="rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50">
+                    <code className="font-mono text-primary">{VAR_REFERENCE.example}</code>
+                    <span className="ml-2 text-[10px] text-muted-foreground">
+                      {t(`pages.workflows.${VAR_REFERENCE.descKey}`)}
+                    </span>
                   </div>
                   {/* self */}
                   {SELF_REFERENCES.map((ref) => (
                     <div
                       key={ref.name}
-                      className="flex items-center justify-between rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
+                      className="rounded-md border px-2 py-1.5 text-xs hover:bg-muted/50"
                     >
-                      <div className="flex flex-col gap-0.5">
-                        <code className="font-mono text-primary">{ref.example}</code>
-                        <span className="text-[10px] text-muted-foreground">
-                          {t(`pages.workflows.${ref.descKey}`)}
-                        </span>
-                      </div>
-                      <button
-                        type="button"
-                        className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-transparent text-muted-foreground opacity-100 hover:border-border hover:bg-muted hover:text-foreground"
-                        onClick={() => copyToClipboard(ref.example)}
-                        title={t("common.copy")}
-                      >
-                        <IconCopy className="h-3 w-3" />
-                      </button>
+                      <code className="font-mono text-primary">{ref.example}</code>
+                      <span className="ml-2 text-[10px] text-muted-foreground">
+                        {t(`pages.workflows.${ref.descKey}`)}
+                      </span>
                     </div>
                   ))}
                 </div>

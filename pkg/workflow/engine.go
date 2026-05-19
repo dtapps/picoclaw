@@ -21,6 +21,7 @@ const (
 	chatIDCtxKey     contextKey = "workflow_chat_id"
 	workdirCtxKey    contextKey = "workflow_workdir"
 	sessionKeyCtxKey contextKey = "workflow_session_key"
+	sendToolsCtxKey  contextKey = "workflow_send_tools"
 )
 
 // ChannelFromCtx 从上下文中提取工作流绑定的频道名称。
@@ -58,6 +59,18 @@ func WorkdirFromCtx(ctx context.Context) (string, bool) {
 // withWorkdirCtx 将工作目录注入上下文。
 func withWorkdirCtx(ctx context.Context, workdir string) context.Context {
 	return context.WithValue(ctx, workdirCtxKey, workdir)
+}
+
+// SendToolsFromCtx 从上下文中提取是否发送工具列表的配置。
+// 返回 (值, 是否设置)。未设置时默认为 true（发送）。
+func SendToolsFromCtx(ctx context.Context) (bool, bool) {
+	v, ok := ctx.Value(sendToolsCtxKey).(bool)
+	return v, ok
+}
+
+// withSendToolsCtx 将是否发送工具列表注入上下文。
+func withSendToolsCtx(ctx context.Context, sendTools bool) context.Context {
+	return context.WithValue(ctx, sendToolsCtxKey, sendTools)
 }
 
 // Engine 是工作流的核心编排引擎。
