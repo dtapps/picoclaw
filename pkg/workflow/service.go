@@ -819,7 +819,7 @@ func (s *Service) checkCronTriggers() {
 		for i, trigger := range wf.Triggers {
 			// 避免重复触发：同一工作流同时只运行一个实例
 			if s.engine.IsRunning(wf.Name) {
-				logger.InfoCF("workflow", "跳过触发，工作流正在运行中", map[string]any{"workflow": wf.Name})
+				logger.WarnCF("workflow", "跳过触发，工作流正在运行中", map[string]any{"workflow": wf.Name})
 				continue
 			}
 

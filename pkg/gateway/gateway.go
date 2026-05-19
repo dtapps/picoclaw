@@ -998,7 +998,7 @@ func setupWorkflowService(
 			actualChatID = strings.TrimPrefix(chatID, "direct:")
 		}
 
-		logger.InfoCF("workflow", "准备发送通知到渠道", map[string]any{
+		logger.DebugCF("workflow", "准备发送通知到渠道", map[string]any{
 			"channel":     channelName,
 			"chat_id":     chatID,
 			"actual_id":   actualChatID,
@@ -1029,7 +1029,7 @@ func setupWorkflowService(
 
 	// sendToAllTargets 发送通知到所有目标频道
 	sendToAllTargets := func(targets []workflow.NotifyTarget, content string) {
-		logger.InfoCF("workflow", "开始发送多频道通知", map[string]any{
+		logger.DebugCF("workflow", "开始发送多频道通知", map[string]any{
 			"target_count": len(targets),
 			"targets":      targets,
 		})
@@ -1054,13 +1054,13 @@ func setupWorkflowService(
 
 	// sendToInstTargets 根据实例配置发送通知（支持多频道）
 	sendToInstTargets := func(inst *workflow.WorkflowInstance, content string) {
-		logger.InfoCF("workflow", "准备发送工作流通知", map[string]any{
+		logger.DebugCF("workflow", "准备发送工作流通知", map[string]any{
 			"workflow":        inst.WorkflowName,
 			"instance_id":     inst.ID,
 			"notify_channels": inst.NotifyChannels,
 		})
 		if len(inst.NotifyChannels) > 0 {
-			logger.InfoCF("workflow", "使用 NotifyChannels 多频道模式", map[string]any{
+			logger.DebugCF("workflow", "使用 NotifyChannels 多频道模式", map[string]any{
 				"count": len(inst.NotifyChannels),
 			})
 			sendToAllTargets(inst.NotifyChannels, content)

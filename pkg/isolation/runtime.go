@@ -63,7 +63,7 @@ func Configure(cfg *config.Config) {
 		defaults := config.DefaultConfig()
 		currentIsolation = defaults.Isolation
 		currentEnvVars = defaults.EnvVars
-		logger.InfoC("isolation", "Configure called with nil config, 使用默认配置")
+		logger.DebugC("isolation", "Configure called with nil config, 使用默认配置")
 		return
 	}
 
@@ -72,7 +72,7 @@ func Configure(cfg *config.Config) {
 
 	// 打印配置的环境变量
 	enabledVars := cfg.EnvVars.GetEnabledVars()
-	logger.InfoCF("isolation", "Configure 被调用，env_vars 配置",
+	logger.DebugCF("isolation", "Configure 被调用，env_vars 配置",
 		map[string]any{
 			"count": len(enabledVars),
 			"keys":  getKeys(enabledVars),
@@ -181,7 +181,7 @@ func ApplyUserEnv(cmd *exec.Cmd, root string) {
 
 	// 打印从配置加载的环境变量
 	if len(enabledVars) > 0 {
-		logger.InfoCF("isolation", "正在向命令注入 env_vars 环境变量",
+		logger.DebugCF("isolation", "正在向命令注入 env_vars 环境变量",
 			map[string]any{
 				"count": len(enabledVars),
 				"keys":  getKeys(enabledVars),
@@ -215,7 +215,7 @@ func ApplyUserEnv(cmd *exec.Cmd, root string) {
 
 	// 打印最终设置的环境变量数量和部分 key
 	if len(enabledVars) > 0 {
-		logger.InfoCF("isolation", "命令环境变量准备完成",
+		logger.DebugCF("isolation", "命令环境变量准备完成",
 			map[string]any{
 				"total_vars": len(envMap),
 				"cmd_path":   cmd.Path,
@@ -507,7 +507,7 @@ func logCommandEnv(cmd *exec.Cmd, caller string) {
 
 	// 只打印从 env_vars 配置注入的变量
 	if len(enabledVars) > 0 {
-		logger.InfoCF("isolation", "命令执行环境变量",
+		logger.DebugCF("isolation", "命令执行环境变量",
 			map[string]any{
 				"caller":    caller,
 				"cmd":       cmd.Path,
