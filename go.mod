@@ -33,7 +33,7 @@ require (
 	github.com/mymmrac/telego v1.9.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
-	github.com/openai/openai-go/v3 v3.35.0
+	github.com/openai/openai-go/v3 v3.36.0
 	github.com/pelletier/go-toml/v2 v2.3.1
 	github.com/pion/rtp v1.10.2
 	github.com/pion/webrtc/v3 v3.3.6
