@@ -6,22 +6,22 @@ updates:
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
-      interval: "weekly"
-    # labels:
-    #   - "dependencies"
-    #   - "go"
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "go"
 
   # Frontend dependencies
   - package-ecosystem: "npm"
     directory: "/web/frontend"
     schedule:
-      interval: "weekly"
-    # labels:
-    #   - "dependencies"
-    #   - "frontend"
+      interval: "daily"
+    labels:
+      - "dependencies"
+      - "frontend"
 
   # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"
