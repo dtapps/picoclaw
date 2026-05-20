@@ -91,6 +91,19 @@ type startupBlockedProvider struct {
 	reason string
 }
 
+// filterChatIDPrefix 过滤 chatID 中的 ChatType 前缀 (group: 或 direct:)
+// 注意：元宝渠道的 group 需要保留前缀来识别群聊类型
+func filterChatIDPrefix(chatID, channel string) string {
+	if strings.HasPrefix(chatID, "group:") {
+		if channel != config.ChannelYuanbao {
+			return strings.TrimPrefix(chatID, "group:")
+		}
+	} else if strings.HasPrefix(chatID, "direct:") {
+		return strings.TrimPrefix(chatID, "direct:")
+	}
+	return chatID
+}
+
 func logChannelVoiceCapabilities(cm *channels.Manager, asrAvailable bool, ttsAvailable bool) {
 	if cm == nil {
 		return
@@ -927,6 +940,9 @@ func setupWorkflowService(
 				chatID = cid
 			}
 
+			// 过滤 ChatType 前缀
+			chatID = filterChatIDPrefix(chatID, channel)
+
 			// 根据 Step.SendTools 配置决定是否发送工具列表
 			sendTools := true // 默认发送
 			if st, has := workflow.SendToolsFromCtx(ctx); has {
@@ -994,16 +1010,8 @@ func setupWorkflowService(
 	// 消息进入消息总线 → dispatchOutbound → worker queue，保证 FIFO 顺序。
 	// 标记 message_kind=workflow_notification 使 preSend 跳过 streamActive/placeholder 检查。
 	sendNotification := func(channelName, chatID, content string) {
-		// 去掉 ChatType 前缀 (group: 或 direct:)，获取实际的 chat_id
-		// 注意：元宝渠道的 group 需要保留前缀来识别群聊类型
-		actualChatID := chatID
-		if strings.HasPrefix(chatID, "group:") {
-			if channelName != "yuanbao" {
-				actualChatID = strings.TrimPrefix(chatID, "group:")
-			}
-		} else if strings.HasPrefix(chatID, "direct:") {
-			actualChatID = strings.TrimPrefix(chatID, "direct:")
-		}
+		// 过滤 ChatType 前缀，获取实际的 chat_id
+		actualChatID := filterChatIDPrefix(chatID, channelName)
 
 		logger.DebugCF("workflow", "准备发送通知到渠道", map[string]any{
 			"channel":     channelName,
@@ -1023,13 +1031,13 @@ func setupWorkflowService(
 		if err != nil {
 			logger.ErrorCF("workflow", "发送通知失败", map[string]any{
 				"channel": channelName,
-				"chat_id": chatID,
+				"chat_id": actualChatID,
 				"error":   err.Error(),
 			})
 		} else {
 			logger.InfoCF("workflow", "通知已发送到消息总线", map[string]any{
 				"channel": channelName,
-				"chat_id": chatID,
+				"chat_id": actualChatID,
 			})
 		}
 	}
@@ -1042,9 +1050,11 @@ func setupWorkflowService(
 		})
 		for i, target := range targets {
 			if target.Channel != "" && target.ChatID != "" {
+				// 过滤 chat_id 用于日志显示
+				displayChatID := filterChatIDPrefix(target.ChatID, target.Channel)
 				logger.InfoCF("workflow", fmt.Sprintf("发送通知到频道 [%d/%d]", i+1, len(targets)), map[string]any{
 					"channel": target.Channel,
-					"chat_id": target.ChatID,
+					"chat_id": displayChatID,
 				})
 				sendNotification(target.Channel, target.ChatID, content)
 				// 等待一小段时间，让异步发送有机会完成
