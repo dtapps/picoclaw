@@ -305,13 +305,8 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 	messageIDs := []string{}
 	chatKind := c.getChatKind(msg.ChatID)
 
-	// 去掉 ChatType 前缀获取实际的 ID
-	actualChatID := msg.ChatID
-	if strings.HasPrefix(msg.ChatID, "group:") {
-		actualChatID = strings.TrimPrefix(msg.ChatID, "group:")
-	} else if strings.HasPrefix(msg.ChatID, "direct:") {
-		actualChatID = strings.TrimPrefix(msg.ChatID, "direct:")
-	}
+	// 过滤 ChatType 前缀
+	actualChatID := filterChatIDPrefix(msg.ChatID)
 
 	if chatKind == "direct" {
 		messageID, err := c.yuanbaoClient.SendMessage(&yuanbaoTypes.OutboundC2CMessage{
@@ -424,4 +419,14 @@ func (c *YuanbaoChannel) syncCommands() {
 			"plugin_commands": len(pluginCommands),
 		})
 	}
+}
+
+// filterChatIDPrefix 过滤 chatID 中的 ChatType 前缀 (group: 或 direct:)
+func filterChatIDPrefix(chatID string) string {
+	if strings.HasPrefix(chatID, "group:") {
+		return strings.TrimPrefix(chatID, "group:")
+	} else if strings.HasPrefix(chatID, "direct:") {
+		return strings.TrimPrefix(chatID, "direct:")
+	}
+	return chatID
 }
