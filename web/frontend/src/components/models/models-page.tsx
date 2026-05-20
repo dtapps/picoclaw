@@ -100,7 +100,7 @@ export function ModelsPage() {
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [t, setActiveModel, setFallbacks])
 
   useEffect(() => {
     fetchModels()
@@ -127,7 +127,6 @@ export function ModelsPage() {
     }
   }
 
-<<<<<<< HEAD
   // ModelSettings 保存全局设置
   const handleSaveGlobalSettings = async () => {
     if (!activeModel) return
@@ -252,9 +251,8 @@ export function ModelsPage() {
           <Button
             size="sm"
             variant="outline"
-            disabled={!CatalogDialogComp}
+            disabled={!CatalogDialogComp || providerOptions.length === 0}
             onClick={() => setCatalogOpen(true)}
-            disabled={providerOptions.length === 0}
           >
             <IconDatabase className="size-4" />
             {t("models.catalog.button")}
