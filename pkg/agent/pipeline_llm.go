@@ -207,7 +207,57 @@ func (p *Pipeline) CallLLM(
 					if err != nil {
 						return nil, err
 					}
-					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, exec.llmOpts)
+					// 为当前候选模型构建 LLM 选项，使用模型特定的 maxTokens
+					candidateOpts := make(map[string]any, len(exec.llmOpts))
+					for k, v := range exec.llmOpts {
+						candidateOpts[k] = v
+					}
+					// 查找当前候选模型的配置并更新 maxTokens 和 ContextWindow
+					candidateContextWindow := ts.agent.ContextWindow
+					if modelCfg := lookupModelConfigByRef(p.Cfg, model); modelCfg != nil {
+						defaults := &p.Cfg.Agents.Defaults
+						candidateOpts["max_tokens"] = modelCfg.GetMaxTokens(defaults)
+						candidateContextWindow = modelCfg.GetContextWindow(defaults)
+					}
+					// 如果备用模型的 ContextWindow 比主模型小，需要进行上下文压缩
+					if candidateContextWindow < ts.agent.ContextWindow {
+						if p.ContextManager != nil {
+							logger.InfoCF(
+								"agent",
+								"Fallback model has smaller context window, compacting context",
+								map[string]any{
+									"agent_id":                 ts.agent.ID,
+									"model":                    model,
+									"candidate_context_window": candidateContextWindow,
+									"agent_context_window":     ts.agent.ContextWindow,
+								},
+							)
+							if compactErr := p.ContextManager.Compact(ctx, &CompactRequest{
+								SessionKey: ts.sessionKey,
+								Reason:     ContextCompressReasonRetry,
+								Budget:     candidateContextWindow,
+							}); compactErr != nil {
+								logger.WarnCF(
+									"agent",
+									"Context compact failed for fallback model",
+									map[string]any{
+										"error":    compactErr.Error(),
+										"agent_id": ts.agent.ID,
+										"model":    model,
+									},
+								)
+							}
+							// 重新组装消息以获取压缩后的上下文
+							if asmResp, asmErr := p.ContextManager.Assemble(ctx, &AssembleRequest{
+								SessionKey: ts.sessionKey,
+								Budget:     candidateContextWindow,
+								MaxTokens:  candidateOpts["max_tokens"].(int),
+							}); asmErr == nil && asmResp != nil {
+								messagesForCall = asmResp.History
+							}
+						}
+					}
+					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, candidateOpts)
 				},
 			)
 			if fbErr != nil {
