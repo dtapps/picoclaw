@@ -186,12 +186,6 @@ func NewAgentInstance(
 	contextWindow := modelCfg.GetContextWindow(defaults)
 	maxInputTokens := modelCfg.GetMaxInputTokens(defaults)
 
-	logger.InfoCF("agent", "模型 token 设置:", map[string]any{
-		"max_tokens":       maxTokens,
-		"context_window":   contextWindow,
-		"max_input_tokens": maxInputTokens,
-	})
-
 	temperature := 0.7
 	if defaults.Temperature != nil {
 		temperature = *defaults.Temperature
@@ -212,6 +206,17 @@ func NewAgentInstance(
 	if summarizeTokenPercent == 0 {
 		summarizeTokenPercent = 75
 	}
+
+	logger.InfoCF("agent", "默认模型 token 设置:", map[string]any{
+		"model (模型)":                           model,
+		"max_tokens (最大输出)":                    maxTokens,
+		"context_window (上下文窗口)":               contextWindow,
+		"max_input_tokens (最大输入)":              maxInputTokens,
+		"temperature (温度)":                     temperature,
+		"thinking_level (思维链)":                 thinkingLevel,
+		"summarize_message_threshold (摘要消息阈值)": summarizeMessageThreshold,
+		"summarize_token_percent (摘要token比例)":  summarizeTokenPercent,
+	})
 
 	// Resolve fallback candidates
 	candidates := resolveModelCandidates(cfg, defaults.Provider, model, fallbacks)

@@ -221,6 +221,14 @@ func (p *Pipeline) CallLLM(
 						candidateContextWindow = modelCfg.GetContextWindow(defaults)
 						candidateMaxInputTokens = modelCfg.GetMaxInputTokens(defaults)
 					}
+
+					logger.InfoCF("agent", "备用模型 token 设置:", map[string]any{
+						"model (模型)":              model,
+						"max_tokens (最大输出)":       candidateOpts["max_tokens"],
+						"context_window (上下文窗口)":  candidateContextWindow,
+						"max_input_tokens (最大输入)": candidateMaxInputTokens,
+					})
+
 					// 如果备用模型的 ContextWindow 比主模型小，需要进行上下文压缩
 					if candidateContextWindow < ts.agent.ContextWindow {
 						if p.ContextManager != nil {
