@@ -53,6 +53,7 @@ type sessionChatMessage struct {
 	Role        string                  `json:"role"`
 	Content     string                  `json:"content"`
 	Kind        string                  `json:"kind,omitempty"`
+	ModelName   string                  `json:"model_name,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
 	ToolCalls   []utils.VisibleToolCall `json:"tool_calls,omitempty"`
@@ -514,6 +515,7 @@ func sessionTranscriptMessages(
 			chatMsg := sessionChatMessage{
 				Role:        "user",
 				Content:     msg.Content,
+				ModelName:   msg.ModelName,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,
 			}
@@ -533,9 +535,10 @@ func sessionTranscriptMessages(
 
 			toolCallsMsg, hasToolCallsMsg := assistantToolCallsMessage(
 				msg.ToolCalls,
+				msg.ModelName,
 				toolFeedbackMaxArgsLength,
 			)
-			visibleToolMessages := visibleAssistantToolMessages(msg.ToolCalls)
+			visibleToolMessages := visibleAssistantToolMessages(msg.ToolCalls, msg.ModelName)
 
 			// Pico web chat can persist both visible `message` tool output and a
 			// later plain assistant reply in the same turn. Hide only the fixed
@@ -560,6 +563,7 @@ func sessionTranscriptMessages(
 			chatMsg := sessionChatMessage{
 				Role:        "assistant",
 				Content:     content,
+				ModelName:   msg.ModelName,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,
 			}
@@ -686,14 +690,16 @@ func assistantThoughtMessage(msg providers.Message) (sessionChatMessage, bool) {
 		return sessionChatMessage{}, false
 	}
 	return sessionChatMessage{
-		Role:    "assistant",
-		Content: reasoning,
-		Kind:    "thought",
+		Role:      "assistant",
+		Content:   reasoning,
+		Kind:      "thought",
+		ModelName: msg.ModelName,
 	}, true
 }
 
 func assistantToolCallsMessage(
 	toolCalls []providers.ToolCall,
+	modelName string,
 	toolFeedbackMaxArgsLength int,
 ) (sessionChatMessage, bool) {
 	if len(toolCalls) == 0 {
@@ -711,6 +717,7 @@ func assistantToolCallsMessage(
 	return sessionChatMessage{
 		Role:      "assistant",
 		Kind:      "tool_calls",
+		ModelName: modelName,
 		ToolCalls: visibleToolCalls,
 	}, true
 }
@@ -722,7 +729,7 @@ func visibleAssistantToolArgsPreview(
 	return utils.VisibleToolCallArgumentsPreview(tc, toolFeedbackMaxArgsLength)
 }
 
-func visibleAssistantToolMessages(toolCalls []providers.ToolCall) []sessionChatMessage {
+func visibleAssistantToolMessages(toolCalls []providers.ToolCall, modelName string) []sessionChatMessage {
 	if len(toolCalls) == 0 {
 		return nil
 	}
@@ -738,8 +745,9 @@ func visibleAssistantToolMessages(toolCalls []providers.ToolCall) []sessionChatM
 			continue
 		}
 		messages = append(messages, sessionChatMessage{
-			Role:    "assistant",
-			Content: content,
+			Role:      "assistant",
+			Content:   content,
+			ModelName: modelName,
 		})
 	}
 

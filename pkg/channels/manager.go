@@ -199,6 +199,19 @@ func outboundMessageIsWorkflowNotification(msg bus.OutboundMessage) bool {
 	return strings.EqualFold(strings.TrimSpace(msg.Context.Raw["message_kind"]), "workflow_notification")
 }
 
+func outboundMessageEditPayload(msg bus.OutboundMessage, content string) map[string]any {
+	payload := map[string]any{
+		"content": content,
+	}
+	if len(msg.Context.Raw) == 0 {
+		return payload
+	}
+	if modelName := strings.TrimSpace(msg.Context.Raw["model_name"]); modelName != "" {
+		payload["model_name"] = modelName
+	}
+	return payload
+}
+
 func outboundMediaChannel(msg bus.OutboundMediaMessage) string {
 	return msg.Context.Channel
 }
@@ -411,7 +424,16 @@ func (m *Manager) preSend(ctx context.Context, name string, msg bus.OutboundMess
 					if deleter, ok := ch.(MessageDeleter); ok {
 						deleter.DeleteMessage(ctx, chatID, entry.id) // best effort
 					} else if editor, ok := ch.(MessageEditor); ok {
-						editor.EditMessage(ctx, chatID, entry.id, msg.Content) // fallback
+						if payloadEditor, ok := ch.(MessageEditorWithPayload); ok {
+							_ = payloadEditor.EditMessageWithPayload(
+								ctx,
+								chatID,
+								entry.id,
+								outboundMessageEditPayload(msg, msg.Content),
+							)
+						} else {
+							editor.EditMessage(ctx, chatID, entry.id, msg.Content) // fallback
+						}
 					}
 				}
 			}
@@ -463,7 +485,18 @@ func (m *Manager) preSend(ctx context.Context, name string, msg bus.OutboundMess
 					trackedContent = prepareToolFeedbackMessageContent(ch, msg.Content)
 					content = InitialAnimatedToolFeedbackContent(trackedContent)
 				}
-				if err := editor.EditMessage(ctx, chatID, entry.id, content); err == nil {
+				err := func() error {
+					if payloadEditor, ok := ch.(MessageEditorWithPayload); ok {
+						return payloadEditor.EditMessageWithPayload(
+							ctx,
+							chatID,
+							entry.id,
+							outboundMessageEditPayload(msg, content),
+						)
+					}
+					return editor.EditMessage(ctx, chatID, entry.id, content)
+				}()
+				if err == nil {
 					trackedChatID := trackedToolFeedbackMessageChatID(ch, chatID, &msg.Context)
 					if tracker, ok := ch.(toolFeedbackMessageTracker); ok && isToolFeedback {
 						tracker.RecordToolFeedbackMessage(trackedChatID, entry.id, trackedContent)
@@ -660,6 +693,18 @@ func reasoningStreamerFrom(streamer bus.Streamer) bus.ReasoningStreamer {
 	return nil
 }
 
+type modelNameStreamer interface {
+	SetModelName(modelName string)
+}
+
+func setStreamerModelName(streamer any, modelName string) {
+	setter, ok := streamer.(modelNameStreamer)
+	if !ok {
+		return
+	}
+	setter.SetModelName(modelName)
+}
+
 // splitMarkerStreamer turns accumulated streaming text containing
 // MessageSplitMarker into separate channel stream messages.
 type splitMarkerStreamer struct {
@@ -671,6 +716,7 @@ type splitMarkerStreamer struct {
 	finalized      bool
 	onFinalize     func(context.Context, string)
 	clearMarker    func()
+	modelName      string
 }
 
 func (s *splitMarkerStreamer) Update(ctx context.Context, content string) error {
@@ -699,6 +745,7 @@ func (s *splitMarkerStreamer) UpdateReasoning(ctx context.Context, content strin
 	if s.reasoning == nil {
 		return nil
 	}
+	setStreamerModelName(s.reasoning, s.modelName)
 	return s.reasoning.UpdateReasoning(ctx, content)
 }
 
@@ -708,7 +755,16 @@ func (s *splitMarkerStreamer) FinalizeReasoning(ctx context.Context, content str
 	if s.reasoning == nil {
 		return nil
 	}
+	setStreamerModelName(s.reasoning, s.modelName)
 	return s.reasoning.FinalizeReasoning(ctx, content)
+}
+
+func (s *splitMarkerStreamer) SetModelName(modelName string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.modelName = strings.TrimSpace(modelName)
+	setStreamerModelName(s.current, s.modelName)
+	setStreamerModelName(s.reasoning, s.modelName)
 }
 
 func (s *splitMarkerStreamer) Cancel(ctx context.Context) {
@@ -789,6 +845,7 @@ func (s *splitMarkerStreamer) ensureCurrentLocked(ctx context.Context) error {
 		return err
 	}
 	s.current = streamer
+	setStreamerModelName(s.current, s.modelName)
 	return nil
 }
 
@@ -871,6 +928,10 @@ func (s *finalizeHookStreamer) FinalizeReasoning(ctx context.Context, content st
 		return streamer.FinalizeReasoning(ctx, content)
 	}
 	return nil
+}
+
+func (s *finalizeHookStreamer) SetModelName(modelName string) {
+	setStreamerModelName(s.Streamer, strings.TrimSpace(modelName))
 }
 
 func (s *finalizeHookStreamer) runFinalizeHook(ctx context.Context, content string) {
