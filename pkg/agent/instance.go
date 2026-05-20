@@ -29,6 +29,7 @@ type AgentInstance struct {
 	Workspace                 string
 	MaxIterations             int
 	MaxTokens                 int
+	MaxInputTokens            int // 最大输入 token 数量（包括消息和工具定义）
 	Temperature               float64
 	ThinkingLevel             ThinkingLevel
 	ContextWindow             int
@@ -180,9 +181,16 @@ func NewAgentInstance(
 	// 获取模型配置以读取 token 设置
 	modelCfg := lookupModelConfigByRef(cfg, model)
 
-	// 使用 GetMaxTokens 和 GetContextWindow 方法，支持回退逻辑
+	// 使用 GetMaxTokens、GetContextWindow 和 GetMaxInputTokens 方法，支持回退逻辑
 	maxTokens := modelCfg.GetMaxTokens(defaults)
 	contextWindow := modelCfg.GetContextWindow(defaults)
+	maxInputTokens := modelCfg.GetMaxInputTokens(defaults)
+
+	logger.InfoCF("agent", "模型 token 设置:", map[string]any{
+		"max_tokens":       maxTokens,
+		"context_window":   contextWindow,
+		"max_input_tokens": maxInputTokens,
+	})
 
 	temperature := 0.7
 	if defaults.Temperature != nil {
@@ -259,6 +267,7 @@ func NewAgentInstance(
 		Workspace:                 workspace,
 		MaxIterations:             maxIter,
 		MaxTokens:                 maxTokens,
+		MaxInputTokens:            maxInputTokens,
 		Temperature:               temperature,
 		ThinkingLevel:             thinkingLevel,
 		ContextWindow:             contextWindow,

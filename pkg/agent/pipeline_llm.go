@@ -212,19 +212,21 @@ func (p *Pipeline) CallLLM(
 					for k, v := range exec.llmOpts {
 						candidateOpts[k] = v
 					}
-					// 查找当前候选模型的配置并更新 maxTokens 和 ContextWindow
+					// 查找当前候选模型的配置并更新 maxTokens、ContextWindow 和 MaxInputTokens
 					candidateContextWindow := ts.agent.ContextWindow
+					candidateMaxInputTokens := ts.agent.MaxInputTokens
 					if modelCfg := lookupModelConfigByRef(p.Cfg, model); modelCfg != nil {
 						defaults := &p.Cfg.Agents.Defaults
 						candidateOpts["max_tokens"] = modelCfg.GetMaxTokens(defaults)
 						candidateContextWindow = modelCfg.GetContextWindow(defaults)
+						candidateMaxInputTokens = modelCfg.GetMaxInputTokens(defaults)
 					}
 					// 如果备用模型的 ContextWindow 比主模型小，需要进行上下文压缩
 					if candidateContextWindow < ts.agent.ContextWindow {
 						if p.ContextManager != nil {
 							logger.InfoCF(
 								"agent",
-								"Fallback model has smaller context window, compacting context",
+								"备用模型上下文窗口较小，正在压缩上下文",
 								map[string]any{
 									"agent_id":                 ts.agent.ID,
 									"model":                    model,
@@ -239,7 +241,7 @@ func (p *Pipeline) CallLLM(
 							}); compactErr != nil {
 								logger.WarnCF(
 									"agent",
-									"Context compact failed for fallback model",
+									"备用模型上下文压缩失败",
 									map[string]any{
 										"error":    compactErr.Error(),
 										"agent_id": ts.agent.ID,
@@ -249,9 +251,10 @@ func (p *Pipeline) CallLLM(
 							}
 							// 重新组装消息以获取压缩后的上下文
 							if asmResp, asmErr := p.ContextManager.Assemble(ctx, &AssembleRequest{
-								SessionKey: ts.sessionKey,
-								Budget:     candidateContextWindow,
-								MaxTokens:  candidateOpts["max_tokens"].(int),
+								SessionKey:     ts.sessionKey,
+								Budget:         candidateContextWindow,
+								MaxTokens:      candidateOpts["max_tokens"].(int),
+								MaxInputTokens: candidateMaxInputTokens,
 							}); asmErr == nil && asmResp != nil {
 								messagesForCall = asmResp.History
 							}
@@ -453,9 +456,10 @@ func (p *Pipeline) CallLLM(
 			}
 			ts.refreshRestorePointFromSession(ts.agent)
 			if asmResp, asmErr := p.ContextManager.Assemble(ctx, &AssembleRequest{
-				SessionKey: ts.sessionKey,
-				Budget:     ts.agent.ContextWindow,
-				MaxTokens:  ts.agent.MaxTokens,
+				SessionKey:     ts.sessionKey,
+				Budget:         ts.agent.ContextWindow,
+				MaxTokens:      ts.agent.MaxTokens,
+				MaxInputTokens: ts.agent.MaxInputTokens,
 			}); asmErr == nil && asmResp != nil {
 				exec.history = asmResp.History
 				exec.summary = asmResp.Summary

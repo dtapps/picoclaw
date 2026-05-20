@@ -35,6 +35,7 @@
 | **频道**      | [已提交 PR #2893](https://github.com/sipeed/picoclaw/pull/2893) | **新增 SC3Bot 频道**               | 接入 SC3Bot 消息通道，支持接收和发送消息                                                | [feat/sc3bot-channel](https://github.com/dtapps/picoclaw/tree/feat/sc3bot-channel) |
 | **UI/日志**   | 日志滚动时出现闪屏                                              | **优化滚动和渲染逻辑**             | 使用 RAF 优化滚动、移除 CSS 过渡效果、防抖处理尺寸变化，减少闪屏现象                   | [feature/fix-log-flicker](https://github.com/dtapps/picoclaw/tree/feature/fix-log-flicker) |
 | **模型配置**  | 仅支持全局 `context_window`                                     | **支持 per-model `context_window`** | 每个模型可独立配置上下文窗口大小，未配置时使用 AgentDefaults 的值                     | [feat/per-model-context-window](https://github.com/dtapps/picoclaw/tree/feat/per-model-context-window)                                                                                            |
+| **模型配置**  | 仅支持 `context_window` 和 `max_tokens` 控制上下文              | **新增 per-model `max_input_tokens`** | 限制输入 token 数量（包括消息和工具定义），超过则自动截断历史消息，防止超出模型上下文限制 | [feat/per-model-max-input-tokens](https://github.com/dtapps/picoclaw/tree/feat/per-model-max-input-tokens)                                                                                        |
 
 <details>
 <summary>📁 已移除的功能 (点击展开)</summary>
