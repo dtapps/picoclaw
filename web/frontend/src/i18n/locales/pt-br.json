@@ -387,6 +387,8 @@
       "maxTokensHint": "Máximo de tokens permitidos para uma única requisição. 0 = usar configuração padrão.",
       "contextWindow": "Tamanho do Contexto",
       "contextWindowHint": "Tamanho máximo do contexto permitido para esta requisição. 0 = usar configuração padrão.",
+      "maxInputTokens": "Máximo de Tokens de Entrada",
+      "maxInputTokensHint": "Máximo de tokens de entrada permitido para esta requisição, será truncado se exceder. 0 = usar configuração padrão.",
       "maxTokensField": "Campo de Max Tokens",
       "maxTokensFieldHint": "Sobrescreve o nome do campo de max tokens na requisição, ex: max_completion_tokens.",
       "toolSchemaTransform": "Transformação de Schema de Ferramentas",

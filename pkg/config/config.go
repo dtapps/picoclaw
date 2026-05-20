@@ -863,6 +863,7 @@ type ModelConfig struct {
 	RPM                 int                  `json:"rpm,omitempty"`              // 每分钟请求数限制
 	MaxTokens           int                  `json:"max_tokens,omitempty"`       // 每次请求的最大 token 数量
 	ContextWindow       int                  `json:"context_window,omitempty"`   // 最大上下文窗口大小（token 数）
+	MaxInputTokens      int                  `json:"max_input_tokens,omitempty"` // 最大输入 token 数量（包括消息和工具定义），超过将截断历史消息
 	MaxTokensField      string               `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
 	RequestTimeout      int                  `json:"request_timeout,omitempty"`
 	ThinkingLevel       string               `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
@@ -957,6 +958,16 @@ func (c *ModelConfig) GetContextWindow(defaults *AgentDefaults) int {
 		return defaults.ContextWindow
 	}
 	return c.GetMaxTokens(defaults) * 4
+}
+
+// GetMaxInputTokens 返回此模型配置的最大输入 token 数（包括消息和工具定义）。
+// 如果未设置，返回 0，表示不限制输入长度。
+// 这个值用于在组装消息时限制输入长度，超过将截断历史消息。
+func (c *ModelConfig) GetMaxInputTokens(defaults *AgentDefaults) int {
+	if c != nil && c.MaxInputTokens > 0 {
+		return c.MaxInputTokens
+	}
+	return 0
 }
 
 type ToolDiscoveryConfig struct {

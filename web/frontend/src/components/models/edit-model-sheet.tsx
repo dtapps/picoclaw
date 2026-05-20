@@ -59,6 +59,7 @@ interface EditForm {
   rpm: string
   maxTokens: string
   contextWindow: string
+  maxInputTokens: string
   maxTokensField: string
   requestTimeout: string
   thinkingLevel: string
@@ -119,6 +120,7 @@ function buildInitialEditForm(model: ModelInfo): EditForm {
     rpm: model.rpm ? String(model.rpm) : "",
     maxTokens: model.max_tokens ? String(model.max_tokens) : "",
     contextWindow: model.context_window ? String(model.context_window) : "",
+    maxInputTokens: model.max_input_tokens ? String(model.max_input_tokens) : "",
     maxTokensField: model.max_tokens_field ?? "",
     requestTimeout: model.request_timeout ? String(model.request_timeout) : "",
     thinkingLevel: model.thinking_level ?? "",
@@ -153,6 +155,7 @@ export function EditModelSheet({
     rpm: "",
     maxTokens: "",
     contextWindow: "",
+    maxInputTokens: "",
     maxTokensField: "",
     requestTimeout: "",
     thinkingLevel: "",
@@ -328,6 +331,7 @@ export function EditModelSheet({
         rpm: form.rpm ? Number(form.rpm) : undefined,
         max_tokens: form.maxTokens ? Number(form.maxTokens) : undefined,
         context_window: form.contextWindow ? Number(form.contextWindow) : undefined,
+        max_input_tokens: form.maxInputTokens ? Number(form.maxInputTokens) : undefined,
         max_tokens_field: form.maxTokensField || undefined,
         request_timeout: form.requestTimeout
           ? Number(form.requestTimeout)
@@ -653,6 +657,19 @@ export function EditModelSheet({
                 <Input
                   value={form.contextWindow}
                   onChange={setField("contextWindow")}
+                  placeholder="0"
+                  type="number"
+                  min={0}
+                />
+              </Field>
+
+              <Field
+                label={t("models.field.maxInputTokens")}
+                hint={t("models.field.maxInputTokensHint")}
+              >
+                <Input
+                  value={form.maxInputTokens}
+                  onChange={setField("maxInputTokens")}
                   placeholder="0"
                   type="number"
                   min={0}
