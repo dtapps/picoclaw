@@ -44,7 +44,7 @@
     "remark-gfm": "^4.0.1",
     "sequential-workflow-designer": "^0.37.3",
     "sequential-workflow-designer-react": "^0.37.3",
-    "shadcn": "^4.7.0",
+    "shadcn": "^4.8.0",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.3.0",
