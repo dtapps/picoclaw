@@ -301,29 +301,9 @@ func (s *Service) DeleteWorkflow(name string) error {
 	return nil
 }
 
-// chatIDEqual 比较两个 chatID 是否相等，处理带前缀和不带前缀的情况
-// 例如 "group:123" 和 "123" 被视为相同（如果 strippedChatID 是 "123"）
+// chatIDEqual 比较两个 chatID 是否相等
 func chatIDEqual(storedChatID, newChatID string) bool {
-	if storedChatID == newChatID {
-		return true
-	}
-	// 处理前缀情况：如果去掉前缀后相等，也视为相同
-	// 支持 group: 和 direct: 前缀
-	for _, prefix := range []string{"group:", "direct:"} {
-		if strings.HasPrefix(storedChatID, prefix) {
-			stripped := strings.TrimPrefix(storedChatID, prefix)
-			if stripped == newChatID {
-				return true
-			}
-		}
-		if strings.HasPrefix(newChatID, prefix) {
-			stripped := strings.TrimPrefix(newChatID, prefix)
-			if stripped == storedChatID {
-				return true
-			}
-		}
-	}
-	return false
+	return storedChatID == newChatID
 }
 
 // BindChannel 将频道信息绑定到工作流配置，执行完成后自动通知该频道。
@@ -350,12 +330,11 @@ func (s *Service) BindChannel(name, channel, chatID string) error {
 		return err
 	}
 
-	// 查找是否已存在相同的频道和 chatID 组合（处理前缀兼容）
+	// 查找是否已存在相同的频道和 chatID 组合
 	found := false
 	for i, target := range freshWf.Config.NotifyChannels {
 		if target.Channel == channel && chatIDEqual(target.ChatID, chatID) {
-			// 已存在相同的绑定，更新 chatID 为新的格式（带前缀）并更新绑定时间
-			freshWf.Config.NotifyChannels[i].ChatID = chatID
+			// 已存在相同的绑定，更新绑定时间
 			freshWf.Config.NotifyChannels[i].BoundAt = time.Now()
 			found = true
 			break
@@ -407,7 +386,7 @@ func (s *Service) UnbindChannel(name, channel, chatID string) error {
 		// 清空所有通知目标
 		freshWf.Config.NotifyChannels = nil
 	} else {
-		// 移除匹配的通知目标（处理前缀兼容）
+		// 移除匹配的通知目标
 		targets := freshWf.Config.NotifyChannels[:0]
 		for _, target := range freshWf.Config.NotifyChannels {
 			if target.Channel != channel || !chatIDEqual(target.ChatID, chatID) {
