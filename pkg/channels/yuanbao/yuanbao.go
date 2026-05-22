@@ -38,6 +38,9 @@ type YuanbaoChannel struct {
 	// 令牌文件路径
 	tokensPath string
 
+	// group chatID 文件路径
+	chatIDsPath string
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -72,8 +75,17 @@ func NewYuanbaoChannel(
 		config:      cfg,
 		chatType:    sync.Map{},
 		tokensPath:  buildYuanbaoTokensPath(cfg),
+		chatIDsPath: buildYuanbaoChatIDsPath(cfg),
 	}
 	ch.progress = channels.NewToolFeedbackAnimator(ch.EditMessage)
+
+	// 加载已保存的 group chatID
+	if err := ch.loadGroupChatIDs(); err != nil {
+		logger.WarnCF(ch.Name(), "加载 group chatID 失败", map[string]any{
+			"error": err.Error(),
+		})
+	}
+
 	return ch, nil
 }
 
@@ -236,6 +248,8 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 		// 这样主动发消息时可通过 chatType 判断是否为群组
 		if chatType == "group" {
 			c.chatType.Store(sender.PlatformID, "group")
+			// 保存到文件，确保重启后仍能识别 group
+			c.saveGroupChatID(sender.PlatformID)
 		}
 
 		// 构建标准化上下文
@@ -305,12 +319,9 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 	messageIDs := []string{}
 	chatKind := c.getChatKind(msg.ChatID)
 
-	// 过滤 ChatType 前缀
-	actualChatID := filterChatIDPrefix(msg.ChatID)
-
 	if chatKind == "direct" {
 		messageID, err := c.yuanbaoClient.SendMessage(&yuanbaoTypes.OutboundC2CMessage{
-			ToUserID: actualChatID,
+			ToUserID: msg.ChatID,
 			Text:     content,
 		})
 		if err != nil {
@@ -319,7 +330,7 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 		messageIDs = append(messageIDs, messageID)
 	} else if chatKind == "group" {
 		messageID, err := c.yuanbaoClient.SendGroupMessage(&yuanbaoTypes.OutboundGroupMessage{
-			ToGroupID: actualChatID,
+			ToGroupID: msg.ChatID,
 			Text:      content,
 		})
 		if err != nil {
@@ -334,17 +345,9 @@ func (c *YuanbaoChannel) Send(ctx context.Context, msg bus.OutboundMessage) ([]s
 }
 
 func (c *YuanbaoChannel) getChatKind(chatID string) string {
-	// 优先检查 chatType 映射表（从收到的消息中记录的）
+	// 优先检查 chatType 映射表（从收到的消息中记录的，或从文件加载的）
 	if _, ok := c.chatType.Load(chatID); ok {
 		return "group"
-	}
-	// 自动识别 group: 前缀的 chat_id（用于工作流通知等场景）
-	if strings.HasPrefix(chatID, "group:") {
-		return "group"
-	}
-	// 自动识别 direct: 前缀
-	if strings.HasPrefix(chatID, "direct:") {
-		return "direct"
 	}
 	return "direct"
 }
@@ -421,12 +424,29 @@ func (c *YuanbaoChannel) syncCommands() {
 	}
 }
 
-// filterChatIDPrefix 过滤 chatID 中的 ChatType 前缀 (group: 或 direct:)
-func filterChatIDPrefix(chatID string) string {
-	if strings.HasPrefix(chatID, "group:") {
-		return strings.TrimPrefix(chatID, "group:")
-	} else if strings.HasPrefix(chatID, "direct:") {
-		return strings.TrimPrefix(chatID, "direct:")
+// loadGroupChatIDs 从文件加载 group chatID 到内存
+func (c *YuanbaoChannel) loadGroupChatIDs() error {
+	chatIDs, err := loadYuanbaoGroupChatIDs(c.chatIDsPath)
+	if err != nil {
+		return err
 	}
-	return chatID
+	for _, chatID := range chatIDs {
+		c.chatType.Store(chatID, "group")
+	}
+	if len(chatIDs) > 0 {
+		logger.InfoCF(c.Name(), "已加载 group chatID", map[string]any{
+			"count": len(chatIDs),
+		})
+	}
+	return nil
+}
+
+// saveGroupChatID 保存 group chatID 到文件
+func (c *YuanbaoChannel) saveGroupChatID(chatID string) {
+	if err := saveYuanbaoGroupChatID(c.chatIDsPath, chatID); err != nil {
+		logger.WarnCF(c.Name(), "保存 group chatID 失败", map[string]any{
+			"chat_id": chatID,
+			"error":   err.Error(),
+		})
+	}
 }
