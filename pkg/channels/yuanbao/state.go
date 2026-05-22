@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -59,4 +60,68 @@ func saveYuanbaoToken(path string, appID string, token string, expiresIn int64) 
 		return err
 	}
 	return fileutil.WriteFileAtomic(path, data, 0o600)
+}
+
+// buildYuanbaoChatIDsPath 构建 group chatID 文件路径
+func buildYuanbaoChatIDsPath(cfg *config.YuanbaoSettings) string {
+	return filepath.Join(
+		picoclawHomeDir(),
+		"channels",
+		config.ChannelYuanbao,
+		"chatids",
+		genYuanbaoAccountKey(cfg)+".json",
+	)
+}
+
+// yuanbaoChatIDsFile 定义 chatID 文件的 JSON 结构
+type yuanbaoChatIDsFile struct {
+	GroupChatIDs []string `json:"group_chat_ids"` // Group 类型的 chatID 列表
+}
+
+// saveYuanbaoGroupChatID 保存 group chatID 到文件
+func saveYuanbaoGroupChatID(path string, chatID string) error {
+	// 读取现有文件
+	var data yuanbaoChatIDsFile
+	if _, err := os.Stat(path); err == nil {
+		content, err := os.ReadFile(path)
+		if err == nil {
+			_ = json.Unmarshal(content, &data)
+		}
+	}
+
+	// 检查是否已存在
+	for _, id := range data.GroupChatIDs {
+		if id == chatID {
+			return nil // 已存在，无需保存
+		}
+	}
+
+	// 添加新的 chatID
+	data.GroupChatIDs = append(data.GroupChatIDs, chatID)
+
+	// 保存到文件
+	jsonData, err := json.MarshalIndent(data, "", "  ")
+	if err != nil {
+		return err
+	}
+	return fileutil.WriteFileAtomic(path, jsonData, 0o600)
+}
+
+// loadYuanbaoGroupChatIDs 从文件加载 group chatID 列表
+func loadYuanbaoGroupChatIDs(path string) ([]string, error) {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return []string{}, nil
+	}
+
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	var data yuanbaoChatIDsFile
+	if err := json.Unmarshal(content, &data); err != nil {
+		return nil, err
+	}
+
+	return data.GroupChatIDs, nil
 }
