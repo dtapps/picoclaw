@@ -363,14 +363,16 @@ func TestGetChatKind(t *testing.T) {
 			want:   "direct",
 		},
 		{
-			name:   "group: 前缀的 chat_id 自动识别为群组",
-			chatID: "group:322876273",
-			want:   "group",
+			name:    "从内存加载的 group chat_id",
+			chatID:  "322876273",
+			preload: map[string]string{"322876273": "group"},
+			want:    "group",
 		},
 		{
-			name:   "group: 前缀带空格的 chat_id 自动识别为群组",
-			chatID: "group:123456",
-			want:   "group",
+			name:    "从内存加载的另一个 group chat_id",
+			chatID:  "123456",
+			preload: map[string]string{"123456": "group"},
+			want:    "group",
 		},
 	}
 
@@ -378,7 +380,7 @@ func TestGetChatKind(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			ch, _ := newTestYuanbaoChannel(t, nil, nil)
 
-			// 预加载 chatType 条目
+			// 预加载 chatType 条目（模拟从文件加载）
 			for k, v := range tt.preload {
 				ch.chatType.Store(k, v)
 			}
