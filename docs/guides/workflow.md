@@ -1003,7 +1003,7 @@ config:
 
 Each notification target contains the following fields:
 - **channel**: Channel name, e.g., `telegram`, `dingtalk`
-- **chat_id**: Chat ID, e.g., `-100xxx`, `cid...`. Note: All channels may include a prefix in the chat_id (such as `group:` or `direct:`) to distinguish between group and private chats
+- **chat_id**: Chat ID, e.g., `-100xxx`, `cid...`
 - **bound_at**: Binding time (read-only), records when the channel was bound to the workflow, helping track when notification targets were added
 
 When a workflow is triggered without a channel context (e.g., cron trigger, event trigger, or web UI), the engine uses notification targets from the workflow config.

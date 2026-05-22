@@ -191,24 +191,14 @@ func workflowBindHandler() Handler {
 			return req.Reply(i18n.T("commands_workflow_bind_no_context"))
 		}
 
-		// 自动添加 ChatType 前缀（用于区分群聊和私聊）
-		// 格式: group:xxx 或 direct:xxx
-		chatID := req.ChatID
-		if req.ChatType != "" {
-			prefix := req.ChatType + ":"
-			if !strings.HasPrefix(chatID, prefix) {
-				chatID = prefix + chatID
-			}
-		}
-
-		if err := rt.WorkflowBind(name, req.Channel, chatID); err != nil {
+		if err := rt.WorkflowBind(name, req.Channel, req.ChatID); err != nil {
 			return req.Reply(i18n.Tf("commands_workflow_bind_error", map[string]any{"Error": err.Error()}))
 		}
 
 		return req.Reply(i18n.Tf("commands_workflow_bind_success", map[string]any{
 			"Name":    name,
 			"Channel": req.Channel,
-			"ChatID":  chatID,
+			"ChatID":  req.ChatID,
 		}))
 	}
 }
