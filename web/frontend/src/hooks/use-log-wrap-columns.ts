@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react"
 
 const DEFAULT_WRAP_COLUMNS = 120
 const MIN_WRAP_COLUMNS = 20
-const RESIZE_DEBOUNCE_MS = 100
 
 export function useLogWrapColumns() {
   const [wrapColumns, setWrapColumns] = useState(DEFAULT_WRAP_COLUMNS)

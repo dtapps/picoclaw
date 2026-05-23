@@ -58,7 +58,6 @@
 | 合并日期   | 官方 PR #                                             | 标题/简述                                                             | 合并 Commit Hash                                             | 备注         |
 | :--------- | :---------------------------------------------------- | :-------------------------------------------------------------------- | :----------------------------------------------------------- | :----------- |
 | 2026-04-11 | [#2460](https://github.com/sipeed/picoclaw/pull/2460) | fix(mcp): send empty object instead of nil arguments in CallTool      | [39e0e59](https://github.com/dtapps/picoclaw/commit/39e0e59) | 已合并未验证 |
-| 2026-04-10 | [#2410](https://github.com/sipeed/picoclaw/pull/2410) | feat(tool): add browser automation via Chrome DevTools Protocol (CDP) | [82321c8](https://github.com/dtapps/picoclaw/commit/82321c8) | 已合并未验证 |
 
 ---
 

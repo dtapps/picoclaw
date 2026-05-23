@@ -119,16 +119,6 @@ func NewAgentInstance(
 		}
 	}
 
-	if cfg.Tools.IsToolEnabled("browser") {
-		browserTool, err := tools.NewBrowserTool(cfg.Tools.Browser)
-		if err != nil {
-			logger.WarnCF("agent", "Browser tool unavailable (optional)",
-				map[string]any{"error": err.Error()})
-		} else {
-			toolsRegistry.Register(browserTool)
-		}
-	}
-
 	// browser_ext 工具通过浏览器插件执行操作，回调在 agent_init.go 中设置
 	if cfg.Tools.IsToolEnabled("browser_ext") {
 		browserExtTool := tools.NewBrowserExtTool()
