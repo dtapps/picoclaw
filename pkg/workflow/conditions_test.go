@@ -86,6 +86,87 @@ func TestEvaluateCondition(t *testing.T) {
 			stepOutputs: map[string]map[string]any{},
 			want:        false,
 		},
+		// 新运算符测试
+		{
+			name: "not equals operator - match",
+			when: "{{.check.status}} != fail",
+			stepOutputs: map[string]map[string]any{
+				"check": {"status": "ok"},
+			},
+			want: true,
+		},
+		{
+			name: "not equals operator - no match",
+			when: "{{.check.status}} != ok",
+			stepOutputs: map[string]map[string]any{
+				"check": {"status": "ok"},
+			},
+			want: false,
+		},
+		{
+			name: "contains operator - match",
+			when: "{{.check.output}} contains true",
+			stepOutputs: map[string]map[string]any{
+				"check": {"output": "STDERR:\ntrue"},
+			},
+			want: true,
+		},
+		{
+			name: "contains operator - no match",
+			when: "{{.check.output}} contains false",
+			stepOutputs: map[string]map[string]any{
+				"check": {"output": "STDERR:\ntrue"},
+			},
+			want: false,
+		},
+		{
+			name: "greater than operator - numeric match",
+			when: "{{.check.count}} > 10",
+			stepOutputs: map[string]map[string]any{
+				"check": {"count": "15"},
+			},
+			want: true,
+		},
+		{
+			name: "greater than operator - numeric no match",
+			when: "{{.check.count}} > 20",
+			stepOutputs: map[string]map[string]any{
+				"check": {"count": "15"},
+			},
+			want: false,
+		},
+		{
+			name: "less than operator - numeric match",
+			when: "{{.check.count}} < 20",
+			stepOutputs: map[string]map[string]any{
+				"check": {"count": "15"},
+			},
+			want: true,
+		},
+		{
+			name: "greater equal operator - match",
+			when: "{{.check.count}} >= 15",
+			stepOutputs: map[string]map[string]any{
+				"check": {"count": "15"},
+			},
+			want: true,
+		},
+		{
+			name: "less equal operator - match",
+			when: "{{.check.count}} <= 15",
+			stepOutputs: map[string]map[string]any{
+				"check": {"count": "15"},
+			},
+			want: true,
+		},
+		{
+			name: "string comparison - greater than",
+			when: "{{.check.letter}} > b",
+			stepOutputs: map[string]map[string]any{
+				"check": {"letter": "c"},
+			},
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {

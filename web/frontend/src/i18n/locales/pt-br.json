@@ -1221,6 +1221,7 @@
       "cond_prev_success": "Etapa anterior bem-sucedida",
       "cond_prev_error": "Etapa anterior falhou",
       "cond_output_equals": "Saída da etapa igual a",
+      "cond_output_compare": "Comparação de saída da etapa",
       "cond_step_id": "ID da Etapa",
       "cond_output_key": "Chave de Saída",
       "cond_operator": "Operador",

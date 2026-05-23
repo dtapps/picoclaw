@@ -1246,6 +1246,7 @@
       "cond_prev_success": "Previous step succeeded",
       "cond_prev_error": "Previous step failed",
       "cond_output_equals": "Step output equals",
+      "cond_output_compare": "Step output comparison",
       "cond_step_id": "Step ID",
       "cond_output_key": "Output Key",
       "cond_operator": "Operator",
