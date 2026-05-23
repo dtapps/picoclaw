@@ -40,7 +40,7 @@ func NewWhatsAppChannel(
 		"whatsapp",
 		cfg,
 		bus,
-		bc.AllowFrom.FilterEmpty(),
+		bc.AllowFrom,
 		channels.WithMaxMessageLength(65536),
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)

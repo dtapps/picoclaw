@@ -56,7 +56,7 @@ func NewWeiboChannel(
 		config.ChannelWeibo,
 		cfg,
 		messageBus,
-		bc.AllowFrom.FilterEmpty(),
+		bc.AllowFrom,
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)
 

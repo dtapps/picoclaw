@@ -238,7 +238,7 @@ func NewMatrixChannel(
 		"matrix",
 		cfg,
 		messageBus,
-		bc.AllowFrom.FilterEmpty(),
+		bc.AllowFrom,
 		channels.WithMaxMessageLength(65536),
 		channels.WithGroupTrigger(bc.GroupTrigger),
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),

@@ -64,7 +64,7 @@ func NewYuanbaoChannel(
 		config.ChannelYuanbao,
 		cfg,
 		messageBus,
-		bc.AllowFrom.FilterEmpty(),
+		bc.AllowFrom,
 		channels.WithGroupTrigger(bc.GroupTrigger),
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)

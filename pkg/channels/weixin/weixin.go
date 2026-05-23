@@ -75,7 +75,7 @@ func NewWeixinChannel(
 		bc.Name(),
 		cfg,
 		messageBus,
-		bc.AllowFrom.FilterEmpty(),
+		bc.AllowFrom,
 		channels.WithMaxMessageLength(4000),
 		channels.WithReasoningChannelID(bc.ReasoningChannelID),
 	)
