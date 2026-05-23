@@ -15,8 +15,7 @@ export function AnsiLogLine({ line, wrapColumns }: AnsiLogLineProps) {
   return (
     <div className="break-normal whitespace-pre-wrap">
       {segments.map((segment, index) => (
-        // 使用 index 作为 key，因为 segment 的顺序是稳定的
-        <Fragment key={index}>
+        <Fragment key={`${index}-${segment.text.length}`}>
           <span style={segment.style}>{segment.text}</span>
         </Fragment>
       ))}
