@@ -25,6 +25,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/commands"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -147,7 +148,7 @@ func telegramMediaGroupDelay(telegramCfg *config.TelegramSettings) time.Duration
 }
 
 func (c *TelegramChannel) Start(ctx context.Context) error {
-	logger.InfoC("telegram", "Starting Telegram bot (polling mode)...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -156,12 +157,14 @@ func (c *TelegramChannel) Start(ctx context.Context) error {
 	})
 	if err != nil {
 		c.cancel()
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to start long polling: %w", err)
 	}
 
 	bh, err := th.NewBotHandler(c.bot, updates)
 	if err != nil {
 		c.cancel()
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to create bot handler: %w", err)
 	}
 	c.bh = bh
@@ -171,7 +174,7 @@ func (c *TelegramChannel) Start(ctx context.Context) error {
 	}, th.AnyMessage())
 
 	c.SetRunning(true)
-	logger.InfoCF("telegram", "Telegram bot connected", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"username": c.bot.Username(),
 	})
 
@@ -189,7 +192,7 @@ func (c *TelegramChannel) Start(ctx context.Context) error {
 }
 
 func (c *TelegramChannel) Stop(ctx context.Context) error {
-	logger.InfoC("telegram", "Stopping Telegram bot...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	// Stop the bot handler
@@ -209,6 +212,7 @@ func (c *TelegramChannel) Stop(ctx context.Context) error {
 		c.commandRegCancel()
 	}
 
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

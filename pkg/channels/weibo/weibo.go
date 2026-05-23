@@ -19,6 +19,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -100,7 +101,7 @@ func (c *WeiboChannel) applyWeiboProxy() error {
 }
 
 func (c *WeiboChannel) Start(ctx context.Context) error {
-	logger.InfoC(c.Name(), "微博频道启动...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -155,13 +156,13 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 
 	// 设置连接成功回调
 	c.weiboClient.OnConnected(func() {
-		logger.InfoC(c.Name(), "微博频道已连接...")
+		logger.InfoC(c.Name(), i18n.T("channel_started"))
 		c.SetRunning(true)
 	})
 
 	// 设置断开连接回调
 	c.weiboClient.OnDisconnected(func() {
-		logger.InfoC(c.Name(), "微博频道已断开...")
+		logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 		c.SetRunning(false)
 	})
 
@@ -247,7 +248,7 @@ func (c *WeiboChannel) Start(ctx context.Context) error {
 }
 
 func (c *WeiboChannel) Stop(ctx context.Context) error {
-	logger.InfoC(c.Name(), "正在停止微博频道...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()

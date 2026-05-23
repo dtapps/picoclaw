@@ -1040,3 +1040,31 @@ other = "当相同的学习任务模式再次出现时，避免绕过 `{{.Target
 [synth_avoid_pattern_path]
 description = "合成避免模式带路径"
 other = "在直接尝试 `{{.Target}}` 之前，避免重放 {{.Path}}"
+
+# ============================================
+# Channel 启动/停止消息
+# ============================================
+
+[channel_starting]
+description = "Channel 正在启动消息"
+other = "频道正在启动..."
+
+[channel_started]
+description = "Channel 启动成功消息"
+other = "频道启动成功"
+
+[channel_start_failed]
+description = "Channel 启动失败消息"
+other = "频道启动失败"
+
+[channel_stopping]
+description = "Channel 正在停止消息"
+other = "频道正在停止..."
+
+[channel_stopped]
+description = "Channel 停止成功消息"
+other = "频道已停止"
+
+[channel_stop_failed]
+description = "Channel 停止失败消息"
+other = "频道停止失败"

@@ -12,6 +12,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -92,12 +93,12 @@ func NewWeixinChannel(
 }
 
 func (c *WeixinChannel) Start(ctx context.Context) error {
-	logger.InfoC("weixin", "Starting Weixin channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.SetRunning(true)
 	c.restoreContextTokens()
 	go c.pollLoop(c.ctx)
-	logger.InfoC("weixin", "Weixin channel started")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
@@ -143,11 +144,12 @@ func (c *WeixinChannel) persistContextTokens() {
 }
 
 func (c *WeixinChannel) Stop(ctx context.Context) error {
-	logger.InfoC("weixin", "Stopping Weixin channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 	if c.cancel != nil {
 		c.cancel()
 	}
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

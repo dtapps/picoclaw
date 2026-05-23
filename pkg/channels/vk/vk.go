@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -64,19 +65,21 @@ func (c *VKChannel) getVKCfg() *config.VKSettings {
 }
 
 func (c *VKChannel) Start(ctx context.Context) error {
-	logger.InfoC("vk", "Starting VK bot (Long Poll mode)...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	groupID := c.getVKCfg().GroupID
 	if groupID == 0 {
 		c.cancel()
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("group_id is required for VK bot")
 	}
 
 	lp, err := longpoll.NewLongPoll(c.vk, groupID)
 	if err != nil {
 		c.cancel()
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to create long poll: %w", err)
 	}
 	c.lp = lp
@@ -87,7 +90,7 @@ func (c *VKChannel) Start(ctx context.Context) error {
 
 	c.SetRunning(true)
 
-	logger.InfoCF("vk", "VK bot connected", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"group_id": groupID,
 	})
 
@@ -103,7 +106,7 @@ func (c *VKChannel) Start(ctx context.Context) error {
 }
 
 func (c *VKChannel) Stop(ctx context.Context) error {
-	logger.InfoC("vk", "Stopping VK bot...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	if c.lp != nil {
@@ -114,6 +117,7 @@ func (c *VKChannel) Stop(ctx context.Context) error {
 		c.cancel()
 	}
 
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

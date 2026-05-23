@@ -1037,3 +1037,31 @@ other = "avoid bypassing `{{.Target}}` when the same learned task pattern appear
 [synth_avoid_pattern_path]
 description = "Synthesized avoid pattern with path"
 other = "avoid replaying {{.Path}} before trying `{{.Target}}` directly"
+
+# ============================================
+# Channel start/stop messages
+# ============================================
+
+[channel_starting]
+description = "Channel starting message"
+other = "Channel is starting..."
+
+[channel_started]
+description = "Channel started message"
+other = "Channel started successfully"
+
+[channel_start_failed]
+description = "Channel start failed message"
+other = "Channel failed to start"
+
+[channel_stopping]
+description = "Channel stopping message"
+other = "Channel is stopping..."
+
+[channel_stopped]
+description = "Channel stopped message"
+other = "Channel stopped"
+
+[channel_stop_failed]
+description = "Channel stop failed message"
+other = "Channel failed to stop"

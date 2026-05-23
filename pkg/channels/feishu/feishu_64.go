@@ -25,6 +25,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -84,7 +85,10 @@ func NewFeishuChannel(bc *config.Channel, cfg *config.FeishuSettings, bus *bus.M
 }
 
 func (c *FeishuChannel) Start(ctx context.Context) error {
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
+
 	if c.config.AppID == "" || c.config.AppSecret.String() == "" {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("feishu app_id or app_secret is empty")
 	}
 
@@ -116,11 +120,11 @@ func (c *FeishuChannel) Start(ctx context.Context) error {
 	c.mu.Unlock()
 
 	c.SetRunning(true)
-	logger.InfoC("feishu", "Feishu channel started (websocket mode)")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 
 	go func() {
 		if err := wsClient.Start(runCtx); err != nil {
-			logger.ErrorCF("feishu", "Feishu websocket stopped with error", map[string]any{
+			logger.ErrorCF(c.Name(), "Feishu websocket stopped with error", map[string]any{
 				"error": err.Error(),
 			})
 		}
@@ -130,6 +134,8 @@ func (c *FeishuChannel) Start(ctx context.Context) error {
 }
 
 func (c *FeishuChannel) Stop(ctx context.Context) error {
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
+
 	c.mu.Lock()
 	if c.cancel != nil {
 		c.cancel()
@@ -142,7 +148,7 @@ func (c *FeishuChannel) Stop(ctx context.Context) error {
 	}
 
 	c.SetRunning(false)
-	logger.InfoC("feishu", "Feishu channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 
