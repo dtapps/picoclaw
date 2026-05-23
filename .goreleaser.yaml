@@ -139,11 +139,6 @@ changelog:
       - "^docs:"
       - "^test:"
 
-# upx:
-#    - enabled: true
-#      compress: best
-#      lzma: true
-
 release:
   disable: '{{ isEnvSet "NIGHTLY_BUILD" }}'
   footer: >-
