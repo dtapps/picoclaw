@@ -160,6 +160,130 @@ func TestAgentConfig_FullParse(t *testing.T) {
 	}
 }
 
+func TestTurnProfileConfig_ParseAndResolve(t *testing.T) {
+	jsonData := `{
+		"agents": {
+			"defaults": {
+				"turn_profile": {
+					"enabled": true,
+					"history": {"mode": "off"},
+					"system_prompt": {"mode": "off"},
+					"skills": {"mode": "off"},
+					"tools": {
+						"mode": "custom",
+						"allow": ["web_search", "web_fetch"]
+					}
+				}
+			}
+		}
+	}`
+
+	cfg := DefaultConfig()
+	if err := json.Unmarshal([]byte(jsonData), cfg); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if err := cfg.ValidateTurnProfile(); err != nil {
+		t.Fatalf("ValidateTurnProfile() error = %v", err)
+	}
+
+	profile, ok, err := cfg.Agents.Defaults.ResolveTurnProfile()
+	if err != nil {
+		t.Fatalf("ResolveTurnProfile() error = %v", err)
+	}
+	if !ok {
+		t.Fatal("ResolveTurnProfile() ok = false, want true")
+	}
+	if profile.HistoryMode != TurnProfileModeOff ||
+		profile.SystemPromptMode != TurnProfileModeOff ||
+		profile.SkillsMode != TurnProfileModeOff ||
+		profile.ToolsMode != TurnProfileModeCustom {
+		t.Fatalf("resolved clean_web modes = %+v", profile)
+	}
+	assert.Equal(t, []string{"web_search", "web_fetch"}, profile.AllowedTools)
+}
+
+func TestTurnProfileConfig_DisabledOrMissingIsNoop(t *testing.T) {
+	cfg := DefaultConfig()
+
+	profile, ok, err := cfg.Agents.Defaults.ResolveTurnProfile()
+	if err != nil {
+		t.Fatalf("ResolveTurnProfile(missing) error = %v", err)
+	}
+	if ok {
+		t.Fatal("ResolveTurnProfile(missing) ok = true, want false")
+	}
+	if profile.Enabled {
+		t.Fatalf("ResolveTurnProfile(missing) profile.Enabled = true, want false")
+	}
+
+	cfg.Agents.Defaults.TurnProfile = TurnProfileConfig{
+		Enabled: false,
+		History: TurnProfileBlock{
+			Mode: TurnProfileModeOff,
+		},
+	}
+	profile, ok, err = cfg.Agents.Defaults.ResolveTurnProfile()
+	if err != nil {
+		t.Fatalf("ResolveTurnProfile(disabled) error = %v", err)
+	}
+	if ok || profile.Enabled {
+		t.Fatalf("disabled profile = (%+v, %v), want no-op", profile, ok)
+	}
+
+	cfg.Agents.Defaults.TurnProfile = TurnProfileConfig{
+		Enabled: false,
+		History: TurnProfileBlock{
+			Mode: TurnProfileModeCustom,
+		},
+		Tools: TurnProfileBlock{
+			Mode: TurnProfileMode("sometimes"),
+		},
+	}
+	if err := cfg.ValidateTurnProfile(); err != nil {
+		t.Fatalf("ValidateTurnProfile(disabled unsupported modes) error = %v, want nil", err)
+	}
+}
+
+func TestTurnProfileConfig_ValidationRejectsUnsupportedModes(t *testing.T) {
+	tests := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "history custom unsupported",
+			raw:  `{"agents":{"defaults":{"turn_profile":{"enabled":true,"history":{"mode":"custom"}}}}}`,
+			want: "history.mode",
+		},
+		{
+			name: "system prompt custom unsupported",
+			raw:  `{"agents":{"defaults":{"turn_profile":{"enabled":true,"system_prompt":{"mode":"custom"}}}}}`,
+			want: "system_prompt.mode",
+		},
+		{
+			name: "unknown mode",
+			raw:  `{"agents":{"defaults":{"turn_profile":{"enabled":true,"tools":{"mode":"sometimes"}}}}}`,
+			want: "unsupported mode",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := DefaultConfig()
+			if err := json.Unmarshal([]byte(tt.raw), cfg); err != nil {
+				t.Fatalf("unmarshal: %v", err)
+			}
+			err := cfg.ValidateTurnProfile()
+			if err == nil {
+				t.Fatal("ValidateTurnProfile() error = nil, want error")
+			}
+			if !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("ValidateTurnProfile() error = %v, want containing %q", err, tt.want)
+			}
+		})
+	}
+}
+
 func TestDefaultConfig_MCPMaxInlineTextChars(t *testing.T) {
 	cfg := DefaultConfig()
 	if cfg.Tools.MCP.GetMaxInlineTextChars() != DefaultMCPMaxInlineTextChars {
@@ -2681,7 +2805,7 @@ func TestFilterSensitiveData_AllTokenTypes(t *testing.T) {
 }
 
 // ---------------------------------------------------------------------------
-// makeBackup tests
+// MakeBackup tests
 // ---------------------------------------------------------------------------
 
 // TestMakeBackup_WithDateSuffix verifies backup files include a date suffix.
@@ -2692,8 +2816,8 @@ func TestMakeBackup_WithDateSuffix(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	if err := makeBackup(configPath); err != nil {
-		t.Fatalf("makeBackup: %v", err)
+	if err := MakeBackup(configPath); err != nil {
+		t.Fatalf("MakeBackup: %v", err)
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -2732,8 +2856,8 @@ func TestMakeBackup_AlsoBacksSecurityFile(t *testing.T) {
 	os.WriteFile(configPath, []byte(`{"version":2}`), 0o600)
 	os.WriteFile(secPath, []byte(`model_list:\n  test:0:\n    api_keys:\n      - "sk-test"\n`), 0o600)
 
-	if err := makeBackup(configPath); err != nil {
-		t.Fatalf("makeBackup: %v", err)
+	if err := MakeBackup(configPath); err != nil {
+		t.Fatalf("MakeBackup: %v", err)
 	}
 
 	entries, err := os.ReadDir(dir)
@@ -2759,14 +2883,14 @@ func TestMakeBackup_AlsoBacksSecurityFile(t *testing.T) {
 	}
 }
 
-// TestMakeBackup_NonexistentFileSkipsBackup verifies that makeBackup returns nil
+// TestMakeBackup_NonexistentFileSkipsBackup verifies that MakeBackup returns nil
 // when the config file does not exist (no error, no panic).
 func TestMakeBackup_NonexistentFileSkipsBackup(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "nonexistent.json")
 
-	if err := makeBackup(configPath); err != nil {
-		t.Fatalf("makeBackup on nonexistent file should return nil, got: %v", err)
+	if err := MakeBackup(configPath); err != nil {
+		t.Fatalf("MakeBackup on nonexistent file should return nil, got: %v", err)
 	}
 }
 
@@ -2777,8 +2901,8 @@ func TestMakeBackup_OnlyConfigNoSecurity(t *testing.T) {
 	configPath := filepath.Join(dir, "config.json")
 	os.WriteFile(configPath, []byte(`{"version":2}`), 0o600)
 
-	if err := makeBackup(configPath); err != nil {
-		t.Fatalf("makeBackup: %v", err)
+	if err := MakeBackup(configPath); err != nil {
+		t.Fatalf("MakeBackup: %v", err)
 	}
 
 	entries, _ := os.ReadDir(dir)
@@ -2801,7 +2925,7 @@ func TestMakeBackup_OnlyConfigNoSecurity(t *testing.T) {
 }
 
 // TestMakeBackup_SameDateSuffix verifies that config and security backups
-// share the same date suffix (they are created in the same makeBackup call).
+// share the same date suffix (they are created in the same MakeBackup call).
 func TestMakeBackup_SameDateSuffix(t *testing.T) {
 	dir := t.TempDir()
 	configPath := filepath.Join(dir, "config.json")
@@ -2810,8 +2934,8 @@ func TestMakeBackup_SameDateSuffix(t *testing.T) {
 	os.WriteFile(configPath, []byte(`{"version":2}`), 0o600)
 	os.WriteFile(secPath, []byte(`key: value`), 0o600)
 
-	if err := makeBackup(configPath); err != nil {
-		t.Fatalf("makeBackup: %v", err)
+	if err := MakeBackup(configPath); err != nil {
+		t.Fatalf("MakeBackup: %v", err)
 	}
 
 	entries, _ := os.ReadDir(dir)

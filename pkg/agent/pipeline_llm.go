@@ -36,15 +36,11 @@ func (p *Pipeline) CallLLM(
 
 	// PreLLM: graceful terminal handling
 	exec.gracefulTerminal, _ = ts.gracefulInterruptRequested()
-	// PreLLM: 工具定义（如果上下文中设置了 NoTools 标志则跳过）
-	if NoToolsFromCtx(turnCtx) {
-		exec.providerToolDefs = nil
-	} else {
-		exec.providerToolDefs = ts.agent.Tools.ToProviderDefs()
-	}
+	exec.providerToolDefs = ts.agent.Tools.ToProviderDefs()
+	exec.providerToolDefs = filterToolsByTurnProfile(exec.providerToolDefs, ts.profile)
 
 	// Native web search support
-	webSearchEnabled := al.cfg.Tools.IsToolEnabled("web")
+	webSearchEnabled := al.cfg.Tools.IsToolEnabled("web") && turnProfileToolAllowed(ts.profile, "web_search")
 	exec.useNativeSearch = webSearchEnabled && al.cfg.Tools.Web.PreferNative &&
 		func() bool {
 			if ns, ok := ts.agent.Provider.(providers.NativeSearchCapable); ok {
@@ -52,7 +48,6 @@ func (p *Pipeline) CallLLM(
 			}
 			return false
 		}()
-
 	if exec.useNativeSearch {
 		filtered := make([]providers.ToolDefinition, 0, len(exec.providerToolDefs))
 		for _, td := range exec.providerToolDefs {
@@ -78,14 +73,7 @@ func (p *Pipeline) CallLLM(
 	if exec.useNativeSearch {
 		exec.llmOpts["native_search"] = true
 	}
-	if ts.agent.ThinkingLevel != ThinkingOff {
-		if tc, ok := ts.agent.Provider.(providers.ThinkingCapable); ok && tc.SupportsThinking() {
-			exec.llmOpts["thinking_level"] = string(ts.agent.ThinkingLevel)
-		} else {
-			logger.WarnCF("agent", "thinking_level is set but current provider does not support it, ignoring",
-				map[string]any{"agent_id": ts.agent.ID, "thinking_level": string(ts.agent.ThinkingLevel)})
-		}
-	}
+	applyTurnThinkingOptions(exec, ts.agent, exec.activeProvider, true)
 
 	exec.llmModel = exec.activeModel
 
@@ -106,10 +94,16 @@ func (p *Pipeline) CallLLM(
 				prevModel := exec.llmModel
 				exec.llmModel = llmReq.Model
 				exec.callMessages = llmReq.Messages
-				exec.providerToolDefs = llmReq.Tools
+				exec.providerToolDefs = filterToolsByTurnProfile(llmReq.Tools, ts.profile)
 				exec.llmOpts = llmReq.Options
+				nativeSearchAllowed := exec.useNativeSearch &&
+					turnProfileToolAllowed(ts.profile, "web_search")
+				if !nativeSearchAllowed {
+					delete(exec.llmOpts, "native_search")
+				}
 				if strings.TrimSpace(exec.llmModel) != "" && exec.llmModel != prevModel {
 					p.applyBeforeLLMModelRewrite(ts, exec)
+					applyTurnThinkingOptions(exec, ts.agent, exec.activeProvider, true)
 				}
 			}
 		case HookActionAbortTurn:
@@ -177,21 +171,33 @@ func (p *Pipeline) CallLLM(
 		}
 
 		if len(exec.activeCandidates) > 1 && p.Fallback != nil {
-			fbResult, fbErr := p.Fallback.Execute(
+			fbResult, fbErr := p.Fallback.ExecuteCandidate(
 				providerCtx,
 				exec.activeCandidates,
-				func(ctx context.Context, provider, model string) (*providers.LLMResponse, error) {
+				func(ctx context.Context, candidate providers.FallbackCandidate) (*providers.LLMResponse, error) {
 					candidateProvider, err := providerForFallbackCandidate(
 						ts.agent,
 						exec.activeProvider,
 						exec.activeCandidates,
-						provider,
-						model,
+						candidate.Provider,
+						candidate.Model,
 					)
 					if err != nil {
 						return nil, err
 					}
-					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, exec.llmOpts)
+					callOpts := shallowCloneLLMOptions(exec.llmOpts)
+					delete(callOpts, "thinking_level")
+					candidateCfg := resolveActiveModelConfig(
+						p.Cfg,
+						ts.agent.Workspace,
+						[]providers.FallbackCandidate{candidate},
+						candidate.Model,
+						p.Cfg.Agents.Defaults.Provider,
+					)
+					candidateThinking := thinkingSettingsFromModelConfig(candidateCfg)
+					applyThinkingOption(callOpts, candidateProvider, candidateThinking, true, ts.agent.ID)
+					exec.suppressReasoning = shouldSuppressReasoningFor(candidateThinking)
+					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, candidate.Model, callOpts)
 				},
 			)
 			if fbErr != nil {
@@ -409,39 +415,64 @@ func (p *Pipeline) CallLLM(
 				contextualSkills = ts.agent.ContextBuilder.ResolveActiveSkillsForContext(ts.activeSkills)
 			}
 			ts.recordSkillContextSnapshot(skillContextTriggerContextRetryRebuild, contextualSkills)
-			rebuildPromptReq := promptBuildRequestForTurn(ts, exec.history, exec.summary, "", nil)
-			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
-			exec.messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
-
-			// 重试后二次检查：若仍超预算则强制截断历史消息
-			var retryToolDefs []providers.ToolDefinition
-			if !NoToolsFromCtx(turnCtx) {
-				retryToolDefs = ts.agent.Tools.ToProviderDefs()
+			stableHistory, protectedTurnTail := splitHistoryForActiveTurn(
+				exec.history,
+				ts.persistedMessagesSnapshot(),
+			)
+			buildMessages := func(trimmedHistory []providers.Message) []providers.Message {
+				fullHistory := append(append([]providers.Message(nil), trimmedHistory...), protectedTurnTail...)
+				rebuildPromptReq := promptBuildRequestForTurn(ts, fullHistory, exec.summary, "", nil, p.Cfg)
+				rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
+				return ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 			}
-			if isOverContextBudget(
-				ts.agent.ContextWindow,
-				exec.messages,
-				retryToolDefs,
-				ts.agent.MaxTokens,
-			) {
-				logger.WarnCF("agent", "重试后仍超预算，强制截断历史消息",
-					map[string]any{"session_key": ts.sessionKey})
-				maxHistoryLen := len(exec.messages) - 1 // 保留 system 消息
-				for maxHistoryLen > 0 {
-					testMsgs := append(
-						[]providers.Message{exec.messages[0]},
-						exec.messages[len(exec.messages)-maxHistoryLen:]...)
-					if !isOverContextBudget(ts.agent.ContextWindow, testMsgs, retryToolDefs, ts.agent.MaxTokens) {
-						exec.messages = testMsgs
-						break
+			originalHistoryCount := len(exec.history)
+			var fit bool
+			var trimmedStableHistory []providers.Message
+			trimmedStableHistory, exec.callMessages, fit = trimHistoryToFitContextWindow(
+				stableHistory,
+				func(trimmedHistory []providers.Message) []providers.Message {
+					rebuilt := buildMessages(trimmedHistory)
+					if exec.gracefulTerminal {
+						return append(append([]providers.Message(nil), rebuilt...), ts.interruptHintMessage())
 					}
-					maxHistoryLen--
-				}
-			}
-			exec.callMessages = exec.messages
+					return rebuilt
+				},
+				ts.agent.ContextWindow,
+				exec.providerToolDefs,
+				ts.agent.MaxTokens,
+			)
+			exec.history = append(trimmedStableHistory, protectedTurnTail...)
+			exec.messages = buildMessages(trimmedStableHistory)
 			if exec.gracefulTerminal {
 				msgs := append([]providers.Message(nil), exec.messages...)
 				exec.callMessages = append(msgs, ts.interruptHintMessage())
+			}
+			if dropped := originalHistoryCount - len(exec.history); dropped > 0 {
+				logger.WarnCF("agent", "Trimmed rebuilt history after context retry compaction", map[string]any{
+					"session_key":     ts.sessionKey,
+					"retry":           retry,
+					"dropped_msgs":    dropped,
+					"remaining_msgs":  len(exec.history),
+					"context_window":  ts.agent.ContextWindow,
+					"max_tokens":      ts.agent.MaxTokens,
+					"still_overlimit": !fit,
+				})
+			} else if !fit {
+				logger.WarnCF("agent", "Context still exceeds budget after retry compaction rebuild", map[string]any{
+					"session_key":         ts.sessionKey,
+					"retry":               retry,
+					"history_msgs":        len(exec.history),
+					"protected_turn_msgs": len(protectedTurnTail),
+					"context_window":      ts.agent.ContextWindow,
+					"max_tokens":          ts.agent.MaxTokens,
+				})
+			}
+			if !fit {
+				err = fmt.Errorf(
+					"context window still exceeded after retry compaction; refusing to drop active turn messages: %w",
+					err,
+				)
+				break
 			}
 			continue
 		}
@@ -625,6 +656,11 @@ func (p *Pipeline) CallLLM(
 		}
 	}
 
+	if exec.suppressReasoning {
+		exec.response.Reasoning = ""
+		exec.response.ReasoningContent = ""
+		exec.response.ReasoningDetails = nil
+	}
 	reasoningContent := responseReasoningContent(exec.response)
 	shouldPublishPicoToolCallInterim := ts.channel == "pico" && len(exec.response.ToolCalls) > 0
 	if shouldPublishPicoToolCallInterim {

@@ -146,21 +146,90 @@ func TestAssemblerBudgetEvictsOldest(t *testing.T) {
 
 	// Budget of 200 tokens with FreshTailCount=32
 	// Fresh tail = last 32 messages (320 tokens, over budget)
-	// 新逻辑：超预算时截断 fresh tail 到预算内 → 200/10 = 20 messages
-	// Evictable = first 8 messages (80 tokens) — 全部排除因为 remainingBudget=0
+	// Evictable = first 8 messages (80 tokens)
+	// The oldest messages from the fresh tail should be dropped so only the
+	// newest 20 messages remain within the 200-token budget.
 	a := &Assembler{store: s, config: Config{}}
 	result, err := a.Assemble(ctx, convID, AssembleInput{Budget: 200})
 	if err != nil {
 		t.Fatalf("Assemble: %v", err)
 	}
 
-	// 应该只包含截断后的 fresh tail（20 条 = 200 tokens / 10 per message）
 	if len(result.Messages) != 20 {
-		t.Errorf("Messages = %d, want 20 (truncated fresh tail)", len(result.Messages))
+		t.Errorf("Messages = %d, want 20", len(result.Messages))
 	}
-	// 应该是最后 20 条消息（msgs[20] ~ msgs[39]）
 	if result.Messages[0].ID != msgs[20].ID {
 		t.Errorf("first message ID = %d, want %d (msgs[20])", result.Messages[0].ID, msgs[20].ID)
+	}
+
+	totalTokens := 0
+	for _, msg := range result.Messages {
+		totalTokens += msg.TokenCount
+	}
+	if totalTokens > 200 {
+		t.Errorf("assembled tokens = %d, want <= 200", totalTokens)
+	}
+}
+
+func TestAssemblerBudgetPreservesLatestToolTurnWhenItExceedsBudget(t *testing.T) {
+	s, convID := setupAssemblerStore(t)
+	ctx := context.Background()
+
+	oldMsg, _ := s.AddMessage(ctx, convID, "assistant", "older context", 20)
+	userMsg, _ := s.AddMessage(ctx, convID, "user", "inspect the file", 5)
+	assistantToolMsg, _ := s.AddMessageWithParts(ctx, convID, "assistant", []MessagePart{
+		{
+			Type:       "tool_use",
+			Name:       "read_file",
+			Arguments:  `{"path":"/tmp/test.txt"}`,
+			ToolCallID: "tc_1",
+		},
+	}, 5)
+	toolResultMsg, _ := s.AddMessageWithParts(ctx, convID, "tool", []MessagePart{
+		{
+			Type:       "tool_result",
+			ToolCallID: "tc_1",
+			Text:       "very large tool output",
+		},
+	}, 200)
+	finalAssistantMsg, _ := s.AddMessage(ctx, convID, "assistant", "done", 5)
+
+	s.UpsertContextItems(ctx, convID, []ContextItem{
+		{Ordinal: 100, ItemType: "message", MessageID: oldMsg.ID, TokenCount: 20},
+		{Ordinal: 200, ItemType: "message", MessageID: userMsg.ID, TokenCount: 5},
+		{Ordinal: 300, ItemType: "message", MessageID: assistantToolMsg.ID, TokenCount: 5},
+		{Ordinal: 400, ItemType: "message", MessageID: toolResultMsg.ID, TokenCount: 200},
+		{Ordinal: 500, ItemType: "message", MessageID: finalAssistantMsg.ID, TokenCount: 5},
+	})
+
+	a := &Assembler{store: s, config: Config{}}
+	result, err := a.Assemble(ctx, convID, AssembleInput{Budget: 210})
+	if err != nil {
+		t.Fatalf("Assemble: %v", err)
+	}
+
+	if len(result.Messages) != 4 {
+		t.Fatalf("Messages = %d, want 4 protected-turn messages", len(result.Messages))
+	}
+	if result.Messages[0].ID != userMsg.ID {
+		t.Fatalf("first message ID = %d, want current user message %d", result.Messages[0].ID, userMsg.ID)
+	}
+	if result.Messages[1].ID != assistantToolMsg.ID {
+		t.Fatalf("second message ID = %d, want assistant tool-call %d", result.Messages[1].ID, assistantToolMsg.ID)
+	}
+	if result.Messages[2].ID != toolResultMsg.ID {
+		t.Fatalf("third message ID = %d, want tool result %d", result.Messages[2].ID, toolResultMsg.ID)
+	}
+	if result.Messages[3].ID != finalAssistantMsg.ID {
+		t.Fatalf("fourth message ID = %d, want final assistant %d", result.Messages[3].ID, finalAssistantMsg.ID)
+	}
+
+	totalTokens := 0
+	for _, msg := range result.Messages {
+		totalTokens += msg.TokenCount
+	}
+	if totalTokens <= 210 {
+		t.Fatalf("assembled tokens = %d, want protected turn to remain over budget", totalTokens)
 	}
 }
 

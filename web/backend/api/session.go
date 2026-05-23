@@ -54,6 +54,7 @@ type sessionChatMessage struct {
 	Content     string                  `json:"content"`
 	Kind        string                  `json:"kind,omitempty"`
 	ModelName   string                  `json:"model_name,omitempty"`
+	CreatedAt   *time.Time              `json:"created_at,omitempty"`
 	Media       []string                `json:"media,omitempty"`
 	Attachments []sessionChatAttachment `json:"attachments,omitempty"`
 	ToolCalls   []utils.VisibleToolCall `json:"tool_calls,omitempty"`
@@ -516,6 +517,7 @@ func sessionTranscriptMessages(
 				Role:        "user",
 				Content:     msg.Content,
 				ModelName:   msg.ModelName,
+				CreatedAt:   msg.CreatedAt,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,
 			}
@@ -537,8 +539,9 @@ func sessionTranscriptMessages(
 				msg.ToolCalls,
 				msg.ModelName,
 				toolFeedbackMaxArgsLength,
+				msg.CreatedAt,
 			)
-			visibleToolMessages := visibleAssistantToolMessages(msg.ToolCalls, msg.ModelName)
+			visibleToolMessages := visibleAssistantToolMessages(msg.ToolCalls, msg.ModelName, msg.CreatedAt)
 
 			// Pico web chat can persist both visible `message` tool output and a
 			// later plain assistant reply in the same turn. Hide only the fixed
@@ -564,6 +567,7 @@ func sessionTranscriptMessages(
 				Role:        "assistant",
 				Content:     content,
 				ModelName:   msg.ModelName,
+				CreatedAt:   msg.CreatedAt,
 				Media:       append([]string(nil), msg.Media...),
 				Attachments: attachments,
 			}
@@ -694,6 +698,7 @@ func assistantThoughtMessage(msg providers.Message) (sessionChatMessage, bool) {
 		Content:   reasoning,
 		Kind:      "thought",
 		ModelName: msg.ModelName,
+		CreatedAt: msg.CreatedAt,
 	}, true
 }
 
@@ -701,6 +706,7 @@ func assistantToolCallsMessage(
 	toolCalls []providers.ToolCall,
 	modelName string,
 	toolFeedbackMaxArgsLength int,
+	createdAt *time.Time,
 ) (sessionChatMessage, bool) {
 	if len(toolCalls) == 0 {
 		return sessionChatMessage{}, false
@@ -718,6 +724,7 @@ func assistantToolCallsMessage(
 		Role:      "assistant",
 		Kind:      "tool_calls",
 		ModelName: modelName,
+		CreatedAt: createdAt,
 		ToolCalls: visibleToolCalls,
 	}, true
 }
@@ -729,7 +736,11 @@ func visibleAssistantToolArgsPreview(
 	return utils.VisibleToolCallArgumentsPreview(tc, toolFeedbackMaxArgsLength)
 }
 
-func visibleAssistantToolMessages(toolCalls []providers.ToolCall, modelName string) []sessionChatMessage {
+func visibleAssistantToolMessages(
+	toolCalls []providers.ToolCall,
+	modelName string,
+	createdAt *time.Time,
+) []sessionChatMessage {
 	if len(toolCalls) == 0 {
 		return nil
 	}
@@ -748,6 +759,7 @@ func visibleAssistantToolMessages(toolCalls []providers.ToolCall, modelName stri
 			Role:      "assistant",
 			Content:   content,
 			ModelName: modelName,
+			CreatedAt: createdAt,
 		})
 	}
 
@@ -930,6 +942,11 @@ func (h *Handler) handleGetSession(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	for i := range sess.Messages {
+		if sess.Messages[i].CreatedAt == nil {
+			sess.Messages[i].CreatedAt = &sess.Updated
+		}
+	}
 	messages := detailSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
 
 	w.Header().Set("Content-Type", "application/json")

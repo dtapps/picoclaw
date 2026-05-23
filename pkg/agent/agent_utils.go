@@ -483,6 +483,9 @@ func activeSkillNames(agent *AgentInstance, opts processOptions) []string {
 	if agent == nil {
 		return nil
 	}
+	if turnProfileSkillsOff(opts.TurnProfile) {
+		return nil
+	}
 
 	combined := make([]string, 0, len(agent.SkillsFilter)+len(opts.ForcedSkills))
 	combined = append(combined, agent.SkillsFilter...)
@@ -511,6 +514,9 @@ func activeSkillNames(agent *AgentInstance, opts processOptions) []string {
 		resolved = append(resolved, name)
 	}
 
+	if turnProfileCustomSkills(opts.TurnProfile) {
+		return filterNamesByTurnProfile(resolved, opts.TurnProfile.AllowedSkills)
+	}
 	return resolved
 }
 
@@ -572,6 +578,7 @@ func sideQuestionModelName(agent *AgentInstance, usedLight bool) string {
 }
 
 func modelNameFromIdentityKey(identityKey string) string {
+	identityKey = strings.TrimSpace(identityKey)
 	if identityKey == "" {
 		return ""
 	}

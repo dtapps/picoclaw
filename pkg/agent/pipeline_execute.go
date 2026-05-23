@@ -131,6 +131,36 @@ toolLoop:
 
 		toolName := tc.Name
 		toolArgs := cloneStringAnyMap(tc.Arguments)
+		denyByTurnProfile := func() bool {
+			if turnProfileToolAllowed(ts.profile, toolName) {
+				return false
+			}
+			exec.allResponsesHandled = false
+			denyContent := fmt.Sprintf("Tool %q is not allowed by the active turn profile.", toolName)
+			al.emitEvent(
+				runtimeevents.KindAgentToolExecSkipped,
+				ts.eventMeta("runTurn", "turn.tool.skipped"),
+				ToolExecSkippedPayload{
+					Tool:   toolName,
+					Reason: denyContent,
+				},
+			)
+			deniedMsg := providers.Message{
+				Role:       "tool",
+				Content:    denyContent,
+				ToolCallID: tc.ID,
+			}
+			messages = append(messages, deniedMsg)
+			if !ts.opts.NoHistory {
+				ts.agent.Sessions.AddFullMessage(ts.sessionKey, deniedMsg)
+				ts.recordPersistedMessage(deniedMsg)
+			}
+			return true
+		}
+
+		if denyByTurnProfile() {
+			continue
+		}
 
 		if al.hooks != nil {
 			toolReq, decision := al.hooks.BeforeTool(turnCtx, &ToolCallHookRequest{
@@ -363,7 +393,9 @@ toolLoop:
 								content := al.cfg.FilterSensitiveData(result.ForLLM)
 								msg := subTurnResultPromptMessage(content)
 								messages = append(messages, msg)
-								ts.agent.Sessions.AddFullMessage(ts.sessionKey, msg)
+								if !ts.opts.NoHistory {
+									ts.agent.Sessions.AddFullMessage(ts.sessionKey, msg)
+								}
 							}
 						default:
 						}
@@ -439,6 +471,10 @@ toolLoop:
 				}
 				continue
 			}
+		}
+
+		if denyByTurnProfile() {
+			continue
 		}
 
 		argsJSON, _ := json.Marshal(toolArgs)
@@ -748,7 +784,9 @@ toolLoop:
 					content := al.cfg.FilterSensitiveData(result.ForLLM)
 					msg := subTurnResultPromptMessage(content)
 					messages = append(messages, msg)
-					ts.agent.Sessions.AddFullMessage(ts.sessionKey, msg)
+					if !ts.opts.NoHistory {
+						ts.agent.Sessions.AddFullMessage(ts.sessionKey, msg)
+					}
 				}
 			default:
 			}
@@ -802,7 +840,7 @@ toolLoop:
 					})
 			}
 		}
-		if ts.opts.EnableSummary {
+		if !ts.opts.NoHistory && ts.opts.EnableSummary {
 			al.contextManager.Compact(turnCtx, &CompactRequest{
 				SessionKey: ts.sessionKey,
 				Reason:     ContextCompressReasonSummarize,
