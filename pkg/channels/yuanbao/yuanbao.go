@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/commands"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -119,7 +120,7 @@ func (c *YuanbaoChannel) applyYuanbaoProxy() error {
 }
 
 func (c *YuanbaoChannel) Start(ctx context.Context) error {
-	logger.InfoC(c.Name(), "元宝频道启动...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -127,6 +128,7 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 
 	// 应用代理设置
 	if err = c.applyYuanbaoProxy(); err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return err
 	}
 
@@ -293,7 +295,7 @@ func (c *YuanbaoChannel) Start(ctx context.Context) error {
 }
 
 func (c *YuanbaoChannel) Stop(ctx context.Context) error {
-	logger.InfoC(c.Name(), "正在停止元宝频道...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()
@@ -304,6 +306,7 @@ func (c *YuanbaoChannel) Stop(ctx context.Context) error {
 	}
 
 	c.SetRunning(false)
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 
 	return nil
 }

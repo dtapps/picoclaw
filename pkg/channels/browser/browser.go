@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -223,16 +224,16 @@ func (c *BrowserChannel) currentConnCount() int {
 
 // Start 实现 Channel 接口
 func (c *BrowserChannel) Start(ctx context.Context) error {
-	logger.InfoC("browser", "Starting Browser channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.SetRunning(true)
-	logger.InfoC("browser", "Browser channel started")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop 实现 Channel 接口
 func (c *BrowserChannel) Stop(ctx context.Context) error {
-	logger.InfoC("browser", "Stopping Browser channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	for _, bc := range c.takeAllConnections() {
@@ -246,7 +247,7 @@ func (c *BrowserChannel) Stop(ctx context.Context) error {
 		c.progress.StopAll()
 	}
 
-	logger.InfoC("browser", "Browser channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

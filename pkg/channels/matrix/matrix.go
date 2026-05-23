@@ -28,6 +28,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -262,7 +263,7 @@ func NewMatrixChannel(
 }
 
 func (c *MatrixChannel) Start(ctx context.Context) error {
-	logger.InfoC("matrix", "Starting Matrix channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.startTime = time.Now()
@@ -295,12 +296,12 @@ func (c *MatrixChannel) Start(ctx context.Context) error {
 		}
 	}()
 
-	logger.InfoC("matrix", "Matrix channel started")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 func (c *MatrixChannel) Stop(ctx context.Context) error {
-	logger.InfoC("matrix", "Stopping Matrix channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	if c.cancel != nil {
@@ -318,7 +319,7 @@ func (c *MatrixChannel) Stop(ctx context.Context) error {
 		c.client.Crypto = nil
 	}
 
-	logger.InfoC("matrix", "Matrix channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

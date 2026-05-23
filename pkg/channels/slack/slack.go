@@ -13,6 +13,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -67,18 +68,19 @@ func NewSlackChannel(
 }
 
 func (c *SlackChannel) Start(ctx context.Context) error {
-	logger.InfoC("slack", "Starting Slack channel (Socket Mode)")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	authResp, err := c.api.AuthTest()
 	if err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("slack auth test failed: %w", err)
 	}
 	c.botUserID = authResp.UserID
 	c.teamID = authResp.TeamID
 
-	logger.InfoCF("slack", "Slack bot connected", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"bot_user_id": c.botUserID,
 		"team":        authResp.Team,
 	})
@@ -96,19 +98,18 @@ func (c *SlackChannel) Start(ctx context.Context) error {
 	}()
 
 	c.SetRunning(true)
-	logger.InfoC("slack", "Slack channel started (Socket Mode)")
 	return nil
 }
 
 func (c *SlackChannel) Stop(ctx context.Context) error {
-	logger.InfoC("slack", "Stopping Slack channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()
 	}
 
 	c.SetRunning(false)
-	logger.InfoC("slack", "Slack channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

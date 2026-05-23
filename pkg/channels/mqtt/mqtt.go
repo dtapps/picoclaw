@@ -16,6 +16,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -66,7 +67,7 @@ func NewMQTTChannel(bc *config.Channel, cfg *config.MQTTSettings, b *bus.Message
 
 // Start connects to the MQTT broker and begins listening for inbound messages.
 func (c *MQTTChannel) Start(ctx context.Context) error {
-	logger.InfoC("mqtt", "Starting MQTT channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	keepAlive := c.cfg.KeepAlive
 	if keepAlive <= 0 {
@@ -210,14 +211,14 @@ func (c *MQTTChannel) handleInbound(msg pahomqtt.Message) {
 
 // Stop disconnects from the MQTT broker.
 func (c *MQTTChannel) Stop(_ context.Context) error {
-	logger.InfoC("mqtt", "Stopping MQTT channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	if c.client != nil {
 		c.client.Disconnect(500)
 	}
 
-	logger.InfoC("mqtt", "MQTT channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

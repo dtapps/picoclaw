@@ -16,6 +16,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -64,7 +65,7 @@ func NewDingTalkChannel(
 
 // Start initializes the DingTalk channel with Stream Mode
 func (c *DingTalkChannel) Start(ctx context.Context) error {
-	logger.InfoC("dingtalk", "Starting DingTalk channel (Stream Mode)...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -82,17 +83,18 @@ func (c *DingTalkChannel) Start(ctx context.Context) error {
 
 	// Start the stream client
 	if err := c.streamClient.Start(c.ctx); err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to start stream client: %w", err)
 	}
 
 	c.SetRunning(true)
-	logger.InfoC("dingtalk", "DingTalk channel started (Stream Mode)")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop gracefully stops the DingTalk channel
 func (c *DingTalkChannel) Stop(ctx context.Context) error {
-	logger.InfoC("dingtalk", "Stopping DingTalk channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()
@@ -103,7 +105,7 @@ func (c *DingTalkChannel) Stop(ctx context.Context) error {
 	}
 
 	c.SetRunning(false)
-	logger.InfoC("dingtalk", "DingTalk channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

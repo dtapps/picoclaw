@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -132,11 +133,12 @@ func NewSC3BotChannel(
 
 // Start initializes the SC3Bot channel.
 func (c *SC3BotChannel) Start(ctx context.Context) error {
-	logger.InfoC("sc3bot", "Starting Server酱³ Bot channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	// Verify bot token by calling getMe
 	botInfo, err := c.getMe(ctx)
 	if err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("sc3bot: failed to get bot info: %w", err)
 	}
 
@@ -154,13 +156,13 @@ func (c *SC3BotChannel) Start(ctx context.Context) error {
 	go c.pollLoop()
 	logger.InfoC("sc3bot", "Started polling mode")
 
-	logger.InfoC("sc3bot", "Server酱³ Bot channel started")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop gracefully stops the SC3Bot channel.
 func (c *SC3BotChannel) Stop(ctx context.Context) error {
-	logger.InfoC("sc3bot", "Stopping Server酱³ Bot channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()
@@ -181,7 +183,7 @@ func (c *SC3BotChannel) Stop(ctx context.Context) error {
 	}
 
 	c.SetRunning(false)
-	logger.InfoC("sc3bot", "Server酱³ Bot channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

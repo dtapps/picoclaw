@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -54,7 +55,7 @@ func NewWhatsAppChannel(
 }
 
 func (c *WhatsAppChannel) Start(ctx context.Context) error {
-	logger.InfoCF("whatsapp", "Starting WhatsApp channel", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_starting"), map[string]any{
 		"bridge_url": c.url,
 	})
 
@@ -88,7 +89,7 @@ func (c *WhatsAppChannel) Start(ctx context.Context) error {
 	c.mu.Unlock()
 
 	c.SetRunning(true)
-	logger.InfoC("whatsapp", "WhatsApp channel connected")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 
 	go c.listen()
 
@@ -96,7 +97,7 @@ func (c *WhatsAppChannel) Start(ctx context.Context) error {
 }
 
 func (c *WhatsAppChannel) Stop(ctx context.Context) error {
-	logger.InfoC("whatsapp", "Stopping WhatsApp channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	// Cancel context first to signal listen goroutine to exit
 	if c.cancel != nil {
@@ -117,6 +118,7 @@ func (c *WhatsAppChannel) Stop(ctx context.Context) error {
 
 	c.connected = false
 	c.SetRunning(false)
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 
 	return nil
 }

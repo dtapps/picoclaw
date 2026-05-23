@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -245,16 +246,16 @@ func (c *PicoChannel) currentConnCount() int {
 
 // Start implements Channel.
 func (c *PicoChannel) Start(ctx context.Context) error {
-	logger.InfoC("pico", "Starting Pico Protocol channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.SetRunning(true)
-	logger.InfoC("pico", "Pico Protocol channel started")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop implements Channel.
 func (c *PicoChannel) Stop(ctx context.Context) error {
-	logger.InfoC("pico", "Stopping Pico Protocol channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	// Close all connections
@@ -269,7 +270,7 @@ func (c *PicoChannel) Stop(ctx context.Context) error {
 		c.progress.StopAll()
 	}
 
-	logger.InfoC("pico", "Pico Protocol channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 
