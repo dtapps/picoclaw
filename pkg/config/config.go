@@ -827,10 +827,7 @@ type ModelConfig struct {
 	Workspace   string `json:"workspace,omitempty"`    // Workspace path for CLI-based providers
 
 	// Optional optimizations
-	RPM                 int                  `json:"rpm,omitempty"`              // 每分钟请求数限制
-	MaxTokens           int                  `json:"max_tokens,omitempty"`       // 每次请求的最大 token 数量
-	ContextWindow       int                  `json:"context_window,omitempty"`   // 最大上下文窗口大小（token 数）
-	MaxInputTokens      int                  `json:"max_input_tokens,omitempty"` // 最大输入 token 数量（包括消息和工具定义），超过将截断历史消息
+	RPM                 int                  `json:"rpm,omitempty"`              // Requests per minute limit
 	MaxTokensField      string               `json:"max_tokens_field,omitempty"` // Field name for max tokens (e.g., "max_completion_tokens")
 	RequestTimeout      int                  `json:"request_timeout,omitempty"`
 	ThinkingLevel       string               `json:"thinking_level,omitempty"`        // Extended thinking: off|low|medium|high|xhigh|adaptive
@@ -901,40 +898,6 @@ func (c *ModelConfig) SetAPIKey(value string) {
 	} else {
 		c.APIKeys = append(c.APIKeys, NewSecureString(value))
 	}
-}
-
-// GetMaxTokens 返回此模型配置的最大 token 数。
-// 如果未设置，则依次回退到 defaults.MaxTokens、DefaultMaxTokens。
-func (c *ModelConfig) GetMaxTokens(defaults *AgentDefaults) int {
-	if c != nil && c.MaxTokens > 0 {
-		return c.MaxTokens
-	}
-	if defaults != nil && defaults.MaxTokens > 0 {
-		return defaults.MaxTokens
-	}
-	return DefaultMaxTokens
-}
-
-// GetContextWindow 返回此模型配置的上下文窗口大小。
-// 如果未设置，则依次回退到 defaults.ContextWindow、maxTokens * 4。
-func (c *ModelConfig) GetContextWindow(defaults *AgentDefaults) int {
-	if c != nil && c.ContextWindow > 0 {
-		return c.ContextWindow
-	}
-	if defaults != nil && defaults.ContextWindow > 0 {
-		return defaults.ContextWindow
-	}
-	return c.GetMaxTokens(defaults) * 4
-}
-
-// GetMaxInputTokens 返回此模型配置的最大输入 token 数（包括消息和工具定义）。
-// 如果未设置，返回 0，表示不限制输入长度。
-// 这个值用于在组装消息时限制输入长度，超过将截断历史消息。
-func (c *ModelConfig) GetMaxInputTokens(defaults *AgentDefaults) int {
-	if c != nil && c.MaxInputTokens > 0 {
-		return c.MaxInputTokens
-	}
-	return 0
 }
 
 type ToolDiscoveryConfig struct {
@@ -1897,8 +1860,6 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 				ConnectMode:         m.ConnectMode,
 				Workspace:           m.Workspace,
 				RPM:                 m.RPM,
-				MaxTokens:           m.MaxTokens,
-				ContextWindow:       m.ContextWindow,
 				MaxTokensField:      m.MaxTokensField,
 				RequestTimeout:      m.RequestTimeout,
 				ThinkingLevel:       m.ThinkingLevel,
@@ -1924,8 +1885,6 @@ func expandMultiKeyModels(models []*ModelConfig) []*ModelConfig {
 			ConnectMode:         m.ConnectMode,
 			Workspace:           m.Workspace,
 			RPM:                 m.RPM,
-			MaxTokens:           m.MaxTokens,
-			ContextWindow:       m.ContextWindow,
 			MaxTokensField:      m.MaxTokensField,
 			RequestTimeout:      m.RequestTimeout,
 			ThinkingLevel:       m.ThinkingLevel,

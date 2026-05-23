@@ -65,9 +65,6 @@ interface EditForm {
   connectMode: string
   workspace: string
   rpm: string
-  maxTokens: string
-  contextWindow: string
-  maxInputTokens: string
   maxTokensField: string
   requestTimeout: string
   thinkingLevel: string
@@ -96,9 +93,6 @@ function buildInitialEditForm(model: ModelInfo): EditForm {
     connectMode: model.connect_mode ?? "",
     workspace: model.workspace ?? "",
     rpm: model.rpm ? String(model.rpm) : "",
-    maxTokens: model.max_tokens ? String(model.max_tokens) : "",
-    contextWindow: model.context_window ? String(model.context_window) : "",
-    maxInputTokens: model.max_input_tokens ? String(model.max_input_tokens) : "",
     maxTokensField: model.max_tokens_field ?? "",
     requestTimeout: model.request_timeout ? String(model.request_timeout) : "",
     thinkingLevel: model.thinking_level ?? "",
@@ -131,9 +125,6 @@ export function EditModelSheet({
     connectMode: "",
     workspace: "",
     rpm: "",
-    maxTokens: "",
-    contextWindow: "",
-    maxInputTokens: "",
     maxTokensField: "",
     requestTimeout: "",
     thinkingLevel: "",
@@ -702,45 +693,6 @@ export function EditModelSheet({
                     placeholder="off"
                   />
                 </Field>
-
-              <Field
-                label={t("models.field.maxTokens")}
-                hint={t("models.field.maxTokensHint")}
-              >
-                <Input
-                  value={form.maxTokens}
-                  onChange={setField("maxTokens")}
-                  placeholder="0"
-                  type="number"
-                  min={0}
-                />
-              </Field>
-
-              <Field
-                label={t("models.field.contextWindow")}
-                hint={t("models.field.contextWindowHint")}
-              >
-                <Input
-                  value={form.contextWindow}
-                  onChange={setField("contextWindow")}
-                  placeholder="0"
-                  type="number"
-                  min={0}
-                />
-              </Field>
-
-              <Field
-                label={t("models.field.maxInputTokens")}
-                hint={t("models.field.maxInputTokensHint")}
-              >
-                <Input
-                  value={form.maxInputTokens}
-                  onChange={setField("maxInputTokens")}
-                  placeholder="0"
-                  type="number"
-                  min={0}
-                />
-              </Field>
 
                 <Field
                   label={t("models.field.maxTokensField")}

@@ -21,10 +21,9 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 	var summary string
 	if !ts.opts.NoHistory {
 		if resp, err := p.ContextManager.Assemble(ctx, &AssembleRequest{
-			SessionKey:     ts.sessionKey,
-			Budget:         ts.agent.ContextWindow,
-			MaxTokens:      ts.agent.MaxTokens,
-			MaxInputTokens: ts.agent.MaxInputTokens,
+			SessionKey: ts.sessionKey,
+			Budget:     ts.agent.ContextWindow,
+			MaxTokens:  ts.agent.MaxTokens,
 		}); err == nil && resp != nil {
 			history = resp.History
 			summary = resp.Summary
@@ -63,10 +62,9 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 			}
 			ts.refreshRestorePointFromSession(ts.agent)
 			if resp, err := p.ContextManager.Assemble(ctx, &AssembleRequest{
-				SessionKey:     ts.sessionKey,
-				Budget:         ts.agent.ContextWindow,
-				MaxTokens:      ts.agent.MaxTokens,
-				MaxInputTokens: ts.agent.MaxInputTokens,
+				SessionKey: ts.sessionKey,
+				Budget:     ts.agent.ContextWindow,
+				MaxTokens:  ts.agent.MaxTokens,
 			}); err == nil && resp != nil {
 				history = resp.History
 				summary = resp.Summary
@@ -75,58 +73,6 @@ func (p *Pipeline) SetupTurn(ctx context.Context, ts *turnState) (*turnExecution
 			rebuildPromptReq.ActiveSkills = append([]string(nil), contextualSkills...)
 			messages = ts.agent.ContextBuilder.BuildMessagesFromPrompt(rebuildPromptReq)
 			messages = resolveMediaRefs(messages, p.MediaStore, maxMediaSize)
-
-			// 压缩后二次检查：若仍超预算则强制截断历史消息
-			if isOverContextBudget(ts.agent.ContextWindow, messages, toolDefs, ts.agent.MaxTokens) {
-				logger.WarnCF("agent", "压缩后仍超预算，强制截断历史消息",
-					map[string]any{"session_key": ts.sessionKey})
-				// 仅保留 system + 最新 N 条消息以适配预算
-				maxHistoryLen := len(messages) - 2 // 保留 system + user 消息
-				for maxHistoryLen > 0 {
-					testMsgs := append([]providers.Message{messages[0]}, messages[len(messages)-maxHistoryLen:]...)
-					if !isOverContextBudget(ts.agent.ContextWindow, testMsgs, toolDefs, ts.agent.MaxTokens) {
-						messages = testMsgs
-						break
-					}
-					maxHistoryLen--
-				}
-			}
-		}
-
-		// 如果设置了 MaxInputTokens，额外检查并截断历史消息
-		if ts.agent.MaxInputTokens > 0 {
-			inputTokens := 0
-			for _, msg := range messages {
-				inputTokens += EstimateMessageTokens(msg)
-			}
-			if toolDefs != nil {
-				inputTokens += EstimateToolDefsTokens(toolDefs)
-			}
-			if inputTokens > ts.agent.MaxInputTokens {
-				logger.WarnCF("agent", "超过 MaxInputTokens 限制，正在截断历史消息",
-					map[string]any{
-						"session_key":      ts.sessionKey,
-						"input_tokens":     inputTokens,
-						"max_input_tokens": ts.agent.MaxInputTokens,
-					})
-				// 仅保留 system + 最新 N 条消息以适配预算
-				maxHistoryLen := len(messages) - 2 // 保留 system + user 消息
-				for maxHistoryLen > 0 {
-					testMsgs := append([]providers.Message{messages[0]}, messages[len(messages)-maxHistoryLen:]...)
-					testTokens := 0
-					for _, msg := range testMsgs {
-						testTokens += EstimateMessageTokens(msg)
-					}
-					if toolDefs != nil {
-						testTokens += EstimateToolDefsTokens(toolDefs)
-					}
-					if testTokens <= ts.agent.MaxInputTokens {
-						messages = testMsgs
-						break
-					}
-					maxHistoryLen--
-				}
-			}
 		}
 	}
 

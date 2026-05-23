@@ -191,68 +191,7 @@ func (p *Pipeline) CallLLM(
 					if err != nil {
 						return nil, err
 					}
-					// 为当前候选模型构建 LLM 选项，使用模型特定的 maxTokens
-					candidateOpts := make(map[string]any, len(exec.llmOpts))
-					for k, v := range exec.llmOpts {
-						candidateOpts[k] = v
-					}
-					// 查找当前候选模型的配置并更新 maxTokens、ContextWindow 和 MaxInputTokens
-					candidateContextWindow := ts.agent.ContextWindow
-					candidateMaxInputTokens := ts.agent.MaxInputTokens
-					if modelCfg := lookupModelConfigByRef(p.Cfg, model); modelCfg != nil {
-						defaults := &p.Cfg.Agents.Defaults
-						candidateOpts["max_tokens"] = modelCfg.GetMaxTokens(defaults)
-						candidateContextWindow = modelCfg.GetContextWindow(defaults)
-						candidateMaxInputTokens = modelCfg.GetMaxInputTokens(defaults)
-					}
-
-					logger.InfoCF("agent", "备用模型 token 设置:", map[string]any{
-						"model (模型)":              model,
-						"max_tokens (最大输出)":       candidateOpts["max_tokens"],
-						"context_window (上下文窗口)":  candidateContextWindow,
-						"max_input_tokens (最大输入)": candidateMaxInputTokens,
-					})
-
-					// 如果备用模型的 ContextWindow 比主模型小，需要进行上下文压缩
-					if candidateContextWindow < ts.agent.ContextWindow {
-						if p.ContextManager != nil {
-							logger.InfoCF(
-								"agent",
-								"备用模型上下文窗口较小，正在压缩上下文",
-								map[string]any{
-									"agent_id":                 ts.agent.ID,
-									"model":                    model,
-									"candidate_context_window": candidateContextWindow,
-									"agent_context_window":     ts.agent.ContextWindow,
-								},
-							)
-							if compactErr := p.ContextManager.Compact(ctx, &CompactRequest{
-								SessionKey: ts.sessionKey,
-								Reason:     ContextCompressReasonRetry,
-								Budget:     candidateContextWindow,
-							}); compactErr != nil {
-								logger.WarnCF(
-									"agent",
-									"备用模型上下文压缩失败",
-									map[string]any{
-										"error":    compactErr.Error(),
-										"agent_id": ts.agent.ID,
-										"model":    model,
-									},
-								)
-							}
-							// 重新组装消息以获取压缩后的上下文
-							if asmResp, asmErr := p.ContextManager.Assemble(ctx, &AssembleRequest{
-								SessionKey:     ts.sessionKey,
-								Budget:         candidateContextWindow,
-								MaxTokens:      candidateOpts["max_tokens"].(int),
-								MaxInputTokens: candidateMaxInputTokens,
-							}); asmErr == nil && asmResp != nil {
-								messagesForCall = asmResp.History
-							}
-						}
-					}
-					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, candidateOpts)
+					return candidateProvider.Chat(ctx, messagesForCall, toolDefsForCall, model, exec.llmOpts)
 				},
 			)
 			if fbErr != nil {
@@ -458,10 +397,9 @@ func (p *Pipeline) CallLLM(
 			}
 			ts.refreshRestorePointFromSession(ts.agent)
 			if asmResp, asmErr := p.ContextManager.Assemble(ctx, &AssembleRequest{
-				SessionKey:     ts.sessionKey,
-				Budget:         ts.agent.ContextWindow,
-				MaxTokens:      ts.agent.MaxTokens,
-				MaxInputTokens: ts.agent.MaxInputTokens,
+				SessionKey: ts.sessionKey,
+				Budget:     ts.agent.ContextWindow,
+				MaxTokens:  ts.agent.MaxTokens,
 			}); asmErr == nil && asmResp != nil {
 				exec.history = asmResp.History
 				exec.summary = asmResp.Summary

@@ -29,7 +29,6 @@ type AgentInstance struct {
 	Workspace                 string
 	MaxIterations             int
 	MaxTokens                 int
-	MaxInputTokens            int // 最大输入 token 数量（包括消息和工具定义）
 	Temperature               float64
 	ThinkingLevel             ThinkingLevel
 	ContextWindow             int
@@ -168,13 +167,21 @@ func NewAgentInstance(
 		maxIter = 20
 	}
 
-	// 获取模型配置以读取 token 设置
-	modelCfg := lookupModelConfigByRef(cfg, model)
+	maxTokens := defaults.MaxTokens
+	if maxTokens == 0 {
+		maxTokens = 8192
+	}
 
-	// 使用 GetMaxTokens、GetContextWindow 和 GetMaxInputTokens 方法，支持回退逻辑
-	maxTokens := modelCfg.GetMaxTokens(defaults)
-	contextWindow := modelCfg.GetContextWindow(defaults)
-	maxInputTokens := modelCfg.GetMaxInputTokens(defaults)
+	contextWindow := defaults.ContextWindow
+	if contextWindow == 0 {
+		// Default heuristic: 4x the output token limit.
+		// Most models have context windows well above their output limits
+		// (e.g., GPT-4o 128k ctx / 16k out, Claude 200k ctx / 8k out).
+		// 4x is a conservative lower bound that avoids premature
+		// summarization while remaining safe — the reactive
+		// forceCompression handles any overshoot.
+		contextWindow = maxTokens * 4
+	}
 
 	temperature := 0.7
 	if defaults.Temperature != nil {
@@ -182,8 +189,8 @@ func NewAgentInstance(
 	}
 
 	var thinkingLevelStr string
-	if modelCfg != nil {
-		thinkingLevelStr = modelCfg.ThinkingLevel
+	if mc, err := cfg.GetModelConfig(model); err == nil {
+		thinkingLevelStr = mc.ThinkingLevel
 	}
 	thinkingLevel := parseThinkingLevel(thinkingLevelStr)
 
@@ -196,17 +203,6 @@ func NewAgentInstance(
 	if summarizeTokenPercent == 0 {
 		summarizeTokenPercent = 75
 	}
-
-	logger.InfoCF("agent", "默认模型 token 设置:", map[string]any{
-		"model (模型)":                           model,
-		"max_tokens (最大输出)":                    maxTokens,
-		"context_window (上下文窗口)":               contextWindow,
-		"max_input_tokens (最大输入)":              maxInputTokens,
-		"temperature (温度)":                     temperature,
-		"thinking_level (思维链)":                 thinkingLevel,
-		"summarize_message_threshold (摘要消息阈值)": summarizeMessageThreshold,
-		"summarize_token_percent (摘要token比例)":  summarizeTokenPercent,
-	})
 
 	// Resolve fallback candidates
 	candidates := resolveModelCandidates(cfg, defaults.Provider, model, fallbacks)
@@ -262,7 +258,6 @@ func NewAgentInstance(
 		Workspace:                 workspace,
 		MaxIterations:             maxIter,
 		MaxTokens:                 maxTokens,
-		MaxInputTokens:            maxInputTokens,
 		Temperature:               temperature,
 		ThinkingLevel:             thinkingLevel,
 		ContextWindow:             contextWindow,
