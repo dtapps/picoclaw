@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
@@ -69,7 +68,6 @@ type SubagentManager struct {
 	hasTemperature bool
 	nextID         int
 	spawner        SpawnSubTurnFunc
-	tracingCfg     config.TracingConfig
 
 	// mediaResolver resolves media:// refs in tool-loop messages before
 	// each LLM call in the legacy RunToolLoop fallback path.
@@ -118,13 +116,6 @@ func (sm *SubagentManager) SetLLMOptions(maxTokens int, temperature float64) {
 	sm.hasMaxTokens = true
 	sm.temperature = temperature
 	sm.hasTemperature = true
-}
-
-// SetTracingConfig 设置链路追踪配置，用于子 agent 的 LLM 调用
-func (sm *SubagentManager) SetTracingConfig(cfg config.TracingConfig) {
-	sm.mu.Lock()
-	defer sm.mu.Unlock()
-	sm.tracingCfg = cfg
 }
 
 // SetTools sets the tool registry for subagent execution.
@@ -251,7 +242,6 @@ After completing the task, provide a clear summary of what was done.`
 			Tools:         tools,
 			MaxIterations: maxIter,
 			LLMOptions:    llmOptions,
-			TracingCfg:    sm.tracingCfg,
 			MediaResolver: mediaResolver,
 		}, messages, task.OriginChannel, task.OriginChatID)
 

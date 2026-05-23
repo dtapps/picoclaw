@@ -31,7 +31,6 @@
 | **浏览器插件** | 无                                                              | **新增 Chrome 浏览器扩展**         | Sidepanel UI + Background 操作执行 + Content Script 注入，支持点击/输入/导航/截图等操作 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 | **工具集**    | 无                                      | **新增 `browser_ext` 工具**        | 通过浏览器扩展执行操作（get_page_info/click/type/fill/scroll/screenshot 等），仅限 browser 频道使用 | [feat/browser-extension](https://github.com/dtapps/picoclaw/tree/feat/browser-extension) |
 | **工作流**    | 无                                      | **新增工作流引擎**                 | 声明式多步骤任务编排，支持 Cron/事件/手动触发、变量、条件分支、并行执行、重试超时、频道通知，含 Web UI 可视化编辑 | [feature/workflow-engine](https://github.com/dtapps/picoclaw/tree/feature/workflow-engine) |
-| **核心逻辑**  | LLM 请求无追踪标识                      | **新增请求追踪（Tracing）**        | 将上下文字段（session_key、turn_id、agent_id 等 10 个字段）映射为自定义 HTTP 请求头，发给 LLM 时自动携带，支持 AxonHub/OpenTelemetry 等追踪系统，含 Web UI 配置 | [feature/tracing](https://github.com/dtapps/picoclaw/tree/feature/tracing) |
 | **频道**      | [已提交 PR #2893](https://github.com/sipeed/picoclaw/pull/2893) | **新增 SC3Bot 频道**               | 接入 SC3Bot 消息通道，支持接收和发送消息                                                | [feat/sc3bot-channel](https://github.com/dtapps/picoclaw/tree/feat/sc3bot-channel) |
 | **UI/日志**   | 日志滚动时出现闪屏                                              | **优化滚动和渲染逻辑**             | 使用 RAF 优化滚动、移除 CSS 过渡效果、防抖处理尺寸变化，减少闪屏现象                   | [feature/fix-log-flicker](https://github.com/dtapps/picoclaw/tree/feature/fix-log-flicker) |
 | **模型配置**  | 仅支持全局 `context_window`                                     | **支持 per-model `context_window`** | 每个模型可独立配置上下文窗口大小，未配置时使用 AgentDefaults 的值                     | [feat/per-model-context-window](https://github.com/dtapps/picoclaw/tree/feat/per-model-context-window)                                                                                            |
@@ -44,6 +43,7 @@
 | :------------- | :--------------- | :----------------------------- | :------------------------------- | :--------------------------------------------------------------------------------------------- |
 | ~~**工具集**~~ | ~~基础搜索工具~~ | ~~**新增"百度百科"搜索工具**~~ | ~~增强中文语境下的知识检索能力~~ | ~~[feat/search-baidu-baike](https://github.com/dtapps/picoclaw/tree/feat/search-baidu-baike)~~ |
 | ~~**模型配置**~~ | ~~手动逐个添加模型~~ | ~~**支持快速添加模型预设**~~ | ~~官方已支持 Provider 选择，功能重复~~ | ~~[feat/model-quick-add-presets](https://github.com/dtapps/picoclaw/tree/feat/model-quick-add-presets)~~ |
+| ~~**核心逻辑**~~ | ~~LLM 请求无追踪标识~~ | ~~**新增请求追踪（Tracing）**~~ | ~~功能移除~~ | ~~[feature/tracing](https://github.com/dtapps/picoclaw/tree/feature/tracing)~~ |
 
 > 百度百科改用 Skill 实现：https://cnb.cool/dtapp/skills
 

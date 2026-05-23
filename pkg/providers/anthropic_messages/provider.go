@@ -18,7 +18,6 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg/providers/common"
 	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
-	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 type (
@@ -111,10 +110,6 @@ func (p *Provider) Chat(
 	req.Header.Set("Anthropic-Version", defaultAPIVersion)
 	if p.userAgent != "" {
 		req.Header.Set("User-Agent", p.userAgent)
-	}
-	// 注入追踪请求头（根据配置将上下文字段映射为自定义 HTTP 请求头）
-	for k, v := range tracing.HeadersFromContext(ctx) {
-		req.Header.Set(k, v)
 	}
 
 	// Execute request

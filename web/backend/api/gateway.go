@@ -496,12 +496,6 @@ func computeConfigSignature(cfg *config.Config) string {
 	if len(channelSignatures) > 0 {
 		parts = append(parts, "channels:"+strings.Join(channelSignatures, ","))
 	}
-	if cfg.Tracing.IsEnabled() {
-		tracingJSON, err := json.Marshal(cfg.Tracing)
-		if err == nil {
-			parts = append(parts, "tracing:"+string(tracingJSON))
-		}
-	}
 	return strings.Join(parts, ";")
 }
 

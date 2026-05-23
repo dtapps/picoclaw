@@ -12,7 +12,6 @@ import (
 
 	"github.com/sipeed/picoclaw/pkg/providers/common"
 	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
-	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 )
 
 type (
@@ -90,9 +89,6 @@ func (p *Provider) Chat(
 			option.WithHeader("anthropic-beta", anthropicBetaHeader),
 		)
 	}
-
-	// 注入追踪请求头（根据配置将上下文字段映射为自定义 HTTP 请求头）
-	opts = append(opts, tracingOptionsFromContext(ctx)...)
 
 	params, err := buildParams(messages, tools, model, options)
 	if err != nil {
@@ -389,18 +385,4 @@ func parseResponse(resp *anthropic.Message) *LLMResponse {
 			TotalTokens:      int(resp.Usage.InputTokens + resp.Usage.OutputTokens),
 		},
 	}
-}
-
-// tracingOptionsFromContext 从 context 中读取追踪信息并转换为 Anthropic SDK 的 RequestOption。
-// 根据配置的 headers 映射，将上下文字段写入对应的请求头。
-func tracingOptionsFromContext(ctx context.Context) []option.RequestOption {
-	headers := tracing.HeadersFromContext(ctx)
-	if len(headers) == 0 {
-		return nil
-	}
-	opts := make([]option.RequestOption, 0, len(headers))
-	for k, v := range headers {
-		opts = append(opts, option.WithHeader(k, v))
-	}
-	return opts
 }

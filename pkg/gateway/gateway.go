@@ -447,12 +447,6 @@ func setupAndStartServices(
 
 	transcriber := asr.DetectTranscriber(cfg)
 	if transcriber != nil {
-		// 如果转录器支持设置链路追踪配置，则进行设置
-		if t, ok := transcriber.(interface {
-			SetTracingConfig(cfg config.TracingConfig)
-		}); ok {
-			t.SetTracingConfig(cfg.Tracing)
-		}
 		agentLoop.SetTranscriber(transcriber)
 		logger.InfoCF("voice", "Transcription enabled (agent-level)", map[string]any{"provider": transcriber.Name()})
 	}
@@ -743,14 +737,6 @@ func restartServices(
 	}
 
 	transcriber := asr.DetectTranscriber(cfg)
-	if transcriber != nil {
-		// 如果转录器支持设置链路追踪配置，则进行设置
-		if t, ok := transcriber.(interface {
-			SetTracingConfig(cfg config.TracingConfig)
-		}); ok {
-			t.SetTracingConfig(cfg.Tracing)
-		}
-	}
 	al.SetTranscriber(transcriber)
 	if transcriber != nil {
 		logger.InfoCF("voice", "Transcription re-enabled (agent-level)", map[string]any{"provider": transcriber.Name()})

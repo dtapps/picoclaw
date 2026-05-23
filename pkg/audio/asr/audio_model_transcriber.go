@@ -10,15 +10,13 @@ import (
 	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
-	"github.com/sipeed/picoclaw/pkg/providers/tracing"
 	"github.com/sipeed/picoclaw/pkg/utils"
 )
 
 type AudioModelTranscriber struct {
-	provider   providers.LLMProvider
-	modelID    string
-	prompt     string
-	tracingCfg config.TracingConfig
+	provider providers.LLMProvider
+	modelID  string
+	prompt   string
 }
 
 const (
@@ -67,11 +65,6 @@ func (t *AudioModelTranscriber) Transcribe(ctx context.Context, audioFilePath st
 		return nil, err
 	}
 
-	// 注入链路追踪信息到上下文
-	if t.tracingCfg.IsEnabled() {
-		ctx = tracing.WithHeaders(ctx, t.tracingCfg.Headers)
-		ctx = tracing.WithModel(ctx, t.modelID)
-	}
 	resp, err := t.provider.Chat(ctx, []providers.Message{
 		{
 			Role:    "user",
@@ -95,11 +88,6 @@ func (t *AudioModelTranscriber) Transcribe(ctx context.Context, audioFilePath st
 	})
 
 	return &TranscriptionResponse{Text: text}, nil
-}
-
-// SetTracingConfig 设置链路追踪配置，用于音频转录
-func (t *AudioModelTranscriber) SetTracingConfig(cfg config.TracingConfig) {
-	t.tracingCfg = cfg
 }
 
 func (t *AudioModelTranscriber) Name() string {

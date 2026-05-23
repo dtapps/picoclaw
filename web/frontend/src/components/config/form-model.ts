@@ -73,27 +73,6 @@ export interface LauncherForm {
   dashboardPasswordConfirm: string
 }
 
-// 请求追踪配置表单
-export interface TracingForm {
-  enabled: boolean
-  // 每行一个映射，格式: "Header-Name: field_name"
-  headersText: string
-}
-
-// 可用的上下文字段选项
-export const TRACING_FIELD_OPTIONS = [
-  { value: "session_key", label: "session_key" },
-  { value: "turn_id", label: "turn_id" },
-  { value: "agent_id", label: "agent_id" },
-  { value: "agent_name", label: "agent_name" },
-  { value: "channel", label: "channel" },
-  { value: "chat_id", label: "chat_id" },
-  { value: "parent_turn_id", label: "parent_turn_id" },
-  { value: "sender_id", label: "sender_id" },
-  { value: "message_id", label: "message_id" },
-  { value: "model", label: "model" },
-] as const
-
 export const DM_SCOPE_OPTIONS = [
   {
     value: "per-channel-peer",
@@ -180,11 +159,6 @@ export const EMPTY_LAUNCHER_FORM: LauncherForm = {
   allowedCIDRsText: "",
   dashboardPassword: "",
   dashboardPasswordConfirm: "",
-}
-
-export const EMPTY_TRACING_FORM: TracingForm = {
-  enabled: false,
-  headersText: "",
 }
 
 function asRecord(value: unknown): JsonRecord {
@@ -452,47 +426,6 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
           .join("\n")
       : EMPTY_FORM.evolutionColdPathTimesText,
   }
-}
-
-// buildTracingFormFromConfig 从原始配置中解析追踪配置表单
-export function buildTracingFormFromConfig(config: unknown): TracingForm {
-  const root = asRecord(config)
-  const tracing = asRecord(root.tracing)
-  const enabled = asBool(tracing.enabled)
-  const headers = tracing.headers
-  if (!headers || typeof headers !== "object" || Array.isArray(headers)) {
-    return { enabled, headersText: "" }
-  }
-  const entries = Object.entries(headers as Record<string, unknown>)
-    .filter(([, v]) => typeof v === "string")
-    .map(([k, v]) => `${k}: ${v}`)
-  return {
-    enabled,
-    headersText: entries.length > 0 ? entries.join("\n") : "",
-  }
-}
-
-// parseTracingHeaders 将文本格式的映射解析为 headers 对象
-// 格式: 每行 "Header-Name: field_name"
-// 未启用或无有效映射时返回 undefined
-export function parseTracingHeaders(enabled: boolean, text: string): Record<string, string> | undefined {
-  if (!enabled) return undefined
-  const lines = text
-    .split("\n")
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-  if (lines.length === 0) return undefined
-  const result: Record<string, string> = {}
-  for (const line of lines) {
-    const idx = line.indexOf(":")
-    if (idx < 0) continue
-    const key = line.slice(0, idx).trim()
-    const value = line.slice(idx + 1).trim()
-    if (key && value) {
-      result[key] = value
-    }
-  }
-  return Object.keys(result).length > 0 ? result : undefined
 }
 
 export function parseIntField(
