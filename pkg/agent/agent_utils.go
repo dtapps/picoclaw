@@ -7,9 +7,7 @@ import (
 	"fmt"
 	"maps"
 	"path/filepath"
-	"regexp"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
@@ -558,16 +556,6 @@ func hasMediaRefs(messages []providers.Message) bool {
 	return false
 }
 
-// needsCleanContent 检测响应内容是否包含 Anthropic 风格包装或特殊 token，
-// 即是否需要 CleanModelContent 处理。
-func needsCleanContent(content string) bool {
-	return strings.Contains(content, "<|tool_call_end|>") ||
-		strings.Contains(content, "<|tool_calls_section_end|>") ||
-		(strings.HasPrefix(strings.TrimSpace(content), "[{") &&
-			(strings.Contains(content, "'type'") || strings.Contains(content, `"type"`)) &&
-			(strings.Contains(content, "'text'") || strings.Contains(content, `"text"`)))
-}
-
 func sideQuestionModelName(agent *AgentInstance, usedLight bool) string {
 	if usedLight && len(agent.LightCandidates) > 0 {
 		if name := resolvedCandidateModelName(agent.LightCandidates, ""); name != "" {
@@ -662,53 +650,4 @@ func extractProvider(registry *AgentRegistry) (providers.LLMProvider, bool) {
 		return nil, false
 	}
 	return defaultAgent.Provider, true
-}
-
-// isEmptyResponse 判断 LLM 响应是否为空响应
-// 空响应的定义：响应为 nil，或者既没有 tool calls 也没有文本内容（纯空白也算空）
-func isEmptyResponse(response *providers.LLMResponse) bool {
-	if response == nil {
-		return true
-	}
-	return len(response.ToolCalls) == 0 && strings.TrimSpace(response.Content) == ""
-}
-
-// emptyResponsePatternCache 正则模式编译缓存，避免每次调用都重新编译
-var emptyResponsePatternCache sync.Map
-
-// matchesEmptyResponsePattern 判断响应内容是否匹配空响应模式
-// 空字符串和纯空白内容始终返回 true（无需模式匹配）
-// patterns 中每项支持两种格式：
-//   - 子串匹配：直接检查内容是否包含该字符串
-//   - 正则匹配：以 "re:" 开头，后面是正则表达式
-func matchesEmptyResponsePattern(content string, patterns []string) bool {
-	if content == "" {
-		return true
-	}
-	trimmed := strings.TrimSpace(content)
-	if trimmed == "" {
-		return true
-	}
-	for _, pat := range patterns {
-		if strings.HasPrefix(pat, "re:") {
-			regexPat := pat[3:]
-			re, ok := emptyResponsePatternCache.Load(regexPat)
-			if !ok {
-				compiled, err := regexp.Compile(regexPat)
-				if err != nil {
-					continue
-				}
-				re = compiled
-				emptyResponsePatternCache.Store(regexPat, re)
-			}
-			if re.(*regexp.Regexp).MatchString(trimmed) {
-				return true
-			}
-		} else {
-			if strings.Contains(trimmed, pat) {
-				return true
-			}
-		}
-	}
-	return false
 }

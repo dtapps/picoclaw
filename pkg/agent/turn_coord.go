@@ -584,58 +584,6 @@ func (al *AgentLoop) askSideQuestion(
 		return "", nil
 	}
 
-	// 空响应自动重试逻辑（旁路问题场景）
-	// 与主对话流程的重试逻辑一致，当旁路问题返回空/格式异常响应时自动重试
-	if al.cfg != nil && al.cfg.Agents.Defaults.IsEmptyResponseRetryEnabled() {
-		patterns := al.cfg.Agents.Defaults.GetEmptyResponsePatterns()
-		maxRetries := al.cfg.Agents.Defaults.GetEmptyResponseMaxRetries()
-		// 条件：无 tool calls 且内容匹配空响应模式
-		if len(resp.ToolCalls) == 0 && matchesEmptyResponsePattern(resp.Content, patterns) {
-			logger.WarnCF("agent", "旁路问题返回空响应或格式异常，正在重试",
-				map[string]any{
-					"content":     resp.Content,
-					"max_retries": maxRetries,
-				})
-
-			for retry := 0; retry < maxRetries; retry++ {
-				// 发送重试事件，用于前端展示和日志追踪
-				al.emitEvent(
-					runtimeevents.KindAgentLLMRetry,
-					HookMeta{
-						Source:      "askSideQuestion",
-						TracePath:   "turn.llm.retry",
-						turnContext: cloneTurnContext(turnCtx),
-					},
-					LLMRetryPayload{
-						Attempt:    retry + 1,
-						MaxRetries: maxRetries,
-						Reason:     "empty_response",
-						Error:      fmt.Sprintf("响应内容匹配空响应模式: %q", resp.Content),
-					},
-				)
-
-				retryResp, retryErr := callSideLLM(messages)
-				if retryErr != nil {
-					// 重试请求失败，继续下一次重试
-					logger.WarnCF("agent", "旁路问题空响应重试请求失败",
-						map[string]any{"retry": retry + 1, "error": retryErr.Error()})
-					continue
-				}
-
-				// 重试成功条件：有 tool calls，或内容不再匹配空响应模式
-				if len(retryResp.ToolCalls) > 0 || !matchesEmptyResponsePattern(retryResp.Content, patterns) {
-					resp = retryResp
-					logger.InfoCF("agent", "旁路问题空响应重试成功",
-						map[string]any{"retry": retry + 1, "content_chars": len(retryResp.Content)})
-					break
-				}
-
-				logger.WarnCF("agent", "旁路问题空响应重试后仍返回空响应",
-					map[string]any{"retry": retry + 1, "content": retryResp.Content})
-			}
-		}
-	}
-
 	// Apply after_llm hooks
 	if al.hooks != nil {
 		llmResp, decision := al.hooks.AfterLLM(ctx, &LLMHookResponse{

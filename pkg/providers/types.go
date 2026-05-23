@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/sipeed/picoclaw/pkg/providers/common"
 	"github.com/sipeed/picoclaw/pkg/providers/protocoltypes"
 )
 
@@ -124,18 +123,4 @@ func (e *FailoverError) IsRetriable() bool {
 type ModelConfig struct {
 	Primary   string
 	Fallbacks []string
-}
-
-// NormalizeInlineToolCalls 对 LLMResponse 进行后处理：提取部分模型（如 kimi-k2）
-// 嵌入在 content 文本中的内联工具调用，并将其转换为标准 tool_calls 字段。
-func NormalizeInlineToolCalls(resp *LLMResponse) {
-	common.NormalizeInlineToolCalls(resp)
-}
-
-// CleanModelContent 清理模型响应 content 中的 Anthropic 风格包装和特殊 token。
-// 典型场景：kimi-k2 返回纯文本响应时，内容被包装为
-// [{'type': 'text', 'text': '好，我重新来一遍！'}<|tool_call_end|><|tool_calls_section_end|>
-// 此函数提取其中的实际文本内容，移除包装和特殊 token。
-func CleanModelContent(content string) string {
-	return common.CleanModelContent(content)
 }

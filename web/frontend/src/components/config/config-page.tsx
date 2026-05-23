@@ -21,9 +21,7 @@ import {
   CronSection,
   DevicesSection,
   EvolutionSection,
-  EmptyResponseRetrySection,
   ExecSection,
-  InlineToolCallsSection,
   LauncherSection,
   MCPSection,
   RuntimeSection,
@@ -570,13 +568,6 @@ export function ConfigPage() {
           }
         }
 
-        // 解析空响应自动重试配置
-        const emptyResponseRetryMaxRetries = parseIntField(
-          form.emptyResponseRetryMaxRetries,
-          "Empty response retry max retries",
-          { min: 1, max: 10 },
-        )
-
         await patchAppConfig({
           agents: {
             defaults: {
@@ -594,19 +585,6 @@ export function ConfigPage() {
               summarize_message_threshold: summarizeMessageThreshold,
               summarize_token_percent: summarizeTokenPercent,
               turn_profile: turnProfile,
-              // 空响应自动重试配置
-              empty_response_retry: {
-                enabled: form.emptyResponseRetryEnabled,
-                max_retries: emptyResponseRetryMaxRetries,
-                patterns: parseMultilineList(
-                  form.emptyResponseRetryPatternsText,
-                ),
-              },
-              // 内联工具调用提取配置
-              inline_tool_calls: {
-                enabled: form.inlineToolCallsEnabled,
-                clean_content: form.cleanContentEnabled,
-              },
             },
           },
           session: {
@@ -850,16 +828,6 @@ export function ConfigPage() {
                   saving
                 }
                 onAutoStartChange={setAutoStartEnabled}
-              />
-
-              <EmptyResponseRetrySection
-                form={form}
-                onFieldChange={updateField}
-              />
-
-              <InlineToolCallsSection
-                form={form}
-                onFieldChange={updateField}
               />
 
               {!isDirty && actionButtons}

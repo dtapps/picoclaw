@@ -26,14 +26,6 @@ export interface CoreConfigForm {
   heartbeatInterval: string
   devicesEnabled: boolean
   monitorUSB: boolean
-  // 空响应自动重试配置
-  emptyResponseRetryEnabled: boolean
-  emptyResponseRetryMaxRetries: string
-  emptyResponseRetryPatternsText: string
-  // 内联工具调用提取配置
-  inlineToolCallsEnabled: boolean
-  // 模型响应内容清理配置
-  cleanContentEnabled: boolean
   mcpEnabled: boolean
   mcpDiscoveryEnabled: boolean
   mcpDiscoveryTTL: string
@@ -151,14 +143,6 @@ export const EMPTY_FORM: CoreConfigForm = {
   heartbeatInterval: "30",
   devicesEnabled: false,
   monitorUSB: true,
-  // 空响应自动重试默认值
-  emptyResponseRetryEnabled: false,
-  emptyResponseRetryMaxRetries: "3",
-  emptyResponseRetryPatternsText: "",
-  // 内联工具调用提取默认值
-  inlineToolCallsEnabled: false,
-  // 模型响应内容清理默认值
-  cleanContentEnabled: false,
   mcpEnabled: false,
   mcpDiscoveryEnabled: false,
   mcpDiscoveryTTL: "5",
@@ -406,42 +390,6 @@ export function buildFormFromConfig(config: unknown): CoreConfigForm {
       devices.monitor_usb === undefined
         ? EMPTY_FORM.monitorUSB
         : asBool(devices.monitor_usb),
-    // 解析空响应自动重试配置（agents.defaults.empty_response_retry）
-    emptyResponseRetryEnabled: (() => {
-      const retry = asRecord(defaults.empty_response_retry)
-      return retry.enabled === undefined
-        ? EMPTY_FORM.emptyResponseRetryEnabled
-        : asBool(retry.enabled)
-    })(),
-    emptyResponseRetryMaxRetries: (() => {
-      const retry = asRecord(defaults.empty_response_retry)
-      return asNumberString(
-        retry.max_retries,
-        EMPTY_FORM.emptyResponseRetryMaxRetries,
-      )
-    })(),
-    emptyResponseRetryPatternsText: (() => {
-      const retry = asRecord(defaults.empty_response_retry)
-      return Array.isArray(retry.patterns)
-        ? (retry.patterns as unknown[])
-            .filter((v): v is string => typeof v === "string")
-            .join("\n")
-        : EMPTY_FORM.emptyResponseRetryPatternsText
-    })(),
-    // 解析内联工具调用提取配置（agents.defaults.inline_tool_calls）
-    inlineToolCallsEnabled: (() => {
-      const itc = asRecord(defaults.inline_tool_calls)
-      return itc.enabled === undefined
-        ? EMPTY_FORM.inlineToolCallsEnabled
-        : asBool(itc.enabled)
-    })(),
-    // 解析模型响应内容清理配置（agents.defaults.inline_tool_calls.clean_content）
-    cleanContentEnabled: (() => {
-      const itc = asRecord(defaults.inline_tool_calls)
-      return itc.clean_content === undefined
-        ? EMPTY_FORM.cleanContentEnabled
-        : asBool(itc.clean_content)
-    })(),
     mcpEnabled:
       mcp.enabled === undefined ? EMPTY_FORM.mcpEnabled : asBool(mcp.enabled),
     mcpDiscoveryEnabled:

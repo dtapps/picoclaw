@@ -18,18 +18,6 @@
         "enabled": false,
         "max_args_length": 300,
         "separate_messages": false
-      },
-      "empty_response_retry": {
-        "enabled": false,
-        "max_retries": 3,
-        "patterns": [
-          "[{'type': 'text', 'text': ''}]",
-          "re:^\\s*$"
-        ]
-      },
-      "inline_tool_calls": {
-        "enabled": false,
-        "clean_content": false
       }
     }
   },
