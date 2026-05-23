@@ -208,7 +208,12 @@ func (h *Handler) handleExportEnvVars(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		sb.WriteString(fmt.Sprintf("# %s\n", v.Note))
-		sb.WriteString(fmt.Sprintf("%s=%s\n\n", v.Key, v.Value))
+		// 敏感变量从 SecureValue 获取值，非敏感变量从 Value 获取
+		value := v.Value
+		if v.Sensitive {
+			value = v.SecureValue.String()
+		}
+		sb.WriteString(fmt.Sprintf("%s=%s\n\n", v.Key, value))
 	}
 
 	// 设置文件下载头

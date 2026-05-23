@@ -58,7 +58,6 @@ export function EnvironmentPage() {
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const [form, setForm] = useState<EnvVarFormData>(EMPTY_FORM)
-  const [showSecret, setShowSecret] = useState(false)
   // 跟踪列表中哪些敏感变量应该显示真实值
   const [visibleSecrets, setVisibleSecrets] = useState<Set<number>>(new Set())
 
@@ -94,7 +93,6 @@ export function EnvironmentPage() {
   const handleAdd = useCallback(() => {
     setEditingIndex(null)
     setForm(EMPTY_FORM)
-    setShowSecret(false)
     setDialogOpen(true)
   }, [])
 
@@ -108,7 +106,6 @@ export function EnvironmentPage() {
       sensitive: v.sensitive,
       note: v.note,
     })
-    setShowSecret(false)
     setDialogOpen(true)
   }, [variables])
 
@@ -244,7 +241,7 @@ export function EnvironmentPage() {
         </div>
 
         {/* 变量列表 */}
-        <div className="space-y-2">
+        <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
           {variables.length === 0 ? (
             <Card>
               <CardContent className="flex h-24 items-center justify-center">
@@ -369,27 +366,14 @@ export function EnvironmentPage() {
             <div className="space-y-2">
               <Label htmlFor="value">{t("environment.value")} *</Label>
               <div className="relative">
-                <Input
+                <textarea
                   id="value"
-                  type={form.sensitive && !showSecret ? "password" : "text"}
+                  rows={3}
+                  className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
                   placeholder="KEY_VALUE"
                   value={form.value}
                   onChange={(e) => setForm({ ...form, value: e.target.value })}
                 />
-                {form.sensitive && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6"
-                    onClick={() => setShowSecret(!showSecret)}
-                  >
-                    {showSecret ? (
-                      <IconEye className="h-4 w-4" />
-                    ) : (
-                      <IconEyeOff className="h-4 w-4" />
-                    )}
-                  </Button>
-                )}
               </div>
             </div>
 
@@ -421,8 +405,6 @@ export function EnvironmentPage() {
                   checked={form.sensitive}
                   onCheckedChange={(checked) => {
                     setForm({ ...form, sensitive: checked })
-                    // 切换敏感开关时，重置显示密码的状态
-                    setShowSecret(false)
                   }}
                 />
                 <Label htmlFor="sensitive">{t("environment.sensitive")}</Label>
