@@ -31,6 +31,12 @@ func SupportedTemplateFunctions() []string {
 //   - "on_success": 上一步成功时执行（等同于默认）
 //   - "on_error": 上一步失败时执行
 //   - "{{.step_id.key}} == value": 模板变量等值比较
+//   - "{{.step_id.key}} != value": 不等于
+//   - "{{.step_id.key}} contains value": 包含子串
+//   - "{{.step_id.key}} > value": 大于（支持数字和字符串）
+//   - "{{.step_id.key}} < value": 小于
+//   - "{{.step_id.key}} >= value": 大于等于
+//   - "{{.step_id.key}} <= value": 小于等于
 func EvaluateCondition(when string, prevStepState *StepState, stepOutputs map[string]map[string]any) bool {
 	if when == "" || when == "on_success" {
 		// 默认：上一步成功或没有上一步时执行
@@ -53,19 +59,68 @@ func EvaluateCondition(when string, prevStepState *StepState, stepOutputs map[st
 }
 
 // evaluateComparison 处理 "{{.step_id.output_key}} == value" 形式的比较表达式。
-// 先解析左边的模板引用，再与右边的值进行字符串等值比较。
+// 支持的操作符：==, !=, >, <, >=, <=, contains
 func evaluateComparison(expr string, outputs map[string]map[string]any) bool {
-	parts := strings.SplitN(expr, "==", 2)
-	if len(parts) != 2 {
-		return false
+	// 按优先级顺序查找操作符（先找多字符的，再找单字符的）
+	operators := []string{"contains", "!=", ">=", "<=", "==", ">", "<"}
+
+	for _, op := range operators {
+		parts := strings.SplitN(expr, op, 2)
+		if len(parts) == 2 {
+			left := strings.TrimSpace(parts[0])
+			right := strings.TrimSpace(parts[1])
+
+			// 解析左边的模板引用
+			resolved := resolveTemplate(left, outputs)
+			return compareValues(resolved, right, op)
+		}
 	}
 
-	left := strings.TrimSpace(parts[0])
-	right := strings.TrimSpace(parts[1])
+	return false
+}
 
-	// 解析左边的模板引用
-	resolved := resolveTemplate(left, outputs)
-	return resolved == right
+// compareValues 根据操作符比较两个值
+func compareValues(left, right, operator string) bool {
+	switch operator {
+	case "==":
+		return left == right
+	case "!=":
+		return left != right
+	case "contains":
+		return strings.Contains(left, right)
+	case ">", "<", ">=", "<=":
+		// 尝试数值比较
+		leftNum, leftErr := strconv.ParseFloat(left, 64)
+		rightNum, rightErr := strconv.ParseFloat(right, 64)
+
+		// 如果两边都能解析为数字，进行数值比较
+		if leftErr == nil && rightErr == nil {
+			switch operator {
+			case ">":
+				return leftNum > rightNum
+			case "<":
+				return leftNum < rightNum
+			case ">=":
+				return leftNum >= rightNum
+			case "<=":
+				return leftNum <= rightNum
+			}
+		}
+
+		// 否则进行字符串比较
+		switch operator {
+		case ">":
+			return left > right
+		case "<":
+			return left < right
+		case ">=":
+			return left >= right
+		case "<=":
+			return left <= right
+		}
+	}
+
+	return false
 }
 
 // resolveTemplate 解析单个 {{.step_id.key}}、{{.vars.key}} 或 {{.fn.xxx}} 模板引用。

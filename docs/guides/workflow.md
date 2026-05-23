@@ -416,13 +416,59 @@ The `when` field is a **pre-execution condition** — evaluated before the step 
 |------------|---------|---------|
 | `on_error` | Execute when the previous step failed | Error alerts, retry notifications |
 | `on_success` | Execute when the previous step succeeded (default, can be omitted) | Normal follow-up processing |
-| `{{.step_id.key}} == value` | Template comparison against a specific step's output | Branching based on results |
+| `{{.step_id.key}} == value` | Equals | Check if output equals the specified value |
+| `{{.step_id.key}} != value` | Not equals | Check if output does not equal the specified value |
+| `{{.step_id.key}} contains value` | Contains | Check if output contains the specified substring |
+| `{{.step_id.key}} > value` | Greater than | Numeric or string comparison |
+| `{{.step_id.key}} < value` | Less than | Numeric or string comparison |
+| `{{.step_id.key}} >= value` | Greater than or equal | Numeric or string comparison |
+| `{{.step_id.key}} <= value` | Less than or equal | Numeric or string comparison |
 
 Evaluation logic (`conditions.go`):
 1. Empty condition → treated as `on_success`, passes if previous step succeeded
 2. `on_error` → passes if previous step state is failed
 3. `on_success` → passes if previous step state is completed
-4. Contains `==` → split into left/right operands, resolve template references, then string comparison
+4. Comparison expression → split into left/right operands, resolve template references, then compare using the operator
+
+**Comparison Operators:**
+- `==` / `!=`: String exact match
+- `contains`: Substring match, useful for checking if output contains specific text
+- `>` / `<` / `>=` / `<=`: Try numeric comparison first; if both sides can be parsed as numbers, compare numerically, otherwise compare as strings
+
+**Usage Examples:**
+```yaml
+steps:
+  - id: check_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "check_service.sh"
+    output_key: result
+    
+  - id: handle_success
+    action: notify
+    when: '{{.check_status.result}} == "ok"'
+    message: "Service is normal"
+    
+  - id: handle_contains
+    action: notify
+    when: '{{.check_status.result}} contains "running"'
+    message: "Service is running"
+    
+  - id: check_count
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "get_count.sh"
+    output_key: count
+    
+  - id: handle_high_count
+    action: notify
+    when: '{{.check_count.count}} > 100'
+    message: "Count exceeds threshold"
+```
 
 ### Data Passing
 

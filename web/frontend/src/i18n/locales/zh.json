@@ -1240,6 +1240,7 @@
       "cond_prev_success": "上一步成功",
       "cond_prev_error": "上一步失败",
       "cond_output_equals": "步骤输出等于",
+      "cond_output_compare": "步骤输出比较",
       "cond_step_id": "步骤 ID",
       "cond_output_key": "输出键",
       "cond_operator": "运算符",

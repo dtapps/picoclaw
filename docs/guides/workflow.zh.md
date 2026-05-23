@@ -417,13 +417,59 @@ triggers:
 |--------|------|------|
 | `on_error` | 上一步失败时执行 | 错误告警、重试通知 |
 | `on_success` | 上一步成功时执行（可省略，默认行为） | 正常后续处理 |
-| `{{.step_id.key}} == value` | 模板比较，检查指定步骤的输出值 | 根据结果分支 |
+| `{{.step_id.key}} == value` | 等于 | 检查输出值是否等于指定值 |
+| `{{.step_id.key}} != value` | 不等于 | 检查输出值是否不等于指定值 |
+| `{{.step_id.key}} contains value` | 包含 | 检查输出值是否包含指定子串 |
+| `{{.step_id.key}} > value` | 大于 | 数值或字符串比较 |
+| `{{.step_id.key}} < value` | 小于 | 数值或字符串比较 |
+| `{{.step_id.key}} >= value` | 大于等于 | 数值或字符串比较 |
+| `{{.step_id.key}} <= value` | 小于等于 | 数值或字符串比较 |
 
 求值逻辑（`conditions.go`）：
 1. 空条件 → 视为 `on_success`，上一步成功则通过
 2. `on_error` → 上一步状态为 failed 时通过
 3. `on_success` → 上一步状态为 completed 时通过
-4. 包含 `==` → 拆分左右操作数，对模板引用求值后进行字符串比较
+4. 比较表达式 → 拆分左右操作数，对模板引用求值后按操作符比较
+
+**比较运算符说明：**
+- `==` / `!=`：字符串精确匹配
+- `contains`：子串匹配，适用于检查输出中是否包含特定文本
+- `>` / `<` / `>=` / `<=`：优先尝试数值比较，如果两边都能解析为数字则按数值比较，否则按字符串比较
+
+**使用示例：**
+```yaml
+steps:
+  - id: check_status
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "check_service.sh"
+    output_key: result
+    
+  - id: handle_success
+    action: notify
+    when: '{{.check_status.result}} == "ok"'
+    message: "服务正常"
+    
+  - id: handle_contains
+    action: notify
+    when: '{{.check_status.result}} contains "running"'
+    message: "服务正在运行"
+    
+  - id: check_count
+    action: tool_call
+    tool: exec
+    args:
+      action: run
+      command: "get_count.sh"
+    output_key: count
+    
+  - id: handle_high_count
+    action: notify
+    when: '{{.check_count.count}} > 100'
+    message: "数量超过阈值"
+```
 
 ### 数据传递
 

@@ -551,34 +551,51 @@ function ToolCallEditor({ labels }: { labels: StepEditorLabels }) {
 
 // --- If 步骤编辑器（结构化条件表单）---
 
+// 支持的操作符列表
+type Operator = "==" | "!=" | ">" | "<" | ">=" | "<=" | "contains"
+
 /** 解析 when 表达式，提取结构化字段 */
 function parseWhenExpression(when: string): {
-  type: "prev_success" | "prev_error" | "output_equals"
+  type: "prev_success" | "prev_error" | "output_compare"
   stepId: string
   outputKey: string
+  operator: Operator
   value: string
 } {
-  if (when === "on_success") return { type: "prev_success", stepId: "", outputKey: "", value: "" }
-  if (when === "on_error") return { type: "prev_error", stepId: "", outputKey: "", value: "" }
-  // 解析 {{.step_id.key}} == value
-  const match = when.match(/^\{\{\.(.+?)\.(.+?)\}\}\s*==\s*(.+)$/)
-  if (match) {
-    return { type: "output_equals", stepId: match[1], outputKey: match[2], value: match[3].trim() }
+  if (when === "on_success") return { type: "prev_success", stepId: "", outputKey: "", operator: "==", value: "" }
+  if (when === "on_error") return { type: "prev_error", stepId: "", outputKey: "", operator: "==", value: "" }
+
+  // 解析 {{.step_id.key}} operator value，支持多种操作符
+  const operators: Operator[] = ["contains", "!=", ">=", "<=", "==", ">", "<"]
+  for (const op of operators) {
+    const regex = new RegExp(`^\\{\\{\\.(.+?)\\.(.+?)\\}\\}\\s*${op.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*(.+)$`)
+    const match = when.match(regex)
+    if (match) {
+      return {
+        type: "output_compare",
+        stepId: match[1],
+        outputKey: match[2],
+        operator: op,
+        value: match[3].trim()
+      }
+    }
   }
-  return { type: "prev_success", stepId: "", outputKey: "", value: "" }
+
+  return { type: "prev_success", stepId: "", outputKey: "", operator: "==", value: "" }
 }
 
 /** 将结构化字段拼回 when 表达式 */
 function buildWhenExpression(
-  type: "prev_success" | "prev_error" | "output_equals",
+  type: "prev_success" | "prev_error" | "output_compare",
   stepId: string,
   outputKey: string,
+  operator: Operator,
   value: string,
 ): string {
   if (type === "prev_success") return "on_success"
   if (type === "prev_error") return "on_error"
   if (stepId && outputKey && value) {
-    return `{{.${stepId}.${outputKey}}} == ${value}`
+    return `{{.${stepId}.${outputKey}}} ${operator} ${value}`
   }
   return ""
 }
@@ -592,6 +609,7 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
   const [condType, setCondType] = useState(parsed.type)
   const [stepId, setStepId] = useState(parsed.stepId)
   const [outputKey, setOutputKey] = useState(parsed.outputKey)
+  const [operator, setOperator] = useState<Operator>(parsed.operator)
   const [condValue, setCondValue] = useState(parsed.value)
 
   // 切换步骤时同步 state
@@ -600,23 +618,40 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
     setCondType(p.type)
     setStepId(p.stepId)
     setOutputKey(p.outputKey)
+    setOperator(p.operator)
     setCondValue(p.value)
   }, [whenExpr])
 
   const handleCondTypeChange = (newType: string) => {
-    const t = newType as "prev_success" | "prev_error" | "output_equals"
+    const t = newType as "prev_success" | "prev_error" | "output_compare"
     setCondType(t)
-    setProperty("when", buildWhenExpression(t, stepId, outputKey, condValue))
+    setProperty("when", buildWhenExpression(t, stepId, outputKey, operator, condValue))
   }
 
-  const handleFieldChange = (field: "stepId" | "outputKey" | "value", val: string) => {
-    if (field === "stepId") setStepId(val)
-    if (field === "outputKey") setOutputKey(val)
-    if (field === "value") setCondValue(val)
-    const s = field === "stepId" ? val : stepId
-    const k = field === "outputKey" ? val : outputKey
-    const v = field === "value" ? val : condValue
-    setProperty("when", buildWhenExpression(condType, s, k, v))
+  const handleFieldChange = (field: "stepId" | "outputKey" | "operator" | "value", val: string) => {
+    let newStepId = stepId
+    let newOutputKey = outputKey
+    let newOperator = operator
+    let newCondValue = condValue
+
+    if (field === "stepId") {
+      newStepId = val
+      setStepId(val)
+    }
+    if (field === "outputKey") {
+      newOutputKey = val
+      setOutputKey(val)
+    }
+    if (field === "operator") {
+      newOperator = val as Operator
+      setOperator(val as Operator)
+    }
+    if (field === "value") {
+      newCondValue = val
+      setCondValue(val)
+    }
+
+    setProperty("when", buildWhenExpression(condType, newStepId, newOutputKey, newOperator, newCondValue))
   }
 
   return (
@@ -626,10 +661,10 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
         <select value={condType} onChange={(e) => handleCondTypeChange(e.target.value)}>
           <option value="prev_success">{labels.condPrevSuccess}</option>
           <option value="prev_error">{labels.condPrevError}</option>
-          <option value="output_equals">{labels.condOutputEquals}</option>
+          <option value="output_compare">{labels.condOutputCompare}</option>
         </select>
       </div>
-      {condType === "output_equals" && (
+      {condType === "output_compare" && (
         <>
           <div className="sqd-editor-grid">
             <div className="sqd-editor-field">
@@ -644,8 +679,14 @@ function IfStepEditor({ labels }: { labels: StepEditorLabels }) {
           <div className="sqd-editor-grid">
             <div className="sqd-editor-field">
               <label>{labels.condOperator}</label>
-              <select value="==" disabled style={{ opacity: 0.7 }}>
+              <select value={operator} onChange={(e) => handleFieldChange("operator", e.target.value)}>
                 <option value="==">==</option>
+                <option value="!=">!=</option>
+                <option value="contains">contains</option>
+                <option value=">">&gt;</option>
+                <option value="<">&lt;</option>
+                <option value=">=">&gt;=</option>
+                <option value="<=">&lt;=</option>
               </select>
             </div>
             <div className="sqd-editor-field">
@@ -699,6 +740,7 @@ interface StepEditorLabels {
   condPrevSuccess: string
   condPrevError: string
   condOutputEquals: string
+  condOutputCompare: string
   condStepId: string
   condOutputKey: string
   condOperator: string
@@ -1699,6 +1741,7 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     condPrevSuccess: t("pages.workflows.cond_prev_success", "Previous step succeeded"),
     condPrevError: t("pages.workflows.cond_prev_error", "Previous step failed"),
     condOutputEquals: t("pages.workflows.cond_output_equals", "Step output equals"),
+    condOutputCompare: t("pages.workflows.cond_output_compare", "Step output comparison"),
     condStepId: t("pages.workflows.cond_step_id", "Step ID"),
     condOutputKey: t("pages.workflows.cond_output_key", "Output Key"),
     condOperator: t("pages.workflows.cond_operator", "Operator"),
