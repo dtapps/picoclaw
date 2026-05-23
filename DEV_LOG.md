@@ -67,7 +67,7 @@
 
 | 添加日期   | 官方 PR #                                             | 标题/简述                                    | 优先级 | 备注/计划        |
 | :--------- | :---------------------------------------------------- | :------------------------------------------- | :----- | :--------------- |
-| 2026-04-29 | [#2413](https://github.com/sipeed/picoclaw/pull/2413) | refactor(line): use official LINE Bot SDK v8 | 低     | 待评估后安排合并 |
+| 2026-04-29 | [#2413](https://github.com/sipeed/picoclaw/pull/2413) | refactor(line): use official LINE Bot SDK v8 | 低     | 官方已经合并 |
 
 ---
 
