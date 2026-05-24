@@ -51,6 +51,7 @@ import (
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 	"github.com/sipeed/picoclaw/pkg/health"
 	"github.com/sipeed/picoclaw/pkg/heartbeat"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
 	"github.com/sipeed/picoclaw/pkg/netbind"
@@ -104,7 +105,7 @@ func logChannelVoiceCapabilities(cm *channels.Manager, asrAvailable bool, ttsAva
 			continue
 		}
 		caps := channels.DetectVoiceCapabilities(name, ch, asrAvailable, ttsAvailable)
-		logger.InfoCF("voice", "Channel voice capabilities", map[string]any{
+		logger.InfoCF("voice", i18n.T("channel_voice_capabilities"), map[string]any{
 			"channel": name,
 			"asr":     caps.ASR,
 			"tts":     caps.TTS,

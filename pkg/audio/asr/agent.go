@@ -13,6 +13,7 @@ import (
 	"github.com/pion/webrtc/v3/pkg/media/oggwriter"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -78,7 +79,7 @@ func NewAgent(mb *bus.MessageBus, t Transcriber) *Agent {
 }
 
 func (a *Agent) Start(ctx context.Context) {
-	logger.InfoCF("voice-agent", "Started Voice Agent orchestrator", nil)
+	logger.InfoC("voice-agent", i18n.T("voice_agent_started"))
 	go a.listenChunks(ctx)
 	go a.vadTick(ctx)
 
@@ -92,7 +93,7 @@ func (a *Agent) Start(ctx context.Context) {
 			delete(a.sessions, key)
 		}
 		a.mu.Unlock()
-		logger.InfoCF("voice-agent", "Cleaned up voice sessions on shutdown", nil)
+		logger.InfoC("voice-agent", i18n.T("voice_agent_cleaned_up"))
 	}()
 }
 
