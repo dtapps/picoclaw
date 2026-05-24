@@ -1068,3 +1068,71 @@ other = "频道已停止"
 [channel_stop_failed]
 description = "Channel 停止失败消息"
 other = "频道停止失败"
+
+[channel_voice_capabilities]
+description = "频道语音能力消息"
+other = "频道语音能力"
+
+[channel_startup_completed]
+description = "频道启动完成消息"
+other = "频道启动完成"
+
+[voice_agent_started]
+description = "语音代理启动消息"
+other = "语音代理编排器已启动"
+
+[voice_agent_cleaned_up]
+description = "语音代理清理完成消息"
+other = "语音会话已清理"
+
+[no_channels_enabled]
+description = "没有启用的频道消息"
+other = "没有启用的频道"
+
+[starting_all_channels]
+description = "正在启动所有频道消息"
+other = "正在启动所有频道"
+
+[starting_channel]
+description = "正在启动频道消息"
+other = "正在启动频道"
+
+[failed_to_start_channel]
+description = "频道启动失败消息"
+other = "频道启动失败"
+
+[all_channels_failed_to_start]
+description = "所有频道启动失败消息"
+other = "所有启用的频道都启动失败"
+
+[some_channels_failed_to_start]
+description = "部分频道启动失败消息"
+other = "部分频道启动失败"
+
+[shared_http_server_listening]
+description = "共享HTTP服务器监听消息"
+other = "共享HTTP服务器正在监听"
+
+[shared_http_server_error]
+description = "共享HTTP服务器错误消息"
+other = "共享HTTP服务器错误"
+
+[shared_http_server_shutdown_error]
+description = "共享HTTP服务器关闭错误消息"
+other = "共享HTTP服务器关闭错误"
+
+[stopping_all_channels]
+description = "正在停止所有频道消息"
+other = "正在停止所有频道"
+
+[stopping_channel]
+description = "正在停止频道消息"
+other = "正在停止频道"
+
+[error_stopping_channel]
+description = "停止频道错误消息"
+other = "停止频道时出错"
+
+[all_channels_stopped]
+description = "所有频道已停止消息"
+other = "所有频道已停止"

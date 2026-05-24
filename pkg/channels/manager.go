@@ -25,6 +25,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/constants"
 	runtimeevents "github.com/sipeed/picoclaw/pkg/events"
 	"github.com/sipeed/picoclaw/pkg/health"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -1203,10 +1204,10 @@ func (m *Manager) StartAll(ctx context.Context) error {
 	defer m.mu.Unlock()
 
 	if len(m.channels) == 0 {
-		logger.WarnC("channels", "No channels enabled")
+		logger.WarnC("channels", i18n.T("no_channels_enabled"))
 	}
 
-	logger.InfoC("channels", "Starting all channels")
+	logger.InfoC("channels", i18n.T("starting_all_channels"))
 
 	dispatchCtx, cancel := context.WithCancel(ctx)
 	m.dispatchTask = &asyncTask{cancel: cancel}
@@ -1214,11 +1215,11 @@ func (m *Manager) StartAll(ctx context.Context) error {
 	failedNames := make([]string, 0, len(m.channels))
 
 	for name, channel := range m.channels {
-		logger.InfoCF("channels", "Starting channel", map[string]any{
+		logger.InfoCF("channels", i18n.T("starting_channel"), map[string]any{
 			"channel": name,
 		})
 		if err := channel.Start(ctx); err != nil {
-			logger.ErrorCF("channels", "Failed to start channel", map[string]any{
+			logger.ErrorCF("channels", i18n.T("failed_to_start_channel"), map[string]any{
 				"channel": name,
 				"error":   err.Error(),
 			})
@@ -1264,7 +1265,7 @@ func (m *Manager) StartAll(ctx context.Context) error {
 			return fmt.Errorf("failed to start any enabled channels")
 		}
 
-		logger.ErrorCF("channels", "All enabled channels failed to start", map[string]any{
+		logger.ErrorCF("channels", i18n.T("all_channels_failed_to_start"), map[string]any{
 			"failed":          len(failedNames),
 			"total":           len(m.channels),
 			"failed_channels": failedNames,
@@ -1275,7 +1276,7 @@ func (m *Manager) StartAll(ctx context.Context) error {
 
 	if len(failedNames) > 0 {
 		sort.Strings(failedNames)
-		logger.WarnCF("channels", "Some channels failed to start", map[string]any{
+		logger.WarnCF("channels", i18n.T("some_channels_failed_to_start"), map[string]any{
 			"failed":          len(failedNames),
 			"started":         len(m.workers),
 			"total":           len(m.channels),
@@ -1296,11 +1297,11 @@ func (m *Manager) StartAll(ctx context.Context) error {
 			for _, listener := range m.httpListeners {
 				ln := listener
 				go func() {
-					logger.InfoCF("channels", "Shared HTTP server listening", map[string]any{
+					logger.InfoCF("channels", i18n.T("shared_http_server_listening"), map[string]any{
 						"addr": ln.Addr().String(),
 					})
 					if err := m.httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
-						logger.FatalCF("channels", "Shared HTTP server error", map[string]any{
+						logger.FatalCF("channels", i18n.T("shared_http_server_error"), map[string]any{
 							"addr":  ln.Addr().String(),
 							"error": err.Error(),
 						})
@@ -1309,11 +1310,11 @@ func (m *Manager) StartAll(ctx context.Context) error {
 			}
 		} else {
 			go func() {
-				logger.InfoCF("channels", "Shared HTTP server listening", map[string]any{
+				logger.InfoCF("channels", i18n.T("shared_http_server_listening"), map[string]any{
 					"addr": m.httpServer.Addr,
 				})
 				if err := m.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-					logger.FatalCF("channels", "Shared HTTP server error", map[string]any{
+					logger.FatalCF("channels", i18n.T("shared_http_server_error"), map[string]any{
 						"error": err.Error(),
 					})
 				}
@@ -1321,7 +1322,7 @@ func (m *Manager) StartAll(ctx context.Context) error {
 		}
 	}
 
-	logger.InfoCF("channels", "Channel startup completed", map[string]any{
+	logger.InfoCF("channels", i18n.T("channel_startup_completed"), map[string]any{
 		"started": len(m.workers),
 		"failed":  len(failedNames),
 		"total":   len(m.channels),
@@ -1333,14 +1334,14 @@ func (m *Manager) StopAll(ctx context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	logger.InfoC("channels", "Stopping all channels")
+	logger.InfoC("channels", i18n.T("stopping_all_channels"))
 
 	// Shutdown shared HTTP server first
 	if m.httpServer != nil {
 		shutdownCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		defer cancel()
 		if err := m.httpServer.Shutdown(shutdownCtx); err != nil {
-			logger.ErrorCF("channels", "Shared HTTP server shutdown error", map[string]any{
+			logger.ErrorCF("channels", i18n.T("shared_http_server_shutdown_error"), map[string]any{
 				"error": err.Error(),
 			})
 		}
@@ -1379,11 +1380,11 @@ func (m *Manager) StopAll(ctx context.Context) error {
 
 	// Stop all channels
 	for name, channel := range m.channels {
-		logger.InfoCF("channels", "Stopping channel", map[string]any{
+		logger.InfoCF("channels", i18n.T("stopping_channel"), map[string]any{
 			"channel": name,
 		})
 		if err := channel.Stop(ctx); err != nil {
-			logger.ErrorCF("channels", "Error stopping channel", map[string]any{
+			logger.ErrorCF("channels", i18n.T("error_stopping_channel"), map[string]any{
 				"channel": name,
 				"error":   err.Error(),
 			})
@@ -1398,7 +1399,7 @@ func (m *Manager) StopAll(ctx context.Context) error {
 		)
 	}
 
-	logger.InfoC("channels", "All channels stopped")
+	logger.InfoC("channels", i18n.T("all_channels_stopped"))
 	return nil
 }
 

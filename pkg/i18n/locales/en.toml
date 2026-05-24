@@ -1065,3 +1065,71 @@ other = "Channel stopped"
 [channel_stop_failed]
 description = "Channel stop failed message"
 other = "Channel failed to stop"
+
+[channel_voice_capabilities]
+description = "Channel voice capabilities message"
+other = "Channel voice capabilities"
+
+[channel_startup_completed]
+description = "Channel startup completed message"
+other = "Channel startup completed"
+
+[voice_agent_started]
+description = "Voice agent started message"
+other = "Voice Agent orchestrator started"
+
+[voice_agent_cleaned_up]
+description = "Voice agent cleaned up message"
+other = "Voice sessions cleaned up"
+
+[no_channels_enabled]
+description = "No channels enabled message"
+other = "No channels enabled"
+
+[starting_all_channels]
+description = "Starting all channels message"
+other = "Starting all channels"
+
+[starting_channel]
+description = "Starting channel message"
+other = "Starting channel"
+
+[failed_to_start_channel]
+description = "Failed to start channel message"
+other = "Failed to start channel"
+
+[all_channels_failed_to_start]
+description = "All channels failed to start message"
+other = "All enabled channels failed to start"
+
+[some_channels_failed_to_start]
+description = "Some channels failed to start message"
+other = "Some channels failed to start"
+
+[shared_http_server_listening]
+description = "Shared HTTP server listening message"
+other = "Shared HTTP server listening"
+
+[shared_http_server_error]
+description = "Shared HTTP server error message"
+other = "Shared HTTP server error"
+
+[shared_http_server_shutdown_error]
+description = "Shared HTTP server shutdown error message"
+other = "Shared HTTP server shutdown error"
+
+[stopping_all_channels]
+description = "Stopping all channels message"
+other = "Stopping all channels"
+
+[stopping_channel]
+description = "Stopping channel message"
+other = "Stopping channel"
+
+[error_stopping_channel]
+description = "Error stopping channel message"
+other = "Error stopping channel"
+
+[all_channels_stopped]
+description = "All channels stopped message"
+other = "All channels stopped"
