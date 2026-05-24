@@ -914,13 +914,24 @@ func setupWorkflowService(
 				chatID = cid
 			}
 
-			// 根据 Step.SendTools 配置决定是否发送工具列表
-			sendTools := true // 默认发送
-			if st, has := workflow.SendToolsFromCtx(ctx); has {
-				sendTools = st
-			}
-			if !sendTools {
+			// 根据 Step.Tools 配置决定是否发送工具列表
+			// tools: off 时禁用工具，其他值或默认时发送工具
+			if noTools, has := workflow.NoToolsFromCtx(ctx); has && noTools {
 				ctx = agent.WithNoTools(ctx, true)
+			}
+
+			// 根据 Step.Skills 配置决定是否加载技能
+			// skills: off 时禁用技能，其他值或默认时加载技能
+			if noSkills, has := workflow.NoSkillsFromCtx(ctx); has && noSkills {
+				ctx = agent.WithSuppressSkills(ctx, true)
+			}
+
+			// 根据 Workflow 配置的 history 和 system_prompt 设置上下文
+			if history, ok := workflow.HistoryFromCtx(ctx); ok && history == "off" {
+				ctx = agent.WithNoHistory(ctx, true)
+			}
+			if systemPrompt, ok := workflow.SystemPromptFromCtx(ctx); ok && systemPrompt == "off" {
+				ctx = agent.WithSuppressSystemPrompt(ctx, true)
 			}
 
 			return agentLoop.ProcessDirectWithChannel(ctx, prompt, sessionKey, channel, chatID)

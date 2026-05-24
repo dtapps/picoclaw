@@ -76,7 +76,8 @@ export interface Step {
   name?: string
   action: "agent_prompt" | "tool_call" | "parallel" | "if" | "notify"
   prompt?: string
-  send_tools?: boolean   // 是否发送工具列表给 AI（默认 true，关闭可节省 token）
+  skills?: TurnProfileBlock   // agent_prompt 技能配置
+  tools?: TurnProfileBlock    // agent_prompt 工具配置
   tool?: string
   args?: Record<string, unknown>
   /**
@@ -103,11 +104,17 @@ export interface NotifyTarget {
   chat_id: string
 }
 
+export interface TurnProfileBlock {
+  mode?: "default" | "off"  // 模式：default | off
+}
+
 export interface WorkflowConfig {
   failure_strategy?: string
   notify_channels?: NotifyTarget[]
   workdir?: string
   reuse_session?: boolean
+  history?: TurnProfileBlock      // 历史上下文配置
+  system_prompt?: TurnProfileBlock // 系统提示配置
 }
 
 export interface Workflow {

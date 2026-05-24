@@ -17,11 +17,14 @@ import (
 type contextKey string
 
 const (
-	channelCtxKey    contextKey = "workflow_channel"
-	chatIDCtxKey     contextKey = "workflow_chat_id"
-	workdirCtxKey    contextKey = "workflow_workdir"
-	sessionKeyCtxKey contextKey = "workflow_session_key"
-	sendToolsCtxKey  contextKey = "workflow_send_tools"
+	channelCtxKey      contextKey = "workflow_channel"
+	chatIDCtxKey       contextKey = "workflow_chat_id"
+	workdirCtxKey      contextKey = "workflow_workdir"
+	sessionKeyCtxKey   contextKey = "workflow_session_key"
+	noToolsCtxKey      contextKey = "workflow_no_tools"
+	noSkillsCtxKey     contextKey = "workflow_no_skills"
+	historyCtxKey      contextKey = "workflow_history"
+	systemPromptCtxKey contextKey = "workflow_system_prompt"
 )
 
 // ChannelFromCtx 从上下文中提取工作流绑定的频道名称。
@@ -61,16 +64,49 @@ func withWorkdirCtx(ctx context.Context, workdir string) context.Context {
 	return context.WithValue(ctx, workdirCtxKey, workdir)
 }
 
-// SendToolsFromCtx 从上下文中提取是否发送工具列表的配置。
-// 返回 (值, 是否设置)。未设置时默认为 true（发送）。
-func SendToolsFromCtx(ctx context.Context) (bool, bool) {
-	v, ok := ctx.Value(sendToolsCtxKey).(bool)
+// NoToolsFromCtx 从上下文中提取是否禁用工具的配置。
+// 返回 (值, 是否设置)。未设置时默认为 false（不禁用）。
+func NoToolsFromCtx(ctx context.Context) (bool, bool) {
+	v, ok := ctx.Value(noToolsCtxKey).(bool)
 	return v, ok
 }
 
-// withSendToolsCtx 将是否发送工具列表注入上下文。
-func withSendToolsCtx(ctx context.Context, sendTools bool) context.Context {
-	return context.WithValue(ctx, sendToolsCtxKey, sendTools)
+// withNoToolsCtx 将是否禁用工具注入上下文。
+func withNoToolsCtx(ctx context.Context, noTools bool) context.Context {
+	return context.WithValue(ctx, noToolsCtxKey, noTools)
+}
+
+// NoSkillsFromCtx 从上下文中提取是否禁用技能配置。
+func NoSkillsFromCtx(ctx context.Context) (bool, bool) {
+	v, ok := ctx.Value(noSkillsCtxKey).(bool)
+	return v, ok
+}
+
+// withNoSkillsCtx 将是否禁用技能注入上下文。
+func withNoSkillsCtx(ctx context.Context, noSkills bool) context.Context {
+	return context.WithValue(ctx, noSkillsCtxKey, noSkills)
+}
+
+// HistoryFromCtx 从上下文中提取历史配置。
+func HistoryFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(historyCtxKey).(string)
+	return v, ok
+}
+
+// withHistoryCtx 将历史配置注入上下文。
+func withHistoryCtx(ctx context.Context, history string) context.Context {
+	return context.WithValue(ctx, historyCtxKey, history)
+}
+
+// SystemPromptFromCtx 从上下文中提取系统提示配置。
+func SystemPromptFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(systemPromptCtxKey).(string)
+	return v, ok
+}
+
+// withSystemPromptCtx 将系统提示配置注入上下文。
+func withSystemPromptCtx(ctx context.Context, systemPrompt string) context.Context {
+	return context.WithValue(ctx, systemPromptCtxKey, systemPrompt)
 }
 
 // Engine 是工作流的核心编排引擎。
@@ -296,6 +332,16 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 将工作目录注入上下文，供 tool_call 步骤自动注入 cwd
 	if wf.Config.Workdir != "" {
 		ctx = withWorkdirCtx(ctx, wf.Config.Workdir)
+	}
+
+	// 将历史配置注入上下文
+	if wf.Config.History.Mode != "" {
+		ctx = withHistoryCtx(ctx, wf.Config.History.Mode)
+	}
+
+	// 将系统提示配置注入上下文
+	if wf.Config.SystemPrompt.Mode != "" {
+		ctx = withSystemPromptCtx(ctx, wf.Config.SystemPrompt.Mode)
 	}
 
 	// 将频道信息和 session key 注入上下文，供步骤执行器回调时读取

@@ -197,3 +197,12 @@
   pointer-events: none;
   word-break: break-word;
 }
+
+/* 配置项描述文字样式 — 统一 skills/tools/history/systemPrompt 的提示 */
+.sqd-editor-hint,
+.sqd-editor-field__hint {
+  font-size: 0.75rem;
+  color: var(--muted-foreground);
+  line-height: 1.4;
+  margin-top: 0.25rem;
+}

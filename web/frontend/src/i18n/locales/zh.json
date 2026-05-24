@@ -1254,8 +1254,6 @@
       "disabled": "已禁用",
       "notify_on_start": "开始执行时通知",
       "notify_on_complete": "执行完成时通知",
-      "send_tools": "发送工具列表",
-      "send_tools_desc": "关闭后不发送工具定义给 AI，可节省 token（适合数据已由前置步骤准备好的场景）",
       "trigger_agent": "Agent 提示",
       "trigger_tool": "工具调用",
       "trigger_notify": "通知",

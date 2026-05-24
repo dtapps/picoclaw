@@ -750,8 +750,12 @@ interface StepEditorLabels {
   enabledNo: string
   notifyOnStart: string
   notifyOnComplete: string
-  sendTools: string
-  sendToolsDesc: string
+  skills: string
+  skillsDesc: string
+  tools: string
+  toolsDesc: string
+  modeDefault: string
+  modeOff: string
 }
 
 function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; definition: Definition }) {
@@ -923,16 +927,31 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
                   placeholder="支持 {{.vars.key}}、{{.step_id.key}}、{{.step_id._status}}、{{.self.name}} 模板引用"
                 />
               </div>
-              <div className="sqd-editor-field sqd-step-toggle">
-                <label className="sqd-step-toggle__label">{labels.sendTools}</label>
-                <div className="sqd-step-toggle__control">
-                  <span>{(properties.send_tools as boolean) === false ? labels.enabledNo : labels.enabledYes}</span>
-                  <button
-                    type="button"
-                    onClick={() => setProperty("send_tools", (properties.send_tools as boolean) === false)}
-                    className={`sqd-step-toggle__switch${(properties.send_tools as boolean) === false ? "" : " sqd-step-toggle__switch--on"}`}
-                  />
-                </div>
+              <div className="sqd-editor-field">
+                <label>{labels.skills}</label>
+                <select
+                  value={(properties.skills as string) || "default"}
+                  onChange={(e) => setProperty("skills", e.target.value)}
+                >
+                  <option value="default">{labels.modeDefault}</option>
+                  <option value="off">{labels.modeOff}</option>
+                </select>
+                {(properties.skills as string) === "off" && (
+                  <p className="sqd-editor-hint">{labels.skillsDesc}</p>
+                )}
+              </div>
+              <div className="sqd-editor-field">
+                <label>{labels.tools}</label>
+                <select
+                  value={(properties.tools as string) || "default"}
+                  onChange={(e) => setProperty("tools", e.target.value)}
+                >
+                  <option value="default">{labels.modeDefault}</option>
+                  <option value="off">{labels.modeOff}</option>
+                </select>
+                {(properties.tools as string) === "off" && (
+                  <p className="sqd-editor-hint">{labels.toolsDesc}</p>
+                )}
               </div>
             </>
           )}
@@ -1326,6 +1345,12 @@ interface RootEditorLabels {
   workdir: string
   reuseSession: string
   reuseSessionDesc: string
+  history: string
+  historyDesc: string
+  systemPrompt: string
+  systemPromptDesc: string
+  modeDefault: string
+  modeOff: string
   vars: string
   varsKey: string
   varsValue: string
@@ -1448,6 +1473,32 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
         <span className="sqd-reuse-session-toggle__desc">
           {labels.reuseSessionDesc}
         </span>
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.history}</label>
+        <select
+          value={(properties.history as string) || "default"}
+          onChange={(e) => setProperty("history", e.target.value)}
+        >
+          <option value="default">{labels.modeDefault}</option>
+          <option value="off">{labels.modeOff}</option>
+        </select>
+        {(properties.history as string) === "off" && (
+          <span className="sqd-editor-field__hint">{labels.historyDesc}</span>
+        )}
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.systemPrompt}</label>
+        <select
+          value={(properties.systemPrompt as string) || "default"}
+          onChange={(e) => setProperty("systemPrompt", e.target.value)}
+        >
+          <option value="default">{labels.modeDefault}</option>
+          <option value="off">{labels.modeOff}</option>
+        </select>
+        {(properties.systemPrompt as string) === "off" && (
+          <span className="sqd-editor-field__hint">{labels.systemPromptDesc}</span>
+        )}
       </div>
       <div className="sqd-editor-field">
         <label>{labels.vars}</label>
@@ -1751,8 +1802,12 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     enabledNo: t("pages.workflows.enabled_no", "Off"),
     notifyOnStart: t("pages.workflows.notify_on_start", "Notify on Start"),
     notifyOnComplete: t("pages.workflows.notify_on_complete", "Notify on Complete"),
-    sendTools: t("pages.workflows.send_tools", "发送工具列表"),
-    sendToolsDesc: t("pages.workflows.send_tools_desc", "关闭后不发送工具定义给 AI，可节省 token（适合数据已由前置步骤准备好的场景）"),
+    skills: t("pages.config.turn_profile_skills", "Skills"),
+    skillsDesc: t("pages.config.turn_profile_skills_hint", ""),
+    tools: t("pages.config.turn_profile_tools", "Tools"),
+    toolsDesc: t("pages.config.turn_profile_tools_hint", ""),
+    modeDefault: t("pages.config.turn_profile_mode_default", "Default"),
+    modeOff: t("pages.config.turn_profile_mode_off", "Off"),
   }), [t])
 
   const rootEditorLabels: RootEditorLabels = useMemo(() => ({
@@ -1782,6 +1837,12 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     workdir: t("pages.workflows.workdir", "Working Directory"),
     reuseSession: t("pages.workflows.reuse_session", "Reuse Session"),
     reuseSessionDesc: t("pages.workflows.reuse_session_desc", "Reuse the same session for each execution"),
+    history: t("pages.config.turn_profile_history", "History"),
+    historyDesc: t("pages.config.turn_profile_history_hint", ""),
+    systemPrompt: t("pages.config.turn_profile_system_prompt", "System Prompt"),
+    systemPromptDesc: t("pages.config.turn_profile_system_prompt_hint", ""),
+    modeDefault: t("pages.config.turn_profile_mode_default", "Default"),
+    modeOff: t("pages.config.turn_profile_mode_off", "Off"),
     vars: t("pages.workflows.vars", "Variables"),
     varsKey: t("pages.workflows.vars_key", "Key"),
     varsValue: t("pages.workflows.vars_value", "Value"),

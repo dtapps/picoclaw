@@ -67,6 +67,10 @@ Gateway 启动
 
 关键点：
 - **AgentPromptFunc**：通过 `AgentLoop.ProcessDirectWithChannel()` 调用 LLM，复用完整的 Agent 处理链
+  - 根据 `step.skills` 配置决定是否加载技能（`mode: off` 时跳过技能加载）
+  - 根据 `step.tools` 配置决定是否发送工具定义（`mode: off` 时不发送工具）
+  - 根据 `config.history` 配置决定是否加载历史上下文
+  - 根据 `config.system_prompt` 配置决定是否注入系统提示
 - **ToolCallFunc**：从 `ToolRegistry` 获取工具并执行，复用所有已注册工具（包括 MCP 工具）
 - **工具注册**：`cfg.Tools.IsToolEnabled("workflow")` 控制是否注册（默认启用）
 - **命令注入**：`agentLoop.SetWorkflowService(service)` 将服务注入 AgentLoop，支持 `/workflow` 斜杠命令
@@ -121,7 +125,7 @@ RunWorkflow()
   │     │     └── 等待期间被取消 → 步骤状态: cancelled
   │     │
   │     ├── 4. 执行步骤：ExecuteWithRetry()
-        │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
+        │     │     ├── agent_prompt → 根据 step.skills 和 step.tools 配置设置上下文 → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
         │     │     ├── parallel    → goroutine 并行执行子步骤（子步骤失败遵守 failure_strategy）
         │     │     └── if          → 评估 when 条件，执行 if_true 或 if_false 分支（分支步骤失败遵守 failure_strategy）
@@ -241,7 +245,7 @@ steps:
 
 | 动作类型 | 说明 | 关键参数 |
 |---------|------|---------|
-| `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板）、`send_tools`（是否发送工具定义，默认 true） |
+| `agent_prompt` | 调用 LLM 执行提示词 | `prompt`（提示词模板）、`skills`（技能配置）、`tools`（工具配置） |
 | `tool_call` | 调用已注册的工具 | `tool`（工具名）、`args`（参数，必填参数不能为空） |
 | `parallel` | 并行执行多个子步骤 | `parallel`（子步骤列表） |
 | `if` | 条件判断，执行 true 或 false 分支 | `when`（条件表达式）、`if_true`/`if_false`（分支步骤） |
@@ -261,8 +265,25 @@ steps:
 - **output_key**：输出数据的键名，供后续步骤引用（`parallel` 步骤不适用，子步骤各自有自己的 output_key）
 - **notify_on_start**：步骤开始执行时是否发送通知到绑定频道（可选，默认 `true`）。设为 `false` 时跳过"步骤开始"通知
 - **notify_on_complete**：步骤执行完成时是否发送通知到绑定频道（可选，默认 `true`）。`notify` 步骤不受此字段影响，始终直接发送消息内容
+- **skills**：技能配置（仅 `agent_prompt`），控制是否加载技能目录和已激活技能提示
+  - `mode`: `default`（加载技能）| `off`（不加载技能）
+- **tools**：工具配置（仅 `agent_prompt`），控制是否向 AI 发送工具定义
+  - `mode`: `default`（发送工具定义）| `off`（不发送工具定义）
 
 > **ID 规则说明**：步骤 ID 之所以限制为 `a-zA-Z0-9_`，是因为模板语法 `{{.step_id.key}}` 使用 `.` 作为分隔符，ID 中包含 `.` 或其他特殊字符会导致解析错误，非 ASCII 字符也可能引发问题。如需在 UI 中显示中文名称，请使用 `name` 字段。
+
+**skills 和 tools 配置示例**：
+
+```yaml
+steps:
+  - id: analyze
+    action: agent_prompt
+    prompt: "分析这段代码"
+    skills:
+      mode: off  # 不加载技能提示，节省 token
+    tools:
+      mode: default  # 允许调用工具
+```
 
 ### 工作目录（Workdir）
 
@@ -297,6 +318,34 @@ steps:
       command: "git status"
       cwd: "/path/to/other-project"
 ```
+
+### 历史上下文（History）
+
+历史上下文配置控制工作流执行时是否加载之前的对话历史。在 `config` 中设置后，所有 `agent_prompt` 步骤都会遵循此配置。
+
+```yaml
+config:
+  history:
+    mode: default  # default（加载历史）| off（不加载历史）
+```
+
+**使用场景**：
+- `default`：正常工作流，可以访问之前的对话上下文
+- `off`：每个步骤像新对话一样执行，不依赖之前的历史，适合独立任务
+
+### 系统提示（System Prompt）
+
+系统提示配置控制工作流执行时是否注入 PicoClaw 的系统提示（身份、工作区、记忆等）。在 `config` 中设置后，所有 `agent_prompt` 步骤都会遵循此配置。
+
+```yaml
+config:
+  system_prompt:
+    mode: default  # default（注入系统提示）| off（不注入系统提示）
+```
+
+**使用场景**：
+- `default`：正常工作流，包含完整的系统上下文
+- `off`：只保留外部明确传入的 system prompt，适合需要精简提示词的场景
 
 ### 触发器（Trigger）
 
@@ -668,6 +717,10 @@ config:
   notify_channels:        # 可选，通知目标列表
     - channel: telegram
       chat_id: "-100xxx"
+  history:                # 可选，历史上下文配置
+    mode: default         # default（加载历史）| off（不加载历史）
+  system_prompt:          # 可选，系统提示配置
+    mode: default         # default（注入系统提示）| off（不注入系统提示）
 
 steps:
   - id: fetch_weather
@@ -702,10 +755,13 @@ steps:
 steps:
   - id: step_id           # 必填，步骤唯一标识，仅允许 a-zA-Z0-9_，用于条件引用和数据传递
     name: 步骤名称        # 可选，步骤显示名称，支持中文等任意字符，不填时显示 id
-    action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if
+    action: agent_prompt   # 必填，动作类型：agent_prompt / tool_call / parallel / if / notify
     enabled: true          # 可选，是否启用（默认 true），false 时跳过该步骤
     prompt: "..."          # agent_prompt 必填，提示词模板，支持 {{.step_id.key}} 引用
-    send_tools: true       # agent_prompt 可选，是否向 AI 发送工具定义（默认 true），关闭后可节省 token（适合数据已由前置步骤准备好的场景）
+    skills:                 # agent_prompt 可选，技能配置
+      mode: default         # 模式：default（加载技能）| off（不加载技能）
+    tools:                  # agent_prompt 可选，工具配置
+      mode: default         # 模式：default（发送工具定义）| off（不发送工具定义）
     tool: tool_name        # tool_call 必填，已注册的工具名称
     args:                  # tool_call 可选，工具参数，值支持模板引用；必填参数的值不能为空
       key: value
@@ -727,6 +783,7 @@ steps:
     output_key: result     # 可选，输出键名
     notify_on_start: true   # 可选，步骤开始时是否发送通知（默认 true）
     notify_on_complete: true # 可选，步骤完成时是否发送通知（默认 true；notify/agent_prompt 不受此字段影响）
+    message: "..."          # notify 必填，消息内容，支持模板语法
     retry:                 # 可选，重试配置
       max_attempts: 3
       delay: 10s
@@ -789,6 +846,7 @@ steps:
 | 工具调用 | 按名称调用已注册的工具并传入参数 |
 | 并行 | 并行执行多个子步骤（容器步骤） |
 | If 条件 | 条件判断：根据条件执行 true 或 false 分支 |
+| 通知 | 发送通知消息到绑定的频道 |
 
 ## REST API
 

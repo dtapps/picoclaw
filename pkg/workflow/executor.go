@@ -76,12 +76,15 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 
 	switch step.Action {
 	case "agent_prompt":
-		// 将 send_tools 配置注入 context，供 AgentPromptFunc 使用
-		sendTools := true // 默认发送
-		if step.SendTools != nil {
-			sendTools = *step.SendTools
+		// 根据步骤配置设置技能和工具上下文
+		// skills: default 加载技能, off 不加载技能
+		// tools: default 发送工具, off 不发送工具
+		if step.Skills.Mode == "off" {
+			ctx = withNoSkillsCtx(ctx, true)
 		}
-		ctx = withSendToolsCtx(ctx, sendTools)
+		if step.Tools.Mode == "off" {
+			ctx = withNoToolsCtx(ctx, true)
+		}
 		return se.executeAgentPrompt(ctx, prompt)
 	case "tool_call":
 		if _, hasCwd := args["cwd"]; !hasCwd {
