@@ -25,6 +25,9 @@ const (
 	noSkillsCtxKey     contextKey = "workflow_no_skills"
 	historyCtxKey      contextKey = "workflow_history"
 	systemPromptCtxKey contextKey = "workflow_system_prompt"
+	workflowExecCtxKey contextKey = "workflow_execution"
+	skillsModeCtxKey   contextKey = "workflow_skills_mode"
+	toolsModeCtxKey    contextKey = "workflow_tools_mode"
 )
 
 // ChannelFromCtx 从上下文中提取工作流绑定的频道名称。
@@ -107,6 +110,40 @@ func SystemPromptFromCtx(ctx context.Context) (string, bool) {
 // withSystemPromptCtx 将系统提示配置注入上下文。
 func withSystemPromptCtx(ctx context.Context, systemPrompt string) context.Context {
 	return context.WithValue(ctx, systemPromptCtxKey, systemPrompt)
+}
+
+// IsWorkflowExecution 检查上下文是否标记为工作流执行。
+// 用于区分普通请求和工作流执行，工作流执行使用自己的 turn_profile 配置。
+func IsWorkflowExecution(ctx context.Context) bool {
+	v, ok := ctx.Value(workflowExecCtxKey).(bool)
+	return ok && v
+}
+
+// withWorkflowExecutionCtx 将工作流执行标记注入上下文。
+func withWorkflowExecutionCtx(ctx context.Context, isWorkflow bool) context.Context {
+	return context.WithValue(ctx, workflowExecCtxKey, isWorkflow)
+}
+
+// SkillsModeFromCtx 从上下文中提取技能模式配置。
+func SkillsModeFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(skillsModeCtxKey).(string)
+	return v, ok
+}
+
+// withSkillsModeCtx 将技能模式配置注入上下文。
+func withSkillsModeCtx(ctx context.Context, mode string) context.Context {
+	return context.WithValue(ctx, skillsModeCtxKey, mode)
+}
+
+// ToolsModeFromCtx 从上下文中提取工具模式配置。
+func ToolsModeFromCtx(ctx context.Context) (string, bool) {
+	v, ok := ctx.Value(toolsModeCtxKey).(string)
+	return v, ok
+}
+
+// withToolsModeCtx 将工具模式配置注入上下文。
+func withToolsModeCtx(ctx context.Context, mode string) context.Context {
+	return context.WithValue(ctx, toolsModeCtxKey, mode)
 }
 
 // Engine 是工作流的核心编排引擎。
@@ -337,11 +374,13 @@ func (e *Engine) executeWorkflow(ctx context.Context, wf *Workflow, inst *Workfl
 	// 将历史配置注入上下文
 	if wf.Config.History.Mode != "" {
 		ctx = withHistoryCtx(ctx, wf.Config.History.Mode)
+		ctx = withWorkflowExecutionCtx(ctx, true)
 	}
 
 	// 将系统提示配置注入上下文
 	if wf.Config.SystemPrompt.Mode != "" {
 		ctx = withSystemPromptCtx(ctx, wf.Config.SystemPrompt.Mode)
+		ctx = withWorkflowExecutionCtx(ctx, true)
 	}
 
 	// 将频道信息和 session key 注入上下文，供步骤执行器回调时读取

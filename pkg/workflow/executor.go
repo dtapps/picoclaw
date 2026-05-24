@@ -76,14 +76,21 @@ func (se *StepExecutor) Execute(ctx context.Context, step Step, stepOutputs map[
 
 	switch step.Action {
 	case "agent_prompt":
-		// 根据步骤配置设置技能和工具上下文
-		// skills: default 加载技能, off 不加载技能
-		// tools: default 发送工具, off 不发送工具
-		if step.Skills.Mode == "off" {
-			ctx = withNoSkillsCtx(ctx, true)
+		// 标记为工作流执行，使用工作流自己的 turn_profile 配置（覆盖官方 TurnProfile）
+		ctx = withWorkflowExecutionCtx(ctx, true)
+		// 只有步骤显式配置了 Skills.Mode 时才注入上下文，避免空字符串覆盖官方 custom 配置
+		if step.Skills.Mode != "" {
+			ctx = withSkillsModeCtx(ctx, step.Skills.Mode)
+			if step.Skills.Mode == "off" {
+				ctx = withNoSkillsCtx(ctx, true)
+			}
 		}
-		if step.Tools.Mode == "off" {
-			ctx = withNoToolsCtx(ctx, true)
+		// 只有步骤显式配置了 Tools.Mode 时才注入上下文，避免空字符串覆盖官方 custom 配置
+		if step.Tools.Mode != "" {
+			ctx = withToolsModeCtx(ctx, step.Tools.Mode)
+			if step.Tools.Mode == "off" {
+				ctx = withNoToolsCtx(ctx, true)
+			}
 		}
 		return se.executeAgentPrompt(ctx, prompt)
 	case "tool_call":
