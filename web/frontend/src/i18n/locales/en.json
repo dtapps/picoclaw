@@ -1260,8 +1260,6 @@
       "disabled": "Disabled",
       "notify_on_start": "Notify on Start",
       "notify_on_complete": "Notify on Complete",
-      "send_tools": "Send Tool Definitions",
-      "send_tools_desc": "When disabled, tool definitions won't be sent to AI, saving tokens (useful when data is already prepared by previous steps)",
       "trigger_agent": "Agent Prompt",
       "trigger_tool": "Tool Call",
       "trigger_notify": "Notify",

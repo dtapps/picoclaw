@@ -67,6 +67,10 @@ Gateway startup
 
 Key points:
 - **AgentPromptFunc**: Calls LLM via `AgentLoop.ProcessDirectWithChannel()`, reusing the full Agent processing chain
+  - Applies `step.skills` config to control skill loading (`mode: off` skips skill loading)
+  - Applies `step.tools` config to control tool definitions sending (`mode: off` disables tools)
+  - Applies `config.history` config to control history context loading
+  - Applies `config.system_prompt` config to control system prompt injection
 - **ToolCallFunc**: Gets tools from `ToolRegistry` and executes them, reusing all registered tools (including MCP tools)
 - **Tool registration**: `cfg.Tools.IsToolEnabled("workflow")` controls registration (enabled by default)
 - **Command injection**: `agentLoop.SetWorkflowService(service)` injects the service into AgentLoop for `/workflow` slash commands
@@ -121,7 +125,7 @@ RunWorkflow()
   │     │     └── Cancelled during wait → step state: cancelled
   │     │
         │     ├── 4. Execute step: ExecuteWithRetry()
-        │     │     ├── agent_prompt → AgentPromptFunc(ctx, prompt)
+        │     │     ├── agent_prompt → Apply step.skills and step.tools config to context → AgentPromptFunc(ctx, prompt)
         │     │     ├── tool_call   → ToolCallFunc(ctx, tool, args)
         │     │     ├── parallel    → goroutine concurrent sub-step execution (sub-step failures respect failure_strategy)
         │     │     └── if          → evaluate when condition, execute if_true or if_false branch (branch step failures respect failure_strategy)
@@ -241,10 +245,11 @@ A step is the basic execution unit, supporting four action types:
 
 | Action Type | Description | Key Parameters |
 |-------------|-------------|----------------|
-| `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template), `send_tools` (whether to send tool definitions, default true) |
+| `agent_prompt` | Execute an LLM prompt | `prompt` (prompt template), `skills` (skills config), `tools` (tools config) |
 | `tool_call` | Call a registered tool | `tool` (tool name), `args` (parameters; required params must not be empty) |
 | `parallel` | Execute sub-steps concurrently | `parallel` (sub-step list) |
 | `if` | Conditional branch — execute true or false branch | `when` (condition), `if_true`/`if_false` (branch steps) |
+| `notify` | Send notification message to bound channel | `message` (message content, supports templates) |
 
 Each step supports the following configuration:
 
@@ -260,8 +265,25 @@ Each step supports the following configuration:
 - **output_key**: Key name for output data, referenced by subsequent steps (not applicable to `parallel` steps, as sub-steps have their own output keys)
 - **notify_on_start**: Whether to send a "step started" notification to the bound channel (optional; defaults to `true`). When set to `false`, the start notification is skipped
 - **notify_on_complete**: Whether to send a "step completed" notification to the bound channel (optional; defaults to `true`). The `notify` step is not affected by this field and always sends the message content directly
+- **skills**: Skills config (only for `agent_prompt`), controls whether to load skill directories and activated skill prompts
+  - `mode`: `default` (load skills) | `off` (do not load skills)
+- **tools**: Tools config (only for `agent_prompt`), controls whether to send tool definitions to AI
+  - `mode`: `default` (send tool definitions) | `off` (do not send tool definitions)
 
 > **ID Rules**: Step IDs are restricted to `a-zA-Z0-9_` because the template syntax `{{.step_id.key}}` uses `.` as a delimiter — IDs containing `.` or other special characters would cause parsing errors, and non-ASCII characters may also cause issues. Use the `name` field for display names with Chinese or other characters.
+
+**Skills and Tools Config Example**:
+
+```yaml
+steps:
+  - id: analyze
+    action: agent_prompt
+    prompt: "Analyze this code"
+    skills:
+      mode: off  # Do not load skill prompts, saves tokens
+    tools:
+      mode: default  # Allow tool calls
+```
 
 ### Working Directory (Workdir)
 
@@ -296,6 +318,34 @@ steps:
       command: "git status"
       cwd: "/path/to/other-project"
 ```
+
+### History Context
+
+History context config controls whether to load previous conversation history when executing workflows. Once set in `config`, all `agent_prompt` steps will follow this config.
+
+```yaml
+config:
+  history:
+    mode: default  # default (load history) | off (do not load history)
+```
+
+**Use cases**:
+- `default`: Normal workflow, can access previous conversation context
+- `off`: Each step executes like a new conversation, not relying on previous history, suitable for independent tasks
+
+### System Prompt
+
+System prompt config controls whether to inject PicoClaw's system prompt (identity, workspace, memory, etc.) when executing workflows. Once set in `config`, all `agent_prompt` steps will follow this config.
+
+```yaml
+config:
+  system_prompt:
+    mode: default  # default (inject system prompt) | off (do not inject system prompt)
+```
+
+**Use cases**:
+- `default`: Normal workflow, includes complete system context
+- `off`: Only keeps externally provided system prompt, suitable for scenarios requiring streamlined prompts
 
 ### Trigger
 
@@ -669,6 +719,10 @@ config:
   notify_channels:         # optional, notification targets list
     - channel: telegram
       chat_id: "-100xxx"
+  history:                 # optional, history context config
+    mode: default          # default (load history) | off (do not load history)
+  system_prompt:           # optional, system prompt config
+    mode: default          # default (inject system prompt) | off (do not inject system prompt)
 
 steps:
   - id: fetch_weather
@@ -703,10 +757,13 @@ steps:
 steps:
   - id: step_id           # Required, unique step identifier (a-zA-Z0-9_ only), for condition references and data passing
     name: Display Name    # Optional, display name supporting any characters; shown in UI and notifications, falls back to id
-    action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if
+    action: agent_prompt   # Required, action type: agent_prompt / tool_call / parallel / if / notify
     enabled: true          # Optional, whether enabled (default true); false skips this step (status = skipped)
     prompt: "..."          # Required for agent_prompt, prompt template with {{.step_id.key}} support
-    send_tools: true       # Optional for agent_prompt, whether to send tool definitions to AI (default true); disabling saves tokens (useful when data is already prepared by previous steps)
+    skills:                # Optional for agent_prompt, skills config
+      mode: default        # default (load skills) | off (do not load skills)
+    tools:                 # Optional for agent_prompt, tools config
+      mode: default        # default (send tool definitions) | off (do not send tool definitions)
     tool: tool_name        # Required for tool_call, registered tool name
     args:                  # Optional for tool_call, tool parameters (values support template references; required param values must not be empty)
       key: value
@@ -728,6 +785,7 @@ steps:
     output_key: result     # Optional, output key name
     notify_on_start: true   # Optional, whether to send "step started" notification (default true)
     notify_on_complete: true # Optional, whether to send "step completed" notification (default true; not applicable to notify/agent_prompt steps)
+    message: "..."          # Required for notify, message content, supports template syntax
     retry:                 # Optional, retry configuration
       max_attempts: 3
       delay: 10s
@@ -790,6 +848,7 @@ The workflow editor page provides a visual editor based on Sequential Workflow D
 | Tool Call | Call a registered tool by name with parameters |
 | Parallel | Execute multiple sub-steps concurrently (container step) |
 | If | Conditional branch: execute true or false path based on condition |
+| Notify | Send notification message to bound channel |
 
 ## REST API
 
@@ -1111,6 +1170,57 @@ Each workflow instance records structured execution logs with timestamps, step I
 | Parallel execution | Not supported | parallel step type |
 | Failure strategy | None | stop / continue |
 | UI management | Yes | Yes |
+
+### Notify Step
+
+The `notify` step is used to send notification messages to bound channels (e.g., Telegram) during workflow execution. It does not perform any actual computation or operations; it simply sends messages to the channel, suitable for progress reports, critical node notifications, and similar scenarios.
+
+**Basic Usage:**
+
+```yaml
+steps:
+  - id: start_notify
+    name: Start Notification
+    action: notify
+    message: "🚀 Workflow started"
+
+  - id: do_something
+    action: tool_call
+    tool: exec
+    args:
+      command: "echo hello"
+    output_key: result
+
+  - id: done_notify
+    name: Completion Notification
+    action: notify
+    message: "✅ Workflow completed, result: {{.do_something.result}}"
+```
+
+**Features:**
+
+- **Message Templates**: The `message` field supports template syntax and can reference outputs from previous steps using `{{.step_id.output_key}}`
+- **Condition Control**: Supports `when` conditions for conditional notifications
+- **Delayed Sending**: Supports `delay` field for delayed notifications
+- **No Output**: The notify step produces no output; no need to set `output_key`
+
+**Conditional Notification Example:**
+
+```yaml
+steps:
+  - id: check_status
+    action: tool_call
+    tool: http_get
+    args:
+      url: "https://api.example.com/status"
+    output_key: status
+
+  - id: alert_if_error
+    name: Error Alert
+    action: notify
+    when: '{{ne .check_status.status "ok"}}'
+    message: "🚨 Service status abnormal: {{.check_status.status}}"
+```
 
 ## Example Workflows
 

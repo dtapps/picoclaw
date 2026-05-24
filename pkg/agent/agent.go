@@ -162,6 +162,48 @@ func WithNoTools(ctx context.Context, noTools bool) context.Context {
 	return context.WithValue(ctx, ctxKeyNoTools{}, noTools)
 }
 
+// 用于控制是否跳过历史记录的 context key
+type ctxKeyNoHistory struct{}
+
+// NoHistoryFromCtx 检查上下文是否要求跳过历史记录
+func NoHistoryFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeyNoHistory{}).(bool)
+	return ok && v
+}
+
+// WithNoHistory 在上下文中设置标志，用于跳过历史记录
+func WithNoHistory(ctx context.Context, noHistory bool) context.Context {
+	return context.WithValue(ctx, ctxKeyNoHistory{}, noHistory)
+}
+
+// 用于控制是否跳过默认系统提示的 context key
+type ctxKeySuppressSystemPrompt struct{}
+
+// SuppressSystemPromptFromCtx 检查上下文是否要求跳过默认系统提示
+func SuppressSystemPromptFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeySuppressSystemPrompt{}).(bool)
+	return ok && v
+}
+
+// WithSuppressSystemPrompt 在上下文中设置标志，用于跳过默认系统提示
+func WithSuppressSystemPrompt(ctx context.Context, suppress bool) context.Context {
+	return context.WithValue(ctx, ctxKeySuppressSystemPrompt{}, suppress)
+}
+
+// 用于控制是否跳过技能加载的 context key
+type ctxKeySuppressSkills struct{}
+
+// SuppressSkillsFromCtx 检查上下文是否要求跳过技能加载
+func SuppressSkillsFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeySuppressSkills{}).(bool)
+	return ok && v
+}
+
+// WithSuppressSkills 在上下文中设置标志，用于跳过技能加载
+func WithSuppressSkills(ctx context.Context, suppress bool) context.Context {
+	return context.WithValue(ctx, ctxKeySuppressSkills{}, suppress)
+}
+
 // registerSharedTools registers tools that are shared across all agents (web, message, spawn).
 
 func (al *AgentLoop) Run(ctx context.Context) error {

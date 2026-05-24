@@ -5,14 +5,24 @@ import (
 	"testing"
 )
 
-func boolPtr(b bool) *bool { return &b }
-
 func TestPromptUsesLiteralStyle(t *testing.T) {
 	wf := &Workflow{
 		Name: "test",
 		Steps: []Step{
-			{ID: "s1", Action: "agent_prompt", Prompt: "第一行\n第二行\n第三行", SendTools: boolPtr(true)},
-			{ID: "s2", Action: "agent_prompt", Prompt: "纯文本", SendTools: boolPtr(false)},
+			{
+				ID:     "s1",
+				Action: "agent_prompt",
+				Prompt: "第一行\n第二行\n第三行",
+				Skills: StepTurnProfileBlock{Mode: "default"},
+				Tools:  StepTurnProfileBlock{Mode: "default"},
+			},
+			{
+				ID:     "s2",
+				Action: "agent_prompt",
+				Prompt: "纯文本",
+				Skills: StepTurnProfileBlock{Mode: "off"},
+				Tools:  StepTurnProfileBlock{Mode: "off"},
+			},
 			{ID: "s3", Action: "notify", Message: "通知\n换行"},
 			{ID: "s4", Action: "tool_call", Tool: "x"},
 		},
@@ -27,11 +37,12 @@ func TestPromptUsesLiteralStyle(t *testing.T) {
 	if strings.Contains(out, "\\n") {
 		t.Fatal("不应有 \\n")
 	}
-	if !strings.Contains(out, "send_tools: true") {
-		t.Fatal("需要 send_tools: true")
+	if !strings.Contains(out, "skills:") || !strings.Contains(out, "mode: default") {
+		t.Fatal("需要 skills:\n  mode: default")
 	}
-	if !strings.Contains(out, "send_tools: false") {
-		t.Fatal("需要 send_tools: false")
+	// off 是 YAML 布尔值关键字，所以会被加上引号
+	if !strings.Contains(out, `mode: "off"`) {
+		t.Fatal(`需要 mode: "off"`)
 	}
 }
 

@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
+	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/constants"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/routing"
@@ -199,6 +200,20 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 	opts, err = resolveTurnProfileOptions(al.GetConfig(), opts)
 	if err != nil {
 		return "", err
+	}
+
+	// 从上下文中读取 workflow 配置的 history、system_prompt 和 skills 设置
+	if NoHistoryFromCtx(ctx) {
+		opts.NoHistory = true
+		opts.EnableSummary = false
+	}
+	if SuppressSystemPromptFromCtx(ctx) {
+		opts.TurnProfile.Enabled = true
+		opts.TurnProfile.SystemPromptMode = config.TurnProfileModeOff
+	}
+	if SuppressSkillsFromCtx(ctx) {
+		opts.TurnProfile.Enabled = true
+		opts.TurnProfile.SkillsMode = config.TurnProfileModeOff
 	}
 
 	// context-dependent commands check their own Runtime fields and report
