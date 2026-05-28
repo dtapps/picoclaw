@@ -70,8 +70,7 @@
       "websocketConnecting": "Connecting to chat service... Please wait.",
       "websocketDisconnected": "Unable to chat: WebSocket connection is disconnected. Check network and gateway status, then refresh the page or restart Launcher.",
       "websocketError": "Unable to chat: WebSocket connection failed. Check network and gateway status, then retry.",
-      "noDefaultModel": "Unable to chat: No default model is selected. Set a default model on the Models page.",
-      "unsupportedChannel": "Current channel does not support direct chat. Please switch to Pico channel."
+      "noDefaultModel": "Unable to chat: No default model is selected. Set a default model on the Models page."
     },
     "newChat": "New Chat",
     "notConnected": "Gateway is not running. Start it to chat.",
@@ -100,6 +99,8 @@
     "copy": "Copy",
     "copiedLabel": "Copied",
     "copyFailed": "Failed to copy",
+    "enableCodeWrap": "Wrap lines",
+    "disableCodeWrap": "Disable wrap",
     "expandCode": "Expand code",
     "collapseCode": "Collapse code",
     "history": "History",
