@@ -112,6 +112,7 @@ export interface WorkflowConfig {
   failure_strategy?: string
   notify_channels?: NotifyTarget[]
   workdir?: string
+  timeout?: string                // 全局超时时间，如 "30m"
   reuse_session?: boolean
   history?: TurnProfileBlock      // 历史上下文配置
   system_prompt?: TurnProfileBlock // 系统提示配置
