@@ -689,6 +689,7 @@ func (s *Service) runLoop() {
 			return
 		case <-ticker.C:
 			s.checkCronTriggers()
+			s.checkWorkflowTimeout() // 检查工作流超时
 		case evt, ok := <-s.eventCh:
 			if !ok {
 				return
@@ -964,6 +965,53 @@ func (s *Service) checkAndFireIntervalTrigger(wf *Workflow, index int, trigger T
 	ctx := context.Background()
 	if _, err := s.engine.RunWorkflow(ctx, wf, "interval", "", ""); err != nil {
 		logger.ErrorCF("workflow", "运行工作流失败", map[string]any{"workflow": wf.Name, "error": err.Error()})
+	}
+}
+
+// DefaultWorkflowTimeout 是工作流全局超时的默认值。
+const DefaultWorkflowTimeout = 30 * time.Minute
+
+// checkWorkflowTimeout 检查运行中的工作流是否超时，超时时强制取消并标记为失败。
+func (s *Service) checkWorkflowTimeout() {
+	workflows := s.getWorkflowsForTriggerCheck()
+
+	for _, wf := range workflows {
+		// 解析超时时间，未配置时使用默认值 30 分钟
+		timeout := DefaultWorkflowTimeout
+		if wf.Config.Timeout != "" {
+			parsed, err := time.ParseDuration(wf.Config.Timeout)
+			if err != nil {
+				logger.WarnCF("workflow", "工作流超时时间格式无效，使用默认值",
+					map[string]any{"workflow": wf.Name, "timeout": wf.Config.Timeout, "error": err.Error()})
+			} else {
+				timeout = parsed
+			}
+		}
+
+		// 检查该工作流是否有运行中的实例超时
+		s.engine.mu.RLock()
+		for id, inst := range s.engine.running {
+			if inst.WorkflowName != wf.Name {
+				continue
+			}
+			if time.Since(inst.StartedAt) > timeout {
+				logger.WarnCF(
+					"workflow",
+					"工作流执行超时，强制取消",
+					map[string]any{
+						"workflow":   wf.Name,
+						"instance":   id,
+						"started_at": inst.StartedAt,
+						"timeout":    timeout.String(),
+					},
+				)
+				// 取消上下文
+				if cancel, ok := s.engine.cancelFuncs[id]; ok {
+					cancel()
+				}
+			}
+		}
+		s.engine.mu.RUnlock()
 	}
 }
 

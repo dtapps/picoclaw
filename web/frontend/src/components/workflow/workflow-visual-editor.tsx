@@ -1343,6 +1343,8 @@ interface RootEditorLabels {
   strategyStop: string
   strategyContinue: string
   workdir: string
+  timeout: string
+  timeoutDesc: string
   reuseSession: string
   reuseSessionDesc: string
   history: string
@@ -1460,6 +1462,16 @@ function RootEditorPanel({ labels, isEdit }: { labels: RootEditorLabels; isEdit?
           onChange={(e) => setProperty("workdir", e.target.value)}
           placeholder="/path/to/project"
         />
+      </div>
+      <div className="sqd-editor-field">
+        <label>{labels.timeout}</label>
+        <input
+          type="text"
+          value={(properties.timeout as string) || ""}
+          onChange={(e) => setProperty("timeout", e.target.value)}
+          placeholder="30m"
+        />
+        <span className="sqd-editor-field__hint">{labels.timeoutDesc}</span>
       </div>
       <div className="sqd-editor-field sqd-reuse-session-toggle">
         <Switch
@@ -1835,6 +1847,8 @@ export function WorkflowVisualEditor({ value, onChange, isEdit }: WorkflowVisual
     strategyStop: t("pages.workflows.strategy_stop", "Stop on failure"),
     strategyContinue: t("pages.workflows.strategy_continue", "Continue on failure"),
     workdir: t("pages.workflows.workdir", "Working Directory"),
+    timeout: t("pages.workflows.timeout", "Timeout"),
+    timeoutDesc: t("pages.workflows.timeout_desc", "Global workflow timeout, e.g., 30m, 1h (default: 30m)"),
     reuseSession: t("pages.workflows.reuse_session", "Reuse Session"),
     reuseSessionDesc: t("pages.workflows.reuse_session_desc", "Reuse the same session for each execution"),
     history: t("pages.config.turn_profile_history", "History"),
