@@ -319,6 +319,25 @@ steps:
       cwd: "/path/to/other-project"
 ```
 
+### Global Timeout
+
+Global timeout config controls the maximum execution time for the entire workflow. If execution exceeds this limit, the workflow is forcibly cancelled and marked as failed. **Default is 30 minutes**.
+
+```yaml
+config:
+  timeout: "30m"  # e.g., "30m" (30 minutes), "1h" (1 hour)
+```
+
+**Use cases**:
+- Prevent workflows from getting stuck or running indefinitely
+- Ensure scheduled tasks don't pile up (e.g., a task running every 5 minutes won't be re-triggered if the previous execution exceeds 5 minutes)
+- Set longer timeouts for long-running tasks (e.g., data processing tasks set to "2h")
+
+**Notes**:
+- Timeout format is Go duration, e.g., `"30m"`, `"1h"`, `"2h30m"`
+- Defaults to 30 minutes if not configured
+- After timeout, workflow status becomes `cancelled`, and completion notification is triggered (if notification channels are configured)
+
 ### History Context
 
 History context config controls whether to load previous conversation history when executing workflows. Once set in `config`, all `agent_prompt` steps will follow this config.
@@ -716,6 +735,7 @@ vars:
 config:
   failure_strategy: stop  # stop or continue
   workdir: "/root/.picoclaw/workspace/news"  # optional, default working directory for tool_call steps
+  timeout: "30m"           # optional, global workflow timeout (default: 30m)
   notify_channels:         # optional, notification targets list
     - channel: telegram
       chat_id: "-100xxx"

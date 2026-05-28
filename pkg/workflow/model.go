@@ -184,6 +184,7 @@ type WorkflowConfig struct {
 	ReuseSession    bool                     `yaml:"reuse_session,omitempty"    json:"reuse_session,omitempty"`    // 是否复用 session，false 表示每次执行创建新 session
 	History         WorkflowTurnProfileBlock `yaml:"history,omitempty"          json:"history,omitempty"`          // 历史上下文配置
 	SystemPrompt    WorkflowTurnProfileBlock `yaml:"system_prompt,omitempty"    json:"system_prompt,omitempty"`    // 系统提示配置
+	Timeout         string                   `yaml:"timeout,omitempty"          json:"timeout,omitempty"`          // 工作流全局超时时间，如 "30m"、"1h"，默认空表示不限制
 }
 
 // GetNotifyTargets 返回通知目标列表。
