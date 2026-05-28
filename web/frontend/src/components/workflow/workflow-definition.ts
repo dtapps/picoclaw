@@ -100,17 +100,20 @@ function stepToSwd(s: WorkflowStep): Step {
   // parallel 步骤使用 BranchedStep 格式，每个分支可以包含多个步骤
   if (s.action === "parallel") {
     const branches: Record<string, Step[]> = {}
+    const branchOrder: string[] = []
     const parallelData = s.parallel
-    
+
     // 检查是新的分支格式还是旧的扁平格式
     if (parallelData && Array.isArray(parallelData) && parallelData.length > 0) {
       // 格式: { branch: Step[] }[]
       const branchArray = parallelData as unknown as { branch: WorkflowStep[] }[]
       branchArray.forEach((b, i) => {
-        branches[`step_${i}`] = (b.branch || []).map(stepToSwd)
+        const branchId = String(i)
+        branches[branchId] = (b.branch || []).map(stepToSwd)
+        branchOrder.push(branchId)
       })
     }
-    
+
     return {
       id: stepId,
       componentType: COMPONENT_SWITCH,
@@ -126,6 +129,8 @@ function stepToSwd(s: WorkflowStep): Step {
         enabled: s.enabled ?? true,
         notify_on_start: s.notify_on_start ?? true,
         notify_on_complete: s.notify_on_complete ?? true,
+        // 存储分支顺序，确保保存时能恢复正确的顺序
+        _branchOrder: branchOrder.join(","),
       },
       branches,
     } as BranchedStep
@@ -261,8 +266,24 @@ function swdToStep(s: Step): WorkflowStep {
     const branched = s as BranchedStep
     
     const branches = branched.branches || {}
-    // 按分支键名排序，确保分支顺序一致（step_0, step_1, step_2...）
-    const sortedKeys = Object.keys(branches).sort()
+    const branchKeys = Object.keys(branches)
+    
+    // 尝试从 _branchOrder 属性恢复顺序，否则使用原始顺序
+    const branchOrderStr = (s.properties._branchOrder as string) || ""
+    let sortedKeys: string[]
+    
+    if (branchOrderStr) {
+      // 使用保存的顺序
+      const orderMap = new Map(branchOrderStr.split(",").map((k, i) => [k, i]))
+      sortedKeys = branchKeys.sort((a, b) => {
+        const orderA = orderMap.get(a) ?? Infinity
+        const orderB = orderMap.get(b) ?? Infinity
+        return orderA - orderB
+      })
+    } else {
+      // 回退：按插入顺序（Object.keys 在现代引擎中通常保持插入顺序）
+      sortedKeys = branchKeys
+    }
     
     const parallelBranches: { branch: WorkflowStep[] }[] = []
     for (const key of sortedKeys) {

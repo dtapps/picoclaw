@@ -783,8 +783,22 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
     if (!found) return
     const step = found as BranchedStep
     if (!step.branches) return
-    const branchIndex = Object.keys(step.branches).length
-    step.branches[`step_${branchIndex}`] = []
+    // 生成新的分支键名
+    const keys = Object.keys(step.branches)
+    let maxIndex = -1
+    for (const key of keys) {
+      const match = key.match(/^(\d+)$/)
+      if (match) {
+        const idx = parseInt(match[1], 10)
+        if (idx > maxIndex) maxIndex = idx
+      }
+    }
+    const newKey = String(maxIndex + 1)
+    step.branches[newKey] = []
+    // 更新 _branchOrder
+    const currentOrder = ((step.properties._branchOrder as string) || "").split(",").filter(k => k)
+    currentOrder.push(newKey)
+    step.properties._branchOrder = currentOrder.join(",")
     notifyChildrenChanged()
   }
 
@@ -796,7 +810,25 @@ function StepEditorPanel({ labels, definition }: { labels: StepEditorLabels; def
     if (!step.branches) return
     const keys = Object.keys(step.branches)
     if (keys.length <= 2) return
-    delete step.branches[keys[keys.length - 1]]
+    // 找到最大的数字键并删除对应分支
+    let maxIndex = -1
+    let maxKey = ""
+    for (const key of keys) {
+      const match = key.match(/^(\d+)$/)
+      if (match) {
+        const idx = parseInt(match[1], 10)
+        if (idx > maxIndex) {
+          maxIndex = idx
+          maxKey = key
+        }
+      }
+    }
+    if (maxKey) {
+      delete step.branches[maxKey]
+      // 更新 _branchOrder
+      const currentOrder = ((step.properties._branchOrder as string) || "").split(",").filter(k => k && k !== maxKey)
+      step.properties._branchOrder = currentOrder.join(",")
+    }
     notifyChildrenChanged()
   }
 
@@ -1643,11 +1675,12 @@ function createParallelStep(): BranchedStep {
       enabled: true,
       notify_on_start: true,
       notify_on_complete: true,
+      _branchOrder: "0,1,2",
     },
     branches: {
-      step_0: [],
-      step_1: [],
-      step_2: [],
+      "0": [],
+      "1": [],
+      "2": [],
     },
   }
 }
