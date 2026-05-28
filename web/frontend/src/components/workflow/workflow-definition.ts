@@ -58,6 +58,7 @@ export function workflowToDefinition(wf: Workflow): Definition {
       triggers,
       failureStrategy: wf.config?.failure_strategy || "stop",
       workdir: wf.config?.workdir || "",
+      timeout: wf.config?.timeout || "",
       reuseSession: wf.config?.reuse_session || false,
       history: wf.config?.history?.mode || "default",
       systemPrompt: wf.config?.system_prompt?.mode || "default",
@@ -223,6 +224,7 @@ export function definitionToWorkflow(def: Definition): {
     config: {
       failure_strategy: (props.failureStrategy as "stop" | "continue") || "stop",
       workdir: (props.workdir as string) || undefined,
+      timeout: (props.timeout as string) || undefined,
       reuse_session: (props.reuseSession as boolean) || undefined,
       history: props.history ? { mode: props.history as "default" | "off" } : undefined,
       system_prompt: props.systemPrompt ? { mode: props.systemPrompt as "default" | "off" } : undefined,
@@ -347,6 +349,7 @@ export function createEmptyDefinition(): Definition {
       triggers: [{ type: "manual" }],
       failureStrategy: "stop",
       workdir: "",
+      timeout: "",
       reuseSession: false,
       vars: {},
     },
