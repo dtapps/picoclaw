@@ -52,7 +52,7 @@ require (
 	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
-	maunium.net/go/mautrix v0.27.0
+	maunium.net/go/mautrix v0.28.0
 	modernc.org/sqlite v1.51.0
 	rsc.io/qr v0.2.0
 )
