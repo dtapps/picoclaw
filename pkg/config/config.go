@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v11"
-
 	"github.com/sipeed/picoclaw/pkg"
 	"github.com/sipeed/picoclaw/pkg/fileutil"
 	"github.com/sipeed/picoclaw/pkg/logger"
@@ -857,6 +856,12 @@ type ToolConfig struct {
 	Enabled bool `json:"enabled" yaml:"-" env:"ENABLED"`
 }
 
+type MessageToolsConfig struct {
+	ToolConfig `yaml:"-" envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+
+	MediaEnabled bool `json:"media_enabled" yaml:"-" env:"PICOCLAW_TOOLS_MESSAGE_MEDIA_ENABLED"`
+}
+
 type BraveConfig struct {
 	Enabled    bool          `json:"enabled"           yaml:"-"                  env:"PICOCLAW_TOOLS_WEB_BRAVE_ENABLED"`
 	APIKeys    SecureStrings `json:"api_keys,omitzero" yaml:"api_keys,omitempty" env:"PICOCLAW_TOOLS_WEB_BRAVE_API_KEYS"`
@@ -1069,7 +1074,7 @@ type ToolsConfig struct {
 	InstallSkill    ToolConfig         `json:"install_skill"     yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
 	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
 	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_LOAD_IMAGE_"`
-	Message         ToolConfig         `json:"message"           yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+	Message         MessageToolsConfig `json:"message"           yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
 	ReadFile        ReadFileToolConfig `json:"read_file"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
 	Serial          ToolConfig         `json:"serial"            yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SERIAL_"`
 	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
