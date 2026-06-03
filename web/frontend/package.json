@@ -42,7 +42,7 @@
     "rehype-raw": "^7.0.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
-    "sequential-workflow-designer": "^0.37.3",
+    "sequential-workflow-designer": "^0.37.4",
     "sequential-workflow-designer-react": "^0.37.3",
     "shadcn": "^4.8.3",
     "sonner": "^2.0.7",
