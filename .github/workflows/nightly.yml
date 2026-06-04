@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: dev
 
       - name: Compute version
         id: version
@@ -33,9 +34,9 @@ jobs:
             VERSION="${BASE_VERSION}-nightly.${DATE}.${SHA}"
           fi
 
-          COMPARE_URL="https://github.com/${{ github.repository }}/commits/main"
+          COMPARE_URL="https://github.com/${{ github.repository }}/commits/dev"
           if [ -n "$BASE_VERSION" ] && [ "$BASE_VERSION" != "v0.0.0" ]; then
-            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${BASE_VERSION}...main"
+            COMPARE_URL="https://github.com/${{ github.repository }}/compare/${BASE_VERSION}...dev"
           fi
 
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
@@ -80,9 +81,6 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Install zip
-        run: sudo apt-get install -y zip
-
       - name: Create local tag for GoReleaser
         run: git tag "${{ steps.version.outputs.version }}"
 
@@ -98,13 +96,7 @@ jobs:
           DOCKERHUB_IMAGE_NAME: ${{ vars.DOCKERHUB_REPOSITORY }}
           GOVERSION: ${{ steps.setup-go.outputs.go-version }}
           GORELEASER_CURRENT_TAG: ${{ steps.version.outputs.version }}
-          INCLUDE_ANDROID_BUNDLE: "true"
           NIGHTLY_BUILD: "true"
-          MACOS_SIGN_P12: ${{ secrets.MACOS_SIGN_P12 }}
-          MACOS_SIGN_PASSWORD: ${{ secrets.MACOS_SIGN_PASSWORD }}
-          MACOS_NOTARY_ISSUER_ID: ${{ secrets.MACOS_NOTARY_ISSUER_ID }}
-          MACOS_NOTARY_KEY_ID: ${{ secrets.MACOS_NOTARY_KEY_ID }}
-          MACOS_NOTARY_KEY: ${{ secrets.MACOS_NOTARY_KEY }}
 
       - name: Update nightly release
         env:
@@ -132,9 +124,15 @@ jobs:
 
           # Collect release artifacts from goreleaser dist/
           ASSETS=()
-          for f in dist/*.tar.gz dist/*.zip dist/*.deb dist/*.rpm dist/checksums.txt build/picoclaw-android-universal.zip; do
+          for f in dist/*.tar.gz dist/*.deb dist/*.rpm dist/checksums.txt; do
             [ -f "$f" ] && ASSETS+=("$f")
           done
+
+          if [ ${#ASSETS[@]} -eq 0 ]; then
+            echo "::error::No artifacts found in dist/"
+            ls -l dist/ || true
+            exit 1
+          fi
 
           # Create nightly release (prerelease, NOT latest)
           gh release create nightly \

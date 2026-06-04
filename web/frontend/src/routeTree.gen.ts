@@ -9,21 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SchedulesRouteImport } from './routes/schedules'
 import { Route as ModelsRouteImport } from './routes/models'
 import { Route as LogsRouteImport } from './routes/logs'
 import { Route as LauncherSetupRouteImport } from './routes/launcher-setup'
 import { Route as LauncherLoginRouteImport } from './routes/launcher-login'
+import { Route as EnvironmentRouteImport } from './routes/environment'
 import { Route as CredentialsRouteImport } from './routes/credentials'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as AgentRouteImport } from './routes/agent'
+import { Route as WorkflowsRouteRouteImport } from './routes/workflows/route'
+import { Route as SessionsRouteRouteImport } from './routes/sessions/route'
 import { Route as ChannelsRouteRouteImport } from './routes/channels/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as WorkflowsInstanceRouteImport } from './routes/workflows/instance'
+import { Route as WorkflowsEditorRouteImport } from './routes/workflows/editor'
+import { Route as SessionsIdRouteImport } from './routes/sessions/$id'
 import { Route as ConfigRawRouteImport } from './routes/config.raw'
 import { Route as ChannelsNameRouteImport } from './routes/channels/$name'
 import { Route as AgentToolsRouteImport } from './routes/agent/tools'
 import { Route as AgentSkillsRouteImport } from './routes/agent/skills'
+import { Route as AgentMcpRouteImport } from './routes/agent/mcp'
 import { Route as AgentHubRouteImport } from './routes/agent/hub'
 
+const SchedulesRoute = SchedulesRouteImport.update({
+  id: '/schedules',
+  path: '/schedules',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ModelsRoute = ModelsRouteImport.update({
   id: '/models',
   path: '/models',
@@ -44,6 +57,11 @@ const LauncherLoginRoute = LauncherLoginRouteImport.update({
   path: '/launcher-login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnvironmentRoute = EnvironmentRouteImport.update({
+  id: '/environment',
+  path: '/environment',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CredentialsRoute = CredentialsRouteImport.update({
   id: '/credentials',
   path: '/credentials',
@@ -59,6 +77,16 @@ const AgentRoute = AgentRouteImport.update({
   path: '/agent',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WorkflowsRouteRoute = WorkflowsRouteRouteImport.update({
+  id: '/workflows',
+  path: '/workflows',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SessionsRouteRoute = SessionsRouteRouteImport.update({
+  id: '/sessions',
+  path: '/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChannelsRouteRoute = ChannelsRouteRouteImport.update({
   id: '/channels',
   path: '/channels',
@@ -68,6 +96,21 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const WorkflowsInstanceRoute = WorkflowsInstanceRouteImport.update({
+  id: '/instance',
+  path: '/instance',
+  getParentRoute: () => WorkflowsRouteRoute,
+} as any)
+const WorkflowsEditorRoute = WorkflowsEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => WorkflowsRouteRoute,
+} as any)
+const SessionsIdRoute = SessionsIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SessionsRouteRoute,
 } as any)
 const ConfigRawRoute = ConfigRawRouteImport.update({
   id: '/raw',
@@ -89,6 +132,11 @@ const AgentSkillsRoute = AgentSkillsRouteImport.update({
   path: '/skills',
   getParentRoute: () => AgentRoute,
 } as any)
+const AgentMcpRoute = AgentMcpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => AgentRoute,
+} as any)
 const AgentHubRoute = AgentHubRouteImport.update({
   id: '/hub',
   path: '/hub',
@@ -98,117 +146,176 @@ const AgentHubRoute = AgentHubRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
+  '/environment': typeof EnvironmentRoute
   '/launcher-login': typeof LauncherLoginRoute
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/schedules': typeof SchedulesRoute
   '/agent/hub': typeof AgentHubRoute
+  '/agent/mcp': typeof AgentMcpRoute
   '/agent/skills': typeof AgentSkillsRoute
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
+  '/workflows/instance': typeof WorkflowsInstanceRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
+  '/environment': typeof EnvironmentRoute
   '/launcher-login': typeof LauncherLoginRoute
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/schedules': typeof SchedulesRoute
   '/agent/hub': typeof AgentHubRoute
+  '/agent/mcp': typeof AgentMcpRoute
   '/agent/skills': typeof AgentSkillsRoute
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
+  '/workflows/instance': typeof WorkflowsInstanceRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/channels': typeof ChannelsRouteRouteWithChildren
+  '/sessions': typeof SessionsRouteRouteWithChildren
+  '/workflows': typeof WorkflowsRouteRouteWithChildren
   '/agent': typeof AgentRouteWithChildren
   '/config': typeof ConfigRouteWithChildren
   '/credentials': typeof CredentialsRoute
+  '/environment': typeof EnvironmentRoute
   '/launcher-login': typeof LauncherLoginRoute
   '/launcher-setup': typeof LauncherSetupRoute
   '/logs': typeof LogsRoute
   '/models': typeof ModelsRoute
+  '/schedules': typeof SchedulesRoute
   '/agent/hub': typeof AgentHubRoute
+  '/agent/mcp': typeof AgentMcpRoute
   '/agent/skills': typeof AgentSkillsRoute
   '/agent/tools': typeof AgentToolsRoute
   '/channels/$name': typeof ChannelsNameRoute
   '/config/raw': typeof ConfigRawRoute
+  '/sessions/$id': typeof SessionsIdRoute
+  '/workflows/editor': typeof WorkflowsEditorRoute
+  '/workflows/instance': typeof WorkflowsInstanceRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/channels'
+    | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
+    | '/environment'
     | '/launcher-login'
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/schedules'
     | '/agent/hub'
+    | '/agent/mcp'
     | '/agent/skills'
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
+    | '/workflows/editor'
+    | '/workflows/instance'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/channels'
+    | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
+    | '/environment'
     | '/launcher-login'
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/schedules'
     | '/agent/hub'
+    | '/agent/mcp'
     | '/agent/skills'
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
+    | '/workflows/editor'
+    | '/workflows/instance'
   id:
     | '__root__'
     | '/'
     | '/channels'
+    | '/sessions'
+    | '/workflows'
     | '/agent'
     | '/config'
     | '/credentials'
+    | '/environment'
     | '/launcher-login'
     | '/launcher-setup'
     | '/logs'
     | '/models'
+    | '/schedules'
     | '/agent/hub'
+    | '/agent/mcp'
     | '/agent/skills'
     | '/agent/tools'
     | '/channels/$name'
     | '/config/raw'
+    | '/sessions/$id'
+    | '/workflows/editor'
+    | '/workflows/instance'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChannelsRouteRoute: typeof ChannelsRouteRouteWithChildren
+  SessionsRouteRoute: typeof SessionsRouteRouteWithChildren
+  WorkflowsRouteRoute: typeof WorkflowsRouteRouteWithChildren
   AgentRoute: typeof AgentRouteWithChildren
   ConfigRoute: typeof ConfigRouteWithChildren
   CredentialsRoute: typeof CredentialsRoute
+  EnvironmentRoute: typeof EnvironmentRoute
   LauncherLoginRoute: typeof LauncherLoginRoute
   LauncherSetupRoute: typeof LauncherSetupRoute
   LogsRoute: typeof LogsRoute
   ModelsRoute: typeof ModelsRoute
+  SchedulesRoute: typeof SchedulesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/schedules': {
+      id: '/schedules'
+      path: '/schedules'
+      fullPath: '/schedules'
+      preLoaderRoute: typeof SchedulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/models': {
       id: '/models'
       path: '/models'
@@ -237,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LauncherLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/environment': {
+      id: '/environment'
+      path: '/environment'
+      fullPath: '/environment'
+      preLoaderRoute: typeof EnvironmentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/credentials': {
       id: '/credentials'
       path: '/credentials'
@@ -258,6 +372,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/workflows': {
+      id: '/workflows'
+      path: '/workflows'
+      fullPath: '/workflows'
+      preLoaderRoute: typeof WorkflowsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sessions': {
+      id: '/sessions'
+      path: '/sessions'
+      fullPath: '/sessions'
+      preLoaderRoute: typeof SessionsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/channels': {
       id: '/channels'
       path: '/channels'
@@ -271,6 +399,27 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/workflows/instance': {
+      id: '/workflows/instance'
+      path: '/instance'
+      fullPath: '/workflows/instance'
+      preLoaderRoute: typeof WorkflowsInstanceRouteImport
+      parentRoute: typeof WorkflowsRouteRoute
+    }
+    '/workflows/editor': {
+      id: '/workflows/editor'
+      path: '/editor'
+      fullPath: '/workflows/editor'
+      preLoaderRoute: typeof WorkflowsEditorRouteImport
+      parentRoute: typeof WorkflowsRouteRoute
+    }
+    '/sessions/$id': {
+      id: '/sessions/$id'
+      path: '/$id'
+      fullPath: '/sessions/$id'
+      preLoaderRoute: typeof SessionsIdRouteImport
+      parentRoute: typeof SessionsRouteRoute
     }
     '/config/raw': {
       id: '/config/raw'
@@ -300,6 +449,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgentSkillsRouteImport
       parentRoute: typeof AgentRoute
     }
+    '/agent/mcp': {
+      id: '/agent/mcp'
+      path: '/mcp'
+      fullPath: '/agent/mcp'
+      preLoaderRoute: typeof AgentMcpRouteImport
+      parentRoute: typeof AgentRoute
+    }
     '/agent/hub': {
       id: '/agent/hub'
       path: '/hub'
@@ -322,14 +478,42 @@ const ChannelsRouteRouteWithChildren = ChannelsRouteRoute._addFileChildren(
   ChannelsRouteRouteChildren,
 )
 
+interface SessionsRouteRouteChildren {
+  SessionsIdRoute: typeof SessionsIdRoute
+}
+
+const SessionsRouteRouteChildren: SessionsRouteRouteChildren = {
+  SessionsIdRoute: SessionsIdRoute,
+}
+
+const SessionsRouteRouteWithChildren = SessionsRouteRoute._addFileChildren(
+  SessionsRouteRouteChildren,
+)
+
+interface WorkflowsRouteRouteChildren {
+  WorkflowsEditorRoute: typeof WorkflowsEditorRoute
+  WorkflowsInstanceRoute: typeof WorkflowsInstanceRoute
+}
+
+const WorkflowsRouteRouteChildren: WorkflowsRouteRouteChildren = {
+  WorkflowsEditorRoute: WorkflowsEditorRoute,
+  WorkflowsInstanceRoute: WorkflowsInstanceRoute,
+}
+
+const WorkflowsRouteRouteWithChildren = WorkflowsRouteRoute._addFileChildren(
+  WorkflowsRouteRouteChildren,
+)
+
 interface AgentRouteChildren {
   AgentHubRoute: typeof AgentHubRoute
+  AgentMcpRoute: typeof AgentMcpRoute
   AgentSkillsRoute: typeof AgentSkillsRoute
   AgentToolsRoute: typeof AgentToolsRoute
 }
 
 const AgentRouteChildren: AgentRouteChildren = {
   AgentHubRoute: AgentHubRoute,
+  AgentMcpRoute: AgentMcpRoute,
   AgentSkillsRoute: AgentSkillsRoute,
   AgentToolsRoute: AgentToolsRoute,
 }
@@ -350,13 +534,17 @@ const ConfigRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChannelsRouteRoute: ChannelsRouteRouteWithChildren,
+  SessionsRouteRoute: SessionsRouteRouteWithChildren,
+  WorkflowsRouteRoute: WorkflowsRouteRouteWithChildren,
   AgentRoute: AgentRouteWithChildren,
   ConfigRoute: ConfigRouteWithChildren,
   CredentialsRoute: CredentialsRoute,
+  EnvironmentRoute: EnvironmentRoute,
   LauncherLoginRoute: LauncherLoginRoute,
   LauncherSetupRoute: LauncherSetupRoute,
   LogsRoute: LogsRoute,
   ModelsRoute: ModelsRoute,
+  SchedulesRoute: SchedulesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

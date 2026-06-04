@@ -1,15 +1,20 @@
 import { IconChevronRight } from "@tabler/icons-react"
 import {
   IconAtom,
+  IconCalendar,
   IconChevronsDown,
   IconChevronsUp,
+  IconCpu,
+  IconHistory,
   IconKey,
   IconListDetails,
   IconMessageCircle,
   IconSearch,
   IconSettings,
   IconSparkles,
+  IconTerminal,
   IconTools,
+  IconSubtask,
 } from "@tabler/icons-react"
 import { Link, useRouterState } from "@tanstack/react-router"
 import * as React from "react"
@@ -99,6 +104,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             icon: IconMessageCircle,
             translateTitle: true,
           },
+          {
+            title: "navigation.all_sessions",
+            url: "/sessions",
+            icon: IconHistory,
+            translateTitle: true,
+          },
         ],
       },
       {
@@ -150,11 +161,35 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
             icon: IconTools,
             translateTitle: true,
           },
+          {
+            title: "navigation.mcp",
+            url: "/agent/mcp",
+            icon: IconCpu,
+            translateTitle: true,
+          },
         ],
       },
       {
         ...baseNavGroups[3],
         items: [
+          {
+            title: "navigation.schedules",
+            url: "/schedules",
+            icon: IconCalendar,
+            translateTitle: true,
+          },
+          {
+            title: "navigation.workflows",
+            url: "/workflows",
+            icon: IconSubtask,
+            translateTitle: true,
+          },
+          {
+            title: "navigation.environment",
+            url: "/environment",
+            icon: IconTerminal,
+            translateTitle: true,
+          },
           {
             title: "navigation.config",
             url: "/config",

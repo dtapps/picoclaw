@@ -145,6 +145,23 @@ Exemplos:
 dammi le ultime news
 ```
 
+**Comando Exec (Apenas CLI)**
+
+O comando `/exec` permite executar comandos shell diretamente da interface de chat. Por motivos de segurança, este comando é **restrito apenas a canais internos** (CLI) por padrão. Para habilitá-lo para canais remotos, defina `tools.exec.allow_remote: true` em sua configuração.
+
+- `/exec run <comando>` - Executar um comando shell e retornar a saída
+- `/exec sessions` - Listar sessões exec ativas
+- `/exec kill <session-id>` - Encerrar uma sessão exec em execução
+
+Exemplos:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Nota de Segurança:** O comando `/exec` permite acesso direto ao sistema. Use com cautela e não o habilite para canais remotos a menos que entenda os riscos de segurança envolvidos e confie em todos os usuários com acesso ao canal.
+
 ### Política Unificada de Execução de Comandos
 
 - Comandos slash genéricos são executados através de um único caminho em `pkg/agent/loop.go` via `commands.Executor`.

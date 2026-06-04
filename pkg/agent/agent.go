@@ -29,6 +29,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/session"
 	"github.com/sipeed/picoclaw/pkg/state"
 	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/sipeed/picoclaw/pkg/workflow"
 )
 
 type AgentLoop struct {
@@ -75,6 +76,20 @@ type AgentLoop struct {
 	reloadFunc func() error
 
 	providerFactory func(*config.ModelConfig) (providers.LLMProvider, string, error)
+
+	// 构造后注入的外部服务
+	workflowService interface {
+		ListWorkflowsForCommand() []commands.WorkflowInfo
+		RunWorkflow(ctx context.Context, name, channel, chatID string) (string, error)
+		ShowWorkflow(name string) (*commands.WorkflowInfo, []string, error)
+		BindChannel(name, channel, chatID string) error
+		UnbindChannel(name, channel, chatID string) error
+		GetNotifyChannels(name string) ([]workflow.NotifyTarget, error)
+		SetEnabled(name string, enabled bool) error
+		InstancesForCommand(name string) ([]commands.WorkflowInstanceInfo, error)
+		StopInstance(instanceID string) error
+		CronListForCommand() []commands.CronTaskInfo
+	}
 }
 
 // processOptions configures how a message is processed
@@ -133,6 +148,62 @@ const (
 	metadataKeyParentPeerID    = "parent_peer_id"
 )
 
+// 用于控制是否向 LLM 发送工具定义的 context key
+type ctxKeyNoTools struct{}
+
+// NoToolsFromCtx 检查上下文是否要求跳过发送工具定义到 LLM
+func NoToolsFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeyNoTools{}).(bool)
+	return ok && v
+}
+
+// WithNoTools 在上下文中设置标志，用于跳过向 LLM 发送工具定义
+func WithNoTools(ctx context.Context, noTools bool) context.Context {
+	return context.WithValue(ctx, ctxKeyNoTools{}, noTools)
+}
+
+// 用于控制是否跳过历史记录的 context key
+type ctxKeyNoHistory struct{}
+
+// NoHistoryFromCtx 检查上下文是否要求跳过历史记录
+func NoHistoryFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeyNoHistory{}).(bool)
+	return ok && v
+}
+
+// WithNoHistory 在上下文中设置标志，用于跳过历史记录
+func WithNoHistory(ctx context.Context, noHistory bool) context.Context {
+	return context.WithValue(ctx, ctxKeyNoHistory{}, noHistory)
+}
+
+// 用于控制是否跳过默认系统提示的 context key
+type ctxKeySuppressSystemPrompt struct{}
+
+// SuppressSystemPromptFromCtx 检查上下文是否要求跳过默认系统提示
+func SuppressSystemPromptFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeySuppressSystemPrompt{}).(bool)
+	return ok && v
+}
+
+// WithSuppressSystemPrompt 在上下文中设置标志，用于跳过默认系统提示
+func WithSuppressSystemPrompt(ctx context.Context, suppress bool) context.Context {
+	return context.WithValue(ctx, ctxKeySuppressSystemPrompt{}, suppress)
+}
+
+// 用于控制是否跳过技能加载的 context key
+type ctxKeySuppressSkills struct{}
+
+// SuppressSkillsFromCtx 检查上下文是否要求跳过技能加载
+func SuppressSkillsFromCtx(ctx context.Context) bool {
+	v, ok := ctx.Value(ctxKeySuppressSkills{}).(bool)
+	return ok && v
+}
+
+// WithSuppressSkills 在上下文中设置标志，用于跳过技能加载
+func WithSuppressSkills(ctx context.Context, suppress bool) context.Context {
+	return context.WithValue(ctx, ctxKeySuppressSkills{}, suppress)
+}
+
 // registerSharedTools registers tools that are shared across all agents (web, message, spawn).
 
 func (al *AgentLoop) Run(ctx context.Context) error {
@@ -142,7 +213,8 @@ func (al *AgentLoop) Run(ctx context.Context) error {
 		return err
 	}
 	if err := al.ensureMCPInitialized(ctx); err != nil {
-		return err
+		logger.WarnCF("agent", "MCP initialization failed, continuing without MCP tools",
+			map[string]any{"error": err.Error()})
 	}
 
 	idleTicker := time.NewTicker(100 * time.Millisecond)

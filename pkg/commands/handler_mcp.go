@@ -9,7 +9,7 @@ import (
 func listMCPServersHandler() Handler {
 	return func(ctx context.Context, req Request, rt *Runtime) error {
 		if rt == nil || rt.ListMCPServers == nil {
-			return req.Reply(unavailableMsg)
+			return req.Reply(unavailableMsg())
 		}
 
 		servers := rt.ListMCPServers(ctx)
@@ -46,7 +46,7 @@ func listMCPServersHandler() Handler {
 func showMCPToolsHandler() Handler {
 	return func(ctx context.Context, req Request, rt *Runtime) error {
 		if rt == nil || rt.ListMCPTools == nil {
-			return req.Reply(unavailableMsg)
+			return req.Reply(unavailableMsg())
 		}
 
 		serverName := nthToken(req.Text, 2)

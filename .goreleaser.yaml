@@ -5,14 +5,11 @@ version: 2
 git:
   ignore_tags:
     - nightly
-    - ".*-nightly.*"
 
 before:
   hooks:
     - go generate ./...
     - sh -c 'cd web/frontend && CI=true pnpm install --frozen-lockfile && pnpm build:backend'
-    - sh -c 'GOBIN="$(go env GOPATH)/bin"; mkdir -p "$GOBIN"; go install github.com/tc-hib/go-winres@v0.3.3 && "$GOBIN/go-winres" make --in web/backend/winres/winres.json --out web/backend/rsrc --product-version={{ .Version }} --file-version={{ .Version }}'
-    - sh -c 'if [ "${INCLUDE_ANDROID_BUNDLE:-}" = "true" ]; then make build-android-bundle; fi'
 
 builds:
   - id: picoclaw
@@ -21,6 +18,7 @@ builds:
     tags:
       - goolm
       - stdjson
+      - whatsapp_native
     ldflags:
       - -s -w
       - -X github.com/sipeed/picoclaw/pkg/config.Version={{ .Version }}
@@ -29,33 +27,15 @@ builds:
       - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ with index .Env "GOVERSION" }}{{ . }}{{ else }}unknown{{ end }}
     goos:
       - linux
-      - windows
-      - darwin
-      - freebsd
-      - netbsd
     goarch:
       - amd64
       - arm64
-      - riscv64
-      - loong64
-      - arm
-      - s390x
-      - mipsle
     goarm:
       - "6"
       - "7"
     gomips:
       - softfloat
     main: ./cmd/picoclaw
-    ignore:
-      - goos: windows
-        goarch: arm
-      - goos: netbsd
-        goarch: s390x
-      - goos: netbsd
-        goarch: mips64
-      - goos: netbsd
-        goarch: arm
 
   - id: picoclaw-launcher
     binary: picoclaw-launcher
@@ -64,6 +44,7 @@ builds:
     tags:
       - goolm
       - stdjson
+      - whatsapp_native
     ldflags:
       - -s -w
       - -X github.com/sipeed/picoclaw/pkg/config.Version={{ .Version }}
@@ -72,33 +53,15 @@ builds:
       - -X github.com/sipeed/picoclaw/pkg/config.GoVersion={{ with index .Env "GOVERSION" }}{{ . }}{{ else }}unknown{{ end }}
     goos:
       - linux
-      - windows
-      - darwin
-      - freebsd
-      - netbsd
     goarch:
       - amd64
       - arm64
-      - riscv64
-      - loong64
-      - arm
-      - s390x
-      - mipsle
     goarm:
       - "6"
       - "7"
     gomips:
       - softfloat
     main: ./web/backend
-    ignore:
-      - goos: windows
-        goarch: arm
-      - goos: netbsd
-        goarch: s390x
-      - goos: netbsd
-        goarch: mips64
-      - goos: netbsd
-        goarch: arm
 
 dockers_v2:
   - id: picoclaw
@@ -116,7 +79,6 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
-      - linux/riscv64
 
   - id: picoclaw-launcher
     dockerfile: docker/Dockerfile.goreleaser.launcher
@@ -132,27 +94,9 @@ dockers_v2:
     platforms:
       - linux/amd64
       - linux/arm64
-      - linux/riscv64
-
-notarize:
-  macos:
-    - enabled: '{{ isEnvSet "MACOS_SIGN_P12" }}'
-      ids:
-        - picoclaw
-        - picoclaw-launcher
-      sign:
-        certificate: "{{.Env.MACOS_SIGN_P12}}"
-        password: "{{.Env.MACOS_SIGN_PASSWORD}}"
-      notarize:
-        issuer_id: "{{.Env.MACOS_NOTARY_ISSUER_ID}}"
-        key_id: "{{.Env.MACOS_NOTARY_KEY_ID}}"
-        key: "{{.Env.MACOS_NOTARY_KEY}}"
-        wait: true
-        timeout: 20m
 
 archives:
   - formats: [tar.gz]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
     name_template: >-
       {{ .ProjectName }}_
       {{- title .Os }}_
@@ -160,10 +104,6 @@ archives:
       {{- else if eq .Arch "386" }}i386
       {{- else }}{{ .Arch }}{{ end }}
       {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        formats: [zip]
 
 nfpms:
   - id: picoclaw
@@ -199,15 +139,8 @@ changelog:
       - "^docs:"
       - "^test:"
 
-# upx:
-#    - enabled: true
-#      compress: best
-#      lzma: true
-
 release:
   disable: '{{ isEnvSet "NIGHTLY_BUILD" }}'
-  extra_files:
-    - glob: ./build/picoclaw-android-universal.zip
   footer: >-
 
     ---

@@ -5,6 +5,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
@@ -62,7 +63,7 @@ func readSkillBodyExcerpt(path string) string {
 func summarizeMatchedSkillExcerpts(matches []skills.SkillInfo) string {
 	excerpts := loadMatchedSkillExcerpts(matches)
 	if len(excerpts) == 0 {
-		return "none"
+		return i18n.T("skill_content_none")
 	}
 
 	parts := make([]string, 0, len(excerpts))
@@ -79,7 +80,7 @@ func summarizeMatchedSkillExcerpts(matches []skills.SkillInfo) string {
 func synthesizedComponentBreakdown(matches []skills.SkillInfo) string {
 	excerpts := loadMatchedSkillExcerpts(matches)
 	if len(excerpts) == 0 {
-		return "- No component skill content was available when this shortcut was generated."
+		return i18n.T("skill_content_no_component")
 	}
 
 	lines := make([]string, 0, len(excerpts))
@@ -91,7 +92,7 @@ func synthesizedComponentBreakdown(matches []skills.SkillInfo) string {
 		lines = append(lines, fmt.Sprintf("- `%s`: %s", excerpt.Name, guidance))
 	}
 	if len(lines) == 0 {
-		return "- Component skill content was available, but no concise guidance could be extracted."
+		return i18n.T("skill_content_no_guidance")
 	}
 	return strings.Join(lines, "\n")
 }

@@ -8,6 +8,7 @@ import {
   IconBrandSlack,
   IconBrandTelegram,
   IconBrandWechat,
+  IconBrandWeibo,
   IconBrandWhatsapp,
   IconCamera,
   IconMessages,
@@ -37,6 +38,7 @@ const CHANNEL_IMPORTANCE_TAIL = [
   "onebot",
   "matrix",
   "pico",
+  "browser",
   "maixcam",
   "irc",
   "whatsapp",
@@ -82,7 +84,9 @@ const CHANNEL_ICON_MAP: Record<
   maixcam: IconCamera,
   onebot: IconRobot,
   pico: IconBrandChrome,
+  browser: IconBrandChrome,
   irc: IconMessages,
+  weibo: IconBrandWeibo,
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

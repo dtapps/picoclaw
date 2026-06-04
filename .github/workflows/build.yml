@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main","dev" ]
 
 jobs:
   integration:
@@ -28,4 +28,4 @@ jobs:
           go-version-file: go.mod
 
       - name: Build core binaries
-        run: make build-all
+        run: make build-linux

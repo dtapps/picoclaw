@@ -3,6 +3,8 @@ package commands
 import (
 	"context"
 	"strings"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
 
 type Handler func(ctx context.Context, req Request, rt *Runtime) error
@@ -10,12 +12,16 @@ type Handler func(ctx context.Context, req Request, rt *Runtime) error
 type Request struct {
 	Channel  string
 	ChatID   string
+	ChatType string // 会话类型: direct | group
 	SenderID string
 	Text     string
 	Reply    func(text string) error
 }
 
-const unavailableMsg = "Command unavailable in current context."
+// unavailableMsg returns the translated unavailable message.
+func unavailableMsg() string {
+	return i18n.T("commands_common_unavailable")
+}
 
 var commandPrefixes = []string{"/", "!"}
 

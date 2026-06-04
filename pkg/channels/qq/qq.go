@@ -28,6 +28,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -100,12 +101,14 @@ func NewQQChannel(bc *config.Channel, cfg *config.QQSettings, messageBus *bus.Me
 }
 
 func (c *QQChannel) Start(ctx context.Context) error {
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
+
 	if c.config.AppID == "" || c.config.AppSecret.String() == "" {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("QQ app_id and app_secret not configured")
 	}
 
 	botgo.SetLogger(newBotGoLogger("botgo"))
-	logger.InfoC("qq", "Starting QQ bot (WebSocket mode)")
 
 	// Reinitialize shutdown signal for clean restart.
 	c.done = make(chan struct{})
@@ -168,13 +171,13 @@ func (c *QQChannel) Start(ctx context.Context) error {
 	}
 
 	c.SetRunning(true)
-	logger.InfoC("qq", "QQ bot started successfully")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 
 	return nil
 }
 
 func (c *QQChannel) Stop(ctx context.Context) error {
-	logger.InfoC("qq", "Stopping QQ bot")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	// Signal the dedup janitor to stop (idempotent).
@@ -184,6 +187,7 @@ func (c *QQChannel) Stop(ctx context.Context) error {
 		c.cancel()
 	}
 
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

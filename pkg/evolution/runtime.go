@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
@@ -941,52 +942,59 @@ func synthesizeCombinedSkillAppendBody(
 
 func synthesizedStartHereLine(rule LearningRecord, target string) string {
 	if len(rule.WinningPath) > 0 {
-		return fmt.Sprintf(
-			"Start with `%s` for tasks like `%s`.",
-			strings.Join(rule.WinningPath, " -> "),
-			strings.TrimSpace(rule.Summary),
-		)
+		return i18n.Tf("synth_start_here_path", map[string]any{
+			"Summary": strings.TrimSpace(rule.Summary),
+			"Path":    strings.Join(rule.WinningPath, " -> "),
+		})
 	}
 	if summary := strings.TrimSpace(rule.Summary); summary != "" {
-		return fmt.Sprintf("Use `%s` when the task matches `%s`.", target, summary)
+		return i18n.Tf("synth_start_here_summary", map[string]any{
+			"Target":  target,
+			"Summary": summary,
+		})
 	}
-	return fmt.Sprintf("Use `%s` for the learned task pattern.", target)
+	return i18n.Tf("synth_start_here_pattern", map[string]any{
+		"Target": target,
+	})
 }
 
 func synthesizedCombinedStartHereLine(rule LearningRecord, target string) string {
-	return fmt.Sprintf("Use `%s` directly when the task matches `%s`.", target, fallbackEvolutionSummary(rule))
+	return i18n.Tf("synth_combined_start_here", map[string]any{
+		"Target":  target,
+		"Summary": fallbackEvolutionSummary(rule),
+	})
 }
 
 func synthesizedCombinedWhenToUseLine(rule LearningRecord, target string) string {
 	if len(rule.WinningPath) == 0 {
-		return fmt.Sprintf("Use `%s` when the learned task pattern appears again.", target)
+		return i18n.Tf("synth_combined_when_to_use_no_path", map[string]any{
+			"Target": target,
+		})
 	}
-	return fmt.Sprintf(
-		"Use `%s` as a direct shortcut instead of replaying `%s` step by step.",
-		target,
-		strings.Join(rule.WinningPath, " -> "),
-	)
+	return i18n.Tf("synth_combined_when_to_use_path", map[string]any{
+		"Target": target,
+		"Path":   strings.Join(rule.WinningPath, " -> "),
+	})
 }
 
 func synthesizedCombinedProcedure(matches []skills.SkillInfo, rule LearningRecord) string {
 	components := synthesizedComponentBreakdown(matches)
 	if !strings.HasPrefix(strings.TrimSpace(components), "- `") {
 		if len(rule.WinningPath) == 0 {
-			return "Use the learned shortcut directly and keep the response focused on the requested result."
+			return i18n.T("synth_combined_procedure_no_path")
 		}
-		return fmt.Sprintf(
-			"Apply the recorded path `%s`, then return the final result with only the necessary explanation.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("synth_combined_procedure_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	return "Follow the source skill guidance below as one compact procedure, then return the final result without replaying unnecessary discovery steps."
+	return i18n.T("synth_combined_procedure_components")
 }
 
 func synthesizedExpectedResultLine(evidence DraftEvidence) string {
 	if excerpt := firstFinalOutputExcerpt(evidence, 360); excerpt != "" {
 		return excerpt
 	}
-	return "Return the completed result for the matched task without restating unrelated discovery steps."
+	return i18n.T("synth_expected_result")
 }
 
 func synthesizedEvidenceLine(rule LearningRecord, evidence DraftEvidence) string {
@@ -998,18 +1006,22 @@ func synthesizedEvidenceLine(rule LearningRecord, evidence DraftEvidence) string
 			}
 		}
 		if len(ids) > 0 {
-			return "learned from task records: " + strings.Join(ids, ", ")
+			return i18n.Tf("synth_evidence_tasks", map[string]any{
+				"IDs": strings.Join(ids, ", "),
+			})
 		}
 	}
 	if len(rule.TaskRecordIDs) > 0 {
-		return "learned from task records: " + strings.Join(rule.TaskRecordIDs, ", ")
+		return i18n.Tf("synth_evidence_rule", map[string]any{
+			"IDs": strings.Join(rule.TaskRecordIDs, ", "),
+		})
 	}
-	return "learned from the pattern record."
+	return i18n.T("synth_evidence_pattern")
 }
 
 func synthesizedWrappedPathLine(rule LearningRecord) string {
 	if len(rule.WinningPath) == 0 {
-		return "No explicit wrapped path was recorded."
+		return i18n.T("synth_wrapped_path_empty")
 	}
 	return strings.Join(rule.WinningPath, " -> ")
 }
@@ -1017,21 +1029,22 @@ func synthesizedWrappedPathLine(rule LearningRecord) string {
 func synthesizedCombinedLearnedContent(body string, rule LearningRecord) string {
 	content := strings.TrimSpace(stripSkillFrontmatter(body))
 	if content == "" {
-		return fmt.Sprintf(
-			"Learned from `%s`; use this shortcut directly when the same task pattern appears again.",
-			fallbackEvolutionSummary(rule),
-		)
+		return i18n.Tf("synth_combined_content_empty", map[string]any{
+			"Summary": fallbackEvolutionSummary(rule),
+		})
 	}
 	content = removeVerboseCombinedSections(content)
 	content = strings.Join(strings.Fields(content), " ")
 	if content == "" {
-		return fmt.Sprintf(
-			"Learned from `%s`; use this shortcut directly when the same task pattern appears again.",
-			fallbackEvolutionSummary(rule),
-		)
+		return i18n.Tf("synth_combined_content_empty", map[string]any{
+			"Summary": fallbackEvolutionSummary(rule),
+		})
 	}
 	content = trimAtReadableBoundary(content, 1200)
-	return "- Learned task: " + fallbackEvolutionSummary(rule) + "\n- Reusable guidance: " + content
+	return i18n.Tf("synth_combined_content", map[string]any{
+		"Summary": fallbackEvolutionSummary(rule),
+		"Content": content,
+	})
 }
 
 func stripSkillFrontmatter(body string) string {
@@ -1079,7 +1092,7 @@ func fallbackEvolutionSummary(rule LearningRecord) string {
 	if len(rule.WinningPath) > 0 {
 		return strings.Join(rule.WinningPath, " -> ")
 	}
-	return "the learned task pattern"
+	return i18n.T("synth_fallback_summary")
 }
 
 func buildCombinedSkillHumanSummary(target string, rule LearningRecord, hasExisting bool) string {
@@ -1088,14 +1101,21 @@ func buildCombinedSkillHumanSummary(target string, rule LearningRecord, hasExist
 	if strings.TrimSpace(summary) == "" || summary == "the learned task pattern" {
 		summary = titleCaseSkillName(target)
 	}
-	return fmt.Sprintf("Use this skill to %s when the task requires this workflow.", sentenceFragment(summary))
+	return i18n.Tf("synth_human_summary", map[string]any{
+		"Summary": sentenceFragment(summary),
+	})
 }
 
 func buildCombinedSkillAvoidPattern(target string, rule LearningRecord) string {
 	if len(rule.WinningPath) == 0 {
-		return fmt.Sprintf("avoid bypassing `%s` when the same learned task pattern appears again", target)
+		return i18n.Tf("synth_avoid_pattern_no_path", map[string]any{
+			"Target": target,
+		})
 	}
-	return fmt.Sprintf("avoid replaying %s before trying `%s` directly", strings.Join(rule.WinningPath, " -> "), target)
+	return i18n.Tf("synth_avoid_pattern_path", map[string]any{
+		"Target": target,
+		"Path":   strings.Join(rule.WinningPath, " -> "),
+	})
 }
 
 func collectSkillRefs(matches []skills.SkillInfo) []string {

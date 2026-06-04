@@ -11,6 +11,7 @@ import (
 	"time"
 	"unicode"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
@@ -170,10 +171,13 @@ func (c *LLMPatternClusterer) BuildPatterns(
 
 	callCtx, cancel := withLLMCallTimeout(ctx, llmPatternClusterTimeout)
 	defer cancel()
+
+	systemPrompt := i18n.T("pattern_cluster_system_prompt")
+
 	resp, err := c.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Cluster agent task records by task meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -242,10 +246,13 @@ func (c *LLMPatternClusterer) BuildPatternsWithEvidence(
 
 	callCtx, cancel := withLLMCallTimeout(ctx, llmPatternClusterTimeout)
 	defer cancel()
+
+	systemPrompt := i18n.T("pattern_cluster_system_prompt_with_evidence")
+
 	resp, err := c.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Cluster agent task records by task meaning. Include successful and failed task IDs in the same cluster when they share the same reusable meaning. Return exactly one JSON object with clusters:[{label,summary,task_record_ids,cluster_reason}]. No markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -558,12 +565,15 @@ func buildPatternClusterPrompt(workspace string, tasks []LearningRecord, existin
 		Label   string `json:"label"`
 		Summary string `json:"summary"`
 	}
+
+	instruction := i18n.T("pattern_cluster_instruction")
+
 	payload := struct {
 		Instruction      string           `json:"instruction"`
 		ExistingPatterns []patternPayload `json:"existing_patterns,omitempty"`
 		Tasks            []taskPayload    `json:"tasks"`
 	}{
-		Instruction: "Group tasks that have the same reusable task meaning. Use existing pattern labels when they fit. Labels must be lowercase hyphenated and must not include concrete values.",
+		Instruction: instruction,
 	}
 	for _, pattern := range existing {
 		if pattern.WorkspaceID != workspace {

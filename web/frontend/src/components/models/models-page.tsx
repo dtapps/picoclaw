@@ -2,9 +2,10 @@ import {
   IconDatabase,
   IconLoader2,
   IconPlus,
+  IconSettings,
   IconStar,
 } from "@tabler/icons-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useState, type ComponentType } from "react"
 import { useTranslation } from "react-i18next"
 import { toast } from "sonner"
 
@@ -14,6 +15,10 @@ import {
   getModels,
   setDefaultModel,
 } from "@/api/models"
+import {
+  getModelSettings,
+  updateModelSettings,
+} from "@/api/model-settings"
 import { PageHeader } from "@/components/page-header"
 import { Button } from "@/components/ui/button"
 import { showSaveSuccessOrRestartToast } from "@/lib/restart-required"
@@ -27,6 +32,7 @@ import {
   getCanonicalProviderKey,
   getProviderCatalogMap,
 } from "./provider-registry"
+import { ModelSettingsDialog } from "./model-settings-dialog"
 import { ProviderSection } from "./provider-section"
 import type { ProviderCatalogEntry } from "./provider-registry"
 
@@ -56,10 +62,27 @@ export function ModelsPage() {
   )
   const providerMap = getProviderCatalogMap(providerOptions)
 
+  // Dynamic import for CatalogDialog (added in PR2)
+  const [CatalogDialogComp, setCatalogDialogComp] = useState<ComponentType<{
+    open: boolean; onClose: () => void; onModelAdded: () => void;
+  }> | null>(null)
+  useEffect(() => {
+    import("./catalog-dialog").then((m) => setCatalogDialogComp(() => m.CatalogDialog)).catch(() => {})
+  }, [])
+
+  // ModelSettings 相关状态
+  const [activeModel, setActiveModel] = useState("")
+  const [fallbacks, setFallbacks] = useState<string[]>([])
+  const [savingGlobal, setSavingGlobal] = useState(false)
+  const [globalSettingsOpen, setGlobalSettingsOpen] = useState(false)
+
   const fetchModels = useCallback(async () => {
     setLoading(true)
     try {
-      const data = await getModels()
+      const [data, settings] = await Promise.all([
+        getModels(),
+        getModelSettings(),
+      ])
       const sorted = [...data.models].sort((a, b) => {
         if (a.is_default && !b.is_default) return -1
         if (!a.is_default && b.is_default) return 1
@@ -68,14 +91,16 @@ export function ModelsPage() {
         return a.model_name.localeCompare(b.model_name)
       })
       setModels(sorted)
-      setProviderOptions(data.provider_options || [])
+      setProviderOptions(data.provider_options ?? [])
+      setActiveModel(settings.model_name)
+      setFallbacks(settings.model_fallbacks || [])
       setFetchError("")
     } catch (e) {
       setFetchError(e instanceof Error ? e.message : t("models.loadError"))
     } finally {
       setLoading(false)
     }
-  }, [t])
+  }, [t, setActiveModel, setFallbacks])
 
   useEffect(() => {
     fetchModels()
@@ -100,6 +125,62 @@ export function ModelsPage() {
     } finally {
       setSettingDefaultIndex(null)
     }
+  }
+
+  // ModelSettings 保存全局设置
+  const handleSaveGlobalSettings = async () => {
+    if (!activeModel) return
+    setSavingGlobal(true)
+    try {
+      await updateModelSettings({
+        model_name: activeModel,
+        model_fallbacks: fallbacks,
+      })
+      await fetchModels()
+      const gateway = await refreshGatewayState({ force: true })
+      showSaveSuccessOrRestartToast(
+        t,
+        t("models.settingsSaved"),
+        activeModel,
+        gateway?.restartRequired === true,
+      )
+      setGlobalSettingsOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : t("models.loadError"))
+    } finally {
+      setSavingGlobal(false)
+    }
+  }
+
+  // ModelSettings 添加备选模型
+  const addFallback = (modelName: string) => {
+    if (!modelName || fallbacks.includes(modelName) || modelName === activeModel)
+      return
+    setFallbacks((prev) => [...prev, modelName])
+  }
+
+  // ModelSettings 移除备选模型
+  const removeFallback = (modelName: string) => {
+    setFallbacks((prev) => prev.filter((f) => f !== modelName))
+  }
+
+  // ModelSettings 移动备选模型位置（上移/下移）
+  const handleMoveFallback = (index: number, direction: "up" | "down") => {
+    setFallbacks((prev) => {
+      const newFallbacks = [...prev]
+      if (direction === "up" && index > 0) {
+        ;[newFallbacks[index], newFallbacks[index - 1]] = [
+          newFallbacks[index - 1],
+          newFallbacks[index],
+        ]
+      } else if (direction === "down" && index < newFallbacks.length - 1) {
+        ;[newFallbacks[index], newFallbacks[index + 1]] = [
+          newFallbacks[index + 1],
+          newFallbacks[index],
+        ]
+      }
+      return newFallbacks
+    })
   }
 
   const grouped: Record<
@@ -162,8 +243,16 @@ export function ModelsPage() {
           <Button
             size="sm"
             variant="outline"
+            onClick={() => setGlobalSettingsOpen(true)}
+          >
+            <IconSettings className="size-4" />
+            {t("models.globalSettings.configure", "Configure")}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={!CatalogDialogComp || providerOptions.length === 0}
             onClick={() => setCatalogOpen(true)}
-            disabled={providerOptions.length === 0}
           >
             <IconDatabase className="size-4" />
             {t("models.catalog.button")}
@@ -238,6 +327,21 @@ export function ModelsPage() {
           </div>
         )}
       </div>
+
+      {/* ModelSettings 弹窗 */}
+      <ModelSettingsDialog
+        open={globalSettingsOpen}
+        onOpenChange={setGlobalSettingsOpen}
+        models={models}
+        activeModel={activeModel}
+        fallbacks={fallbacks}
+        saving={savingGlobal}
+        onActiveModelChange={setActiveModel}
+        onAddFallback={addFallback}
+        onRemoveFallback={removeFallback}
+        onMoveFallback={handleMoveFallback}
+        onSave={handleSaveGlobalSettings}
+      />
 
       <EditModelSheet
         model={editingModel}

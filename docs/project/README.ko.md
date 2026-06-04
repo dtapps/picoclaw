@@ -451,27 +451,29 @@ PicoClaw는 `model_list` 설정을 통해 30개 이상의 LLM 프로바이더를
 
 ## 💬 채널(채팅 앱)
 
-18개 이상의 메시징 플랫폼을 통해 PicoClaw와 대화할 수 있습니다.
+19개 이상의 메시징 플랫폼을 통해 PicoClaw와 대화할 수 있습니다.
 
-| 채널 | 설정 | 프로토콜 | 문서 |
-|---------|------|----------|------|
-| **Telegram** | 쉬움(봇 토큰) | Long polling | [가이드](../channels/telegram/README.md) |
-| **Discord** | 쉬움(봇 토큰 + intents) | WebSocket | [가이드](../channels/discord/README.md) |
+| 채널 | 설정 | 프로토콜 | 문서                                     |
+|---------|------|----------|----------------------------------------|
+| **Telegram** | 쉬움(봇 토큰) | Long polling | [가이드](../channels/telegram/README.md)  |
+| **Discord** | 쉬움(봇 토큰 + intents) | WebSocket | [가이드](../channels/discord/README.md)   |
 | **WhatsApp** | 쉬움(QR 스캔 또는 브리지 URL) | Native / Bridge | [가이드](../guides/chat-apps.md#whatsapp) |
-| **Weixin** | 쉬움(네이티브 QR 스캔) | iLink API | [가이드](../guides/chat-apps.md#weixin) |
-| **QQ** | 쉬움(AppID + AppSecret) | WebSocket | [가이드](../channels/qq/README.md) |
-| **Slack** | 쉬움(봇 + 앱 토큰) | Socket Mode | [가이드](../channels/slack/README.md) |
-| **Matrix** | 중간(homeserver + 토큰) | Sync API | [가이드](../channels/matrix/README.md) |
-| **DingTalk** | 중간(클라이언트 자격 증명) | Stream | [가이드](../channels/dingtalk/README.md) |
-| **Feishu / Lark** | 중간(App ID + Secret) | WebSocket/SDK | [가이드](../channels/feishu/README.md) |
-| **LINE** | 중간(인증 정보 + webhook) | Webhook | [가이드](../channels/line/README.md) |
-| **WeCom** | 쉬움(QR 로그인 또는 수동 설정) | WebSocket | [가이드](../channels/wecom/README.md) |
-| **VK** | 쉬움(그룹 토큰) | Long Poll | [가이드](../channels/vk/README.md) |
-| **IRC** | 중간(서버 + 닉네임) | IRC protocol | [가이드](../guides/chat-apps.md#irc) |
-| **OneBot** | 중간(WebSocket URL) | OneBot v11 | [가이드](../channels/onebot/README.md) |
-| **MaixCam** | 쉬움(활성화) | TCP socket | [가이드](../channels/maixcam/README.md) |
-| **Pico** | 쉬움(활성화) | 네이티브 프로토콜 | 내장 |
-| **Pico Client** | 쉬움(WebSocket URL) | WebSocket | 내장 |
+| **Weixin** | 쉬움(네이티브 QR 스캔) | iLink API | [가이드](../guides/chat-apps.md#weixin)   |
+| **QQ** | 쉬움(AppID + AppSecret) | WebSocket | [가이드](../channels/qq/README.md)        |
+| **Slack** | 쉬움(봇 + 앱 토큰) | Socket Mode | [가이드](../channels/slack/README.md)     |
+| **Matrix** | 중간(homeserver + 토큰) | Sync API | [가이드](../channels/matrix/README.md)    |
+| **DingTalk** | 중간(클라이언트 자격 증명) | Stream | [가이드](../channels/dingtalk/README.md)  |
+| **Feishu / Lark** | 중간(App ID + Secret) | WebSocket/SDK | [가이드](../channels/feishu/README.md)    |
+| **LINE** | 중간(인증 정보 + webhook) | Webhook | [가이드](../channels/line/README.md)      |
+| **WeCom** | 쉬움(QR 로그인 또는 수동 설정) | WebSocket | [가이드](../channels/wecom/README.md)     |
+| **VK** | 쉬움(그룹 토큰) | Long Poll | [가이드](../channels/vk/README.md)        |
+| **IRC** | 중간(서버 + 닉네임) | IRC protocol | [가이드](../guides/chat-apps.md#irc)      |
+| **OneBot** | 중간(WebSocket URL) | OneBot v11 | [가이드](../channels/onebot/README.md)    |
+| **MaixCam** | 쉬움(활성화) | TCP socket | [가이드](../channels/maixcam/README.md)   |
+| **Weibo** | 쉬움(App ID + Secret) | WebSocket | [가이드](../channels/weibo/README.md)     |
+| **Yuanbao** | 쉬움(AppID + AppSecret) | WebSocket | [가이드](../channels/yuanbao/README.md)   |
+| **Pico** | 쉬움(활성화) | 네이티브 프로토콜 | 내장                                     |
+| **Pico Client** | 쉬움(WebSocket URL) | WebSocket | 내장                                     |
 
 > webhook 기반 채널은 모두 하나의 게이트웨이 HTTP 서버(`gateway.host`:`gateway.port`, 기본값 `127.0.0.1:18790`)를 공유합니다. Feishu는 WebSocket/SDK 모드를 사용하며 이 공용 HTTP 서버를 사용하지 않습니다.
 

@@ -47,6 +47,8 @@ type Config struct {
 	Heartbeat HeartbeatConfig `json:"heartbeat"           yaml:"-"`
 	Devices   DevicesConfig   `json:"devices"             yaml:"-"`
 	Voice     VoiceConfig     `json:"voice"               yaml:"-"`
+	// EnvVars 包含用于 Skills 和 MCP 执行的环境变量
+	EnvVars EnvVarsConfig `json:"env_vars,omitempty" yaml:"-"`
 	// BuildInfo contains build-time version information
 	BuildInfo BuildInfo `json:"build_info,omitempty" yaml:"-"`
 
@@ -492,6 +494,7 @@ func (c StreamingConfig) WithDefaults(throttleSeconds, minGrowthChars int) Strea
 
 type WhatsAppSettings struct {
 	BridgeURL        string `json:"bridge_url"         yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_BRIDGE_URL"`
+	Proxy            string `json:"proxy"              yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_PROXY"`
 	UseNative        bool   `json:"use_native"         yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_USE_NATIVE"`
 	SessionStorePath string `json:"session_store_path" yaml:"-" env:"PICOCLAW_CHANNELS_WHATSAPP_SESSION_STORE_PATH"`
 }
@@ -609,6 +612,19 @@ type PicoSettings struct {
 	MaxConnections  int             `json:"max_connections,omitempty"   yaml:"-"`
 }
 
+// BrowserSettings 浏览器扩展频道配置。
+// 复用 Pico Protocol 协议，但专为浏览器扩展直接访问设计，
+// 无需 Launcher 仪表板的 Cookie 认证层。
+type BrowserSettings struct {
+	Token           SecureString `json:"token,omitzero"              yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_BROWSER_TOKEN"`
+	AllowTokenQuery bool         `json:"allow_token_query,omitempty" yaml:"-"`
+	AllowOrigins    []string     `json:"allow_origins,omitempty"     yaml:"-"`
+	PingInterval    int          `json:"ping_interval,omitempty"     yaml:"-"`
+	ReadTimeout     int          `json:"read_timeout,omitempty"      yaml:"-"`
+	WriteTimeout    int          `json:"write_timeout,omitempty"     yaml:"-"`
+	MaxConnections  int          `json:"max_connections,omitempty"   yaml:"-"`
+}
+
 // SetToken sets the Pico token and marks it as dirty for security saving
 func (c *PicoSettings) SetToken(token string) {
 	c.Token = *NewSecureString(token)
@@ -678,6 +694,33 @@ type SlackWebhookTarget struct {
 	WebhookURL SecureString `json:"webhook_url,omitzero" yaml:"webhook_url,omitempty"`
 	Username   string       `json:"username,omitempty"   yaml:"-"`
 	IconEmoji  string       `json:"icon_emoji,omitempty" yaml:"-"`
+}
+
+type WeiboSettings struct {
+	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_APP_ID"`
+	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_WEIBO_APP_SECRET"`
+	Proxy     string       `json:"proxy"               yaml:"-"                    env:"PICOCLAW_CHANNELS_WEIBO_PROXY"`
+}
+
+func (c *WeiboSettings) SetAppSecret(appSecret string) {
+	c.AppSecret = *NewSecureString(appSecret)
+}
+
+type YuanbaoSettings struct {
+	AppID     string       `json:"app_id"              yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_APP_ID"`
+	AppSecret SecureString `json:"app_secret,omitzero" yaml:"app_secret,omitempty" env:"PICOCLAW_CHANNELS_YUANBAO_APP_SECRET"`
+	Proxy     string       `json:"proxy"               yaml:"-"                    env:"PICOCLAW_CHANNELS_YUANBAO_PROXY"`
+}
+
+func (c *YuanbaoSettings) SetAppSecret(appSecret string) {
+	c.AppSecret = *NewSecureString(appSecret)
+}
+
+// SC3BotSettings configures the Server酱³ Bot channel.
+type SC3BotSettings struct {
+	Token  SecureString `json:"token,omitzero" yaml:"token,omitempty" env:"PICOCLAW_CHANNELS_SC3BOT_TOKEN"`
+	Proxy  string       `json:"proxy"          yaml:"-"               env:"PICOCLAW_CHANNELS_SC3BOT_PROXY"`
+	Secret string       `json:"secret"         yaml:"-"               env:"PICOCLAW_CHANNELS_SC3BOT_SECRET"`
 }
 
 type HeartbeatConfig struct {
@@ -1018,31 +1061,33 @@ type ToolsConfig struct {
 	// FilterMinLength is the minimum content length required for filtering.
 	// Content shorter than this will be returned unchanged for performance.
 	// Default: 8
-	FilterMinLength int                `json:"filter_min_length" yaml:"-"                env:"PICOCLAW_TOOLS_FILTER_MIN_LENGTH"`
+	FilterMinLength int                `json:"filter_min_length" yaml:"-"                     env:"PICOCLAW_TOOLS_FILTER_MIN_LENGTH"`
 	Web             WebToolsConfig     `json:"web"               yaml:"web,omitempty"`
 	Cron            CronToolsConfig    `json:"cron"              yaml:"-"`
 	Exec            ExecConfig         `json:"exec"              yaml:"-"`
 	Skills          SkillsToolsConfig  `json:"skills"            yaml:"skills,omitempty"`
 	MediaCleanup    MediaCleanupConfig `json:"media_cleanup"     yaml:"-"`
 	MCP             MCPConfig          `json:"mcp"               yaml:"-"`
-	AppendFile      ToolConfig         `json:"append_file"       yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
-	EditFile        ToolConfig         `json:"edit_file"         yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
-	FindSkills      ToolConfig         `json:"find_skills"       yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
-	I2C             ToolConfig         `json:"i2c"               yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_I2C_"`
-	InstallSkill    ToolConfig         `json:"install_skill"     yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
-	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
-	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_LOAD_IMAGE_"`
-	Message         MessageToolsConfig `json:"message"           yaml:"-"`
-	ReadFile        ReadFileToolConfig `json:"read_file"         yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
-	Serial          ToolConfig         `json:"serial"            yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SERIAL_"`
-	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
-	SendTTS         ToolConfig         `json:"send_tts"          yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SEND_TTS_"`
-	Spawn           ToolConfig         `json:"spawn"             yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
-	SpawnStatus     ToolConfig         `json:"spawn_status"      yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
-	SPI             ToolConfig         `json:"spi"               yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SPI_"`
-	Subagent        ToolConfig         `json:"subagent"          yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
-	WebFetch        ToolConfig         `json:"web_fetch"         yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
-	WriteFile       ToolConfig         `json:"write_file"        yaml:"-"                                                       envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	AppendFile      ToolConfig         `json:"append_file"       yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_APPEND_FILE_"`
+	EditFile        ToolConfig         `json:"edit_file"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_EDIT_FILE_"`
+	FindSkills      ToolConfig         `json:"find_skills"       yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_FIND_SKILLS_"`
+	I2C             ToolConfig         `json:"i2c"               yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_I2C_"`
+	InstallSkill    ToolConfig         `json:"install_skill"     yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_INSTALL_SKILL_"`
+	ListDir         ToolConfig         `json:"list_dir"          yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_LIST_DIR_"`
+	LoadImage       ToolConfig         `json:"load_image"        yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_LOAD_IMAGE_"`
+	Message         MessageToolsConfig `json:"message"           yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_MESSAGE_"`
+	ReadFile        ReadFileToolConfig `json:"read_file"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_READ_FILE_"`
+	Serial          ToolConfig         `json:"serial"            yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SERIAL_"`
+	SendFile        ToolConfig         `json:"send_file"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SEND_FILE_"`
+	SendTTS         ToolConfig         `json:"send_tts"          yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SEND_TTS_"`
+	Spawn           ToolConfig         `json:"spawn"             yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SPAWN_"`
+	SpawnStatus     ToolConfig         `json:"spawn_status"      yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SPAWN_STATUS_"`
+	SPI             ToolConfig         `json:"spi"               yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SPI_"`
+	Subagent        ToolConfig         `json:"subagent"          yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_SUBAGENT_"`
+	WebFetch        ToolConfig         `json:"web_fetch"         yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_WEB_FETCH_"`
+	WriteFile       ToolConfig         `json:"write_file"        yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_WRITE_FILE_"`
+	BrowserExt      ToolConfig         `json:"browser_ext"       yaml:"browser_ext,omitempty"                                        envPrefix:"PICOCLAW_TOOLS_BROWSER_EXT_"`
+	GetCurrentTime  ToolConfig         `json:"get_current_time"  yaml:"-"                                                            envPrefix:"PICOCLAW_TOOLS_GET_CURRENT_TIME_"`
 }
 
 // IsFilterSensitiveDataEnabled returns true if sensitive data filtering is enabled
@@ -1190,6 +1235,67 @@ func (c *MCPConfig) GetMaxInlineTextChars() int {
 		return c.MaxInlineTextChars
 	}
 	return DefaultMCPMaxInlineTextChars
+}
+
+// EnvVarEntry 表示单个环境变量条目
+type EnvVarEntry struct {
+	Key         string       `json:"key"`                   // 变量名称
+	Value       string       `json:"value"`                 // 变量值（非敏感变量）
+	SecureValue SecureString `json:"secure_value,omitzero"` // 敏感变量值（加密存储）
+	Enabled     bool         `json:"enabled"`               // 变量是否启用
+	Sensitive   bool         `json:"sensitive"`             // 值是否敏感（存储在.security.yml）
+	Note        string       `json:"note"`                  // 可选的备注/描述
+}
+
+// EnvVarsConfig 保存环境变量配置
+type EnvVarsConfig struct {
+	// 环境变量列表
+	Variables []EnvVarEntry `json:"variables"`
+}
+
+// GetEnabledVars 返回已启用的环境变量映射
+func (c *EnvVarsConfig) GetEnabledVars() map[string]string {
+	result := make(map[string]string)
+	for _, v := range c.Variables {
+		if v.Enabled {
+			if v.Sensitive {
+				result[v.Key] = v.SecureValue.String()
+			} else {
+				result[v.Key] = v.Value
+			}
+		}
+	}
+	return result
+}
+
+// LoadEnvFile 从 .env 文件加载环境变量
+func LoadEnvFile(path string) (map[string]string, error) {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	vars := make(map[string]string)
+	lines := strings.Split(string(content), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		// 跳过空行和注释
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		// 解析 KEY=VALUE 格式
+		if idx := strings.Index(line, "="); idx > 0 {
+			key := strings.TrimSpace(line[:idx])
+			value := strings.TrimSpace(line[idx+1:])
+			// 如果存在引号则移除
+			if len(value) >= 2 && ((value[0] == '"' && value[len(value)-1] == '"') ||
+				(value[0] == '\'' && value[len(value)-1] == '\'')) {
+				value = value[1 : len(value)-1]
+			}
+			vars[key] = value
+		}
+	}
+	return vars, nil
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -1587,8 +1693,22 @@ func SaveConfig(path string, cfg *Config) error {
 	}()
 	cfg.ModelList = nonVirtualModels
 
+	// 在保存安全配置前临时清除 EnvVars（环境变量单独保存）
+	originalEnvVars := cfg.EnvVars
+	cfg.EnvVars = EnvVarsConfig{}
+
 	if err := saveSecurityConfig(securityPath(path), cfg); err != nil {
 		logger.ErrorCF("config", "cannot save .security.yml", map[string]any{"error": err})
+		cfg.EnvVars = originalEnvVars
+		return err
+	}
+
+	// 恢复 EnvVars
+	cfg.EnvVars = originalEnvVars
+
+	// 单独保存敏感环境变量
+	if err := saveEnvVarsToSecurity(securityPath(path), cfg); err != nil {
+		logger.ErrorCF("config", "无法保存环境变量到 .security.yml", map[string]any{"error": err})
 		return err
 	}
 
@@ -1806,6 +1926,10 @@ func (t *ToolsConfig) IsToolEnabled(name string) bool {
 		return t.WriteFile.Enabled
 	case "mcp":
 		return t.MCP.Enabled
+	case "browser_ext":
+		return t.BrowserExt.Enabled
+	case "get_current_time":
+		return t.GetCurrentTime.Enabled
 	default:
 		return true
 	}

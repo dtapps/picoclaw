@@ -447,26 +447,28 @@ Per i dettagli completi sulla configurazione dei provider, vedi [Provider & Mode
 
 ## 💬 Channel (App di Chat)
 
-Parla con il tuo PicoClaw attraverso 17+ piattaforme di messaggistica:
+Parla con il tuo PicoClaw attraverso 18+ piattaforme di messaggistica:
 
-| Channel | Configurazione | Protocollo | Docs |
-|---------|----------------|------------|------|
-| **Telegram** | Facile (bot token) | Long polling | [Guida](../channels/telegram/README.md) |
-| **Discord** | Facile (bot token + intents) | WebSocket | [Guida](../channels/discord/README.md) |
+| Channel | Configurazione | Protocollo | Docs                                     |
+|---------|----------------|------------|------------------------------------------|
+| **Telegram** | Facile (bot token) | Long polling | [Guida](../channels/telegram/README.md)  |
+| **Discord** | Facile (bot token + intents) | WebSocket | [Guida](../channels/discord/README.md)   |
 | **WhatsApp** | Facile (QR scan o bridge URL) | Nativo / Bridge | [Guida](../guides/chat-apps.md#whatsapp) |
-| **Weixin** | Facile (scan QR nativo) | iLink API | [Guida](../guides/chat-apps.md#weixin) |
-| **QQ** | Facile (AppID + AppSecret) | WebSocket | [Guida](../channels/qq/README.md) |
-| **Slack** | Facile (bot + app token) | Socket Mode | [Guida](../channels/slack/README.md) |
-| **Matrix** | Medio (homeserver + token) | Sync API | [Guida](../channels/matrix/README.md) |
-| **DingTalk** | Medio (credenziali client) | Stream | [Guida](../channels/dingtalk/README.md) |
-| **Feishu / Lark** | Medio (App ID + Secret) | WebSocket/SDK | [Guida](../channels/feishu/README.md) |
-| **LINE** | Medio (credenziali + webhook) | Webhook | [Guida](../channels/line/README.md) |
-| **WeCom** | Facile (login QR o manuale) | WebSocket | [Guida](../channels/wecom/README.md) |
-| **IRC** | Medio (server + nick) | Protocollo IRC | [Guida](../guides/chat-apps.md#irc) |
-| **OneBot** | Medio (WebSocket URL) | OneBot v11 | [Guida](../channels/onebot/README.md) |
-| **MaixCam** | Facile (abilita) | TCP socket | [Guida](../channels/maixcam/README.md) |
-| **Pico** | Facile (abilita) | Protocollo nativo | Integrato |
-| **Pico Client** | Facile (WebSocket URL) | WebSocket | Integrato |
+| **Weixin** | Facile (scan QR nativo) | iLink API | [Guida](../guides/chat-apps.md#weixin)   |
+| **QQ** | Facile (AppID + AppSecret) | WebSocket | [Guida](../channels/qq/README.md)        |
+| **Slack** | Facile (bot + app token) | Socket Mode | [Guida](../channels/slack/README.md)     |
+| **Matrix** | Medio (homeserver + token) | Sync API | [Guida](../channels/matrix/README.md)    |
+| **DingTalk** | Medio (credenziali client) | Stream | [Guida](../channels/dingtalk/README.md)  |
+| **Feishu / Lark** | Medio (App ID + Secret) | WebSocket/SDK | [Guida](../channels/feishu/README.md)    |
+| **LINE** | Medio (credenziali + webhook) | Webhook | [Guida](../channels/line/README.md)      |
+| **WeCom** | Facile (login QR o manuale) | WebSocket | [Guida](../channels/wecom/README.md)     |
+| **IRC** | Medio (server + nick) | Protocollo IRC | [Guida](../guides/chat-apps.md#irc)      |
+| **OneBot** | Medio (WebSocket URL) | OneBot v11 | [Guida](../channels/onebot/README.md)    |
+| **MaixCam** | Facile (abilita) | TCP socket | [Guida](../channels/maixcam/README.md)   |
+| **Weibo** | Facile (App ID + Secret) | WebSocket | [Guida](../channels/weibo/README.md)     |
+| **Yuanbao** | Facile (AppID + AppSecret) | WebSocket | [Guida](../channels/yuanbao/README.md)   |
+| **Pico** | Facile (abilita) | Protocollo nativo | Integrato                                |
+| **Pico Client** | Facile (WebSocket URL) | WebSocket | Integrato                                |
 
 > Tutti i channel basati su webhook condividono un singolo server HTTP Gateway (`gateway.host`:`gateway.port`, default `127.0.0.1:18790`). Feishu usa la modalità WebSocket/SDK e non usa il server HTTP condiviso.
 

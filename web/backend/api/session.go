@@ -25,6 +25,8 @@ func (h *Handler) registerSessionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/sessions", h.handleListSessions)
 	mux.HandleFunc("GET /api/sessions/{id}", h.handleGetSession)
 	mux.HandleFunc("DELETE /api/sessions/{id}", h.handleDeleteSession)
+	mux.HandleFunc("GET /api/all-sessions", h.handleListAllSessions)
+	mux.HandleFunc("GET /api/all-sessions/{id}", h.handleGetAllSession)
 }
 
 // sessionFile mirrors the on-disk session JSON structure from pkg/session.
@@ -44,6 +46,7 @@ type sessionListItem struct {
 	MessageCount int    `json:"message_count"`
 	Created      string `json:"created"`
 	Updated      string `json:"updated"`
+	Channel      string `json:"channel,omitempty"`
 }
 
 type sessionChatMessage struct {
@@ -207,8 +210,9 @@ func (h *Handler) readJSONLSession(dir, sessionKey string) (sessionFile, error) 
 }
 
 type picoJSONLSessionRef struct {
-	ID  string
-	Key string
+	ID      string
+	Key     string
+	Channel string
 }
 
 type picoLegacySessionRef struct {
@@ -1003,4 +1007,316 @@ func (h *Handler) handleDeleteSession(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleListAllSessions returns a list of Pico session summaries.
+//
+//	GET /api/all-sessions
+func (h *Handler) handleListAllSessions(w http.ResponseWriter, r *http.Request) {
+	dir, toolFeedbackMaxArgsLength, err := h.sessionRuntimeSettings()
+	if err != nil {
+		http.Error(w, "failed to resolve sessions directory", http.StatusInternalServerError)
+		return
+	}
+
+	if _, err := os.ReadDir(dir); err != nil {
+		// Directory doesn't exist yet = no sessions
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode([]sessionListItem{})
+		return
+	}
+
+	items := []sessionListItem{}
+	seen := make(map[string]struct{})
+
+	if refs, findErr := h.findAllJSONLSessions(dir); findErr == nil {
+		for _, ref := range refs {
+			sess, loadErr := h.readJSONLSession(dir, ref.Key)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			seen[ref.ID] = struct{}{}
+			item := buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength)
+			item.Channel = ref.Channel
+			items = append(items, item)
+		}
+	}
+
+	if legacyRefs, findErr := h.findLegacyPicoSessions(dir); findErr == nil {
+		for _, ref := range legacyRefs {
+			if _, exists := seen[ref.ID]; exists {
+				continue
+			}
+			sess, loadErr := h.readLegacySession(ref.Path)
+			if loadErr != nil || isEmptySession(sess) {
+				continue
+			}
+			seen[ref.ID] = struct{}{}
+			items = append(items, buildSessionListItem(ref.ID, sess, toolFeedbackMaxArgsLength))
+		}
+	}
+
+	// Sort by updated descending (most recent first)
+	sort.Slice(items, func(i, j int) bool {
+		return items[i].Updated > items[j].Updated
+	})
+
+	// Pagination parameters
+	offsetStr := r.URL.Query().Get("offset")
+	limitStr := r.URL.Query().Get("limit")
+
+	offset := 0
+	limit := 20 // Default limit
+
+	if val, err := strconv.Atoi(offsetStr); err == nil && val >= 0 {
+		offset = val
+	}
+	if val, err := strconv.Atoi(limitStr); err == nil && val > 0 {
+		limit = val
+	}
+
+	totalItems := len(items)
+
+	end := offset + limit
+	if offset >= totalItems {
+		items = []sessionListItem{} // Out of bounds, return empty
+	} else {
+		if end > totalItems {
+			end = totalItems
+		}
+		items = items[offset:end]
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(items)
+}
+
+// handleGetAllSession returns the full message history for a specific session.
+//
+//	GET /api/all-sessions/{id}
+func (h *Handler) handleGetAllSession(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.PathValue("id")
+	if sessionID == "" {
+		http.Error(w, "missing session id", http.StatusBadRequest)
+		return
+	}
+
+	dir, toolFeedbackMaxArgsLength, err := h.sessionRuntimeSettings()
+	if err != nil {
+		http.Error(w, "failed to resolve sessions directory", http.StatusInternalServerError)
+		return
+	}
+
+	ref, refErr := h.findAllJSONLSession(dir, sessionID)
+	var sess sessionFile
+	err = refErr
+	if refErr == nil {
+		sess, err = h.readJSONLSession(dir, ref.Key)
+	}
+	if err == nil && isEmptySession(sess) {
+		err = os.ErrNotExist
+	}
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			if legacyRef, legacyErr := h.findLegacyPicoSession(dir, sessionID); legacyErr == nil {
+				sess, err = h.readLegacySession(legacyRef.Path)
+			}
+			if err == nil && isEmptySession(sess) {
+				err = os.ErrNotExist
+			}
+		}
+		if err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				http.Error(w, "session not found", http.StatusNotFound)
+			} else {
+				http.Error(w, "failed to parse session", http.StatusInternalServerError)
+			}
+			return
+		}
+	}
+
+	messages := visibleSessionMessages(sess.Messages, toolFeedbackMaxArgsLength)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]any{
+		"id":       sessionID,
+		"messages": messages,
+		"summary":  sess.Summary,
+		"created":  sess.Created.Format(time.RFC3339),
+		"updated":  sess.Updated.Format(time.RFC3339),
+		"channel":  ref.Channel,
+	})
+}
+
+// 定义局部结构体，用于解析 meta.json 里的 scope 字段
+type picoScopeInternal struct {
+	Channel string            `json:"channel"`
+	Values  map[string]string `json:"values"`
+}
+
+func (h *Handler) findAllJSONLSessions(dir string) ([]picoJSONLSessionRef, error) {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	// 使用 map 存储，ID 作为 Key，方便实现覆盖逻辑
+	sessionMap := make(map[string]picoJSONLSessionRef)
+	metaBackedBases := make(map[string]struct{})
+
+	// 第一轮：扫描 .meta.json
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".meta.json") {
+			continue
+		}
+
+		name := entry.Name()
+		metaPath := filepath.Join(dir, name)
+
+		meta, err := h.readSessionMeta(metaPath, "")
+		if err != nil || meta.Key == "" {
+			continue
+		}
+
+		base := strings.TrimSuffix(name, ".meta.json")
+		metaBackedBases[base] = struct{}{}
+
+		var channel string
+
+		// 解析新版 Scope 结构获取 channel
+		if len(meta.Scope) > 0 {
+			var sc picoScopeInternal
+			if err := json.Unmarshal(meta.Scope, &sc); err == nil {
+				channel = sc.Channel
+			}
+		}
+		if channel == "" {
+			channel = detectChannelFromKey(meta.Key)
+		}
+
+		// ID 提取逻辑
+		var id string
+		if session.IsOpaqueSessionKey(meta.Key) {
+			// 如果 key 是 sk_v1_ 格式，直接使用 key 作为 ID
+			id = meta.Key
+		} else {
+			id = extractGeneralSessionID(meta.Key)
+		}
+		if channel == "" {
+			channel = detectChannelFromKey(meta.Key)
+		}
+
+		// 过滤无效 ID
+		if id == "" || id == "unknown" || id == "sk" || id == "v1" {
+			continue
+		}
+
+		// 优先使用 sk_ 开头的最新文件 ---
+		_, exists := sessionMap[id]
+		isNewFormat := strings.HasPrefix(meta.Key, "sk_")
+
+		// 如果该 ID 还没存过，或者当前文件是 sk_ 开头的新格式，则存入（覆盖旧的）
+		if !exists || isNewFormat {
+			sessionMap[id] = picoJSONLSessionRef{
+				ID:      id,
+				Key:     meta.Key, // 保持为 sk_v1_... 以便读文件
+				Channel: channel,
+			}
+		}
+	}
+
+	// 第二轮：处理孤立的 .jsonl (没有 meta 的优先级最低)
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jsonl") {
+			continue
+		}
+		base := strings.TrimSuffix(entry.Name(), ".jsonl")
+		if _, ok := metaBackedBases[base]; ok {
+			continue
+		}
+
+		// ID 提取逻辑
+		var id string
+		if session.IsOpaqueSessionKey(base) {
+			id = base
+		} else {
+			id = extractGeneralSessionID(base)
+		}
+		if id == "" || id == "unknown" || id == "sk" {
+			continue
+		}
+
+		if _, exists := sessionMap[id]; !exists {
+			sessionMap[id] = picoJSONLSessionRef{
+				ID:      id,
+				Key:     base,
+				Channel: detectChannelFromKey(base),
+			}
+		}
+	}
+
+	// 转换回 slice 返回
+	refs := make([]picoJSONLSessionRef, 0, len(sessionMap))
+	for _, ref := range sessionMap {
+		refs = append(refs, ref)
+	}
+	return refs, nil
+}
+
+func (h *Handler) findAllJSONLSession(dir, sessionID string) (picoJSONLSessionRef, error) {
+	refs, err := h.findAllJSONLSessions(dir)
+	if err != nil {
+		return picoJSONLSessionRef{}, err
+	}
+	for _, ref := range refs {
+		if ref.ID == sessionID {
+			return ref, nil
+		}
+	}
+	return picoJSONLSessionRef{}, os.ErrNotExist
+}
+
+func extractGeneralSessionID(key string) string {
+	if id, ok := extractLegacyPicoSessionID(key); ok {
+		return id
+	}
+	lastIdx := strings.LastIndexAny(key, ":_")
+	if lastIdx != -1 {
+		id := key[lastIdx+1:]
+		if id != "" {
+			return id
+		}
+	}
+	return key
+}
+
+func detectChannelFromKey(key string) string {
+	keyLower := strings.ToLower(key)
+
+	newChannelCatalog := channelCatalog
+
+	newChannelCatalog = append(newChannelCatalog, channelCatalogItem{
+		Name:      "vk",
+		ConfigKey: "vk",
+	})
+	newChannelCatalog = append(newChannelCatalog, channelCatalogItem{
+		Name:      "teams_webhook",
+		ConfigKey: "teams_webhook",
+	})
+	newChannelCatalog = append(newChannelCatalog, channelCatalogItem{
+		Name:      "main",
+		ConfigKey: "main",
+	})
+	newChannelCatalog = append(newChannelCatalog, channelCatalogItem{
+		Name:      "heartbeat",
+		ConfigKey: "heartbeat",
+	})
+
+	for _, channel := range newChannelCatalog {
+		if strings.Contains(keyLower, ":"+channel.Name+":") || strings.Contains(keyLower, "_"+channel.Name+"_") {
+			return channel.ConfigKey
+		}
+	}
+
+	return "unknown"
 }

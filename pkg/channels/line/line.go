@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -84,7 +85,7 @@ func NewLINEChannel(
 
 // Start initializes the LINE channel.
 func (c *LINEChannel) Start(ctx context.Context) error {
-	logger.InfoC("line", "Starting LINE channel (Webhook Mode)")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -106,20 +107,20 @@ func (c *LINEChannel) Start(ctx context.Context) error {
 	}
 
 	c.SetRunning(true)
-	logger.InfoC("line", "LINE channel started (Webhook Mode)")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop gracefully stops the LINE channel.
 func (c *LINEChannel) Stop(ctx context.Context) error {
-	logger.InfoC("line", "Stopping LINE channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	if c.cancel != nil {
 		c.cancel()
 	}
 
 	c.SetRunning(false)
-	logger.InfoC("line", "LINE channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

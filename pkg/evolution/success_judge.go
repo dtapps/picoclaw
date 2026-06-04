@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/providers"
 )
 
@@ -81,10 +82,13 @@ func (j *LLMTaskSuccessJudge) JudgeTaskRecord(
 
 	callCtx, cancel := withLLMCallTimeout(ctx, llmTaskSuccessJudgeTimeout)
 	defer cancel()
+
+	systemPrompt := i18n.T("success_judge_system_prompt")
+
 	resp, err := j.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Return exactly one JSON object with fields success:boolean and reason:string. No markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -125,14 +129,9 @@ func (j *LLMTaskSuccessJudge) fallbackDecision(
 }
 
 func buildTaskSuccessJudgePrompt(record LearningRecord) string {
-	lines := []string{
-		"Decide whether this agent task truly achieved the user's goal.",
-		"Reject tasks that are only partial reasoning, only describe future steps, or obviously did not complete the requested outcome.",
-		"Accept completed custom workspace skill/theorem tasks when the final output gives a concrete result or concrete completed procedure.",
-		"",
-		"Summary: " + fallbackString(record.Summary, "none"),
-		"Final output: " + fallbackString(record.FinalOutput, "none"),
-		"Used skills: " + joinOrFallback(record.UsedSkillNames, "none"),
-	}
-	return strings.Join(lines, "\n")
+	return i18n.Tf("success_judge_prompt", map[string]any{
+		"Summary":        fallbackString(record.Summary, i18n.T("success_judge_none")),
+		"FinalOutput":    fallbackString(record.FinalOutput, i18n.T("success_judge_none")),
+		"UsedSkillNames": joinOrFallback(record.UsedSkillNames, i18n.T("success_judge_none")),
+	})
 }

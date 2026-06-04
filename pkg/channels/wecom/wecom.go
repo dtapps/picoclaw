@@ -16,6 +16,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -140,7 +141,7 @@ func NewChannel(bc *config.Channel, cfg *config.WeComSettings, messageBus *bus.M
 func (c *WeComChannel) Name() string { return "wecom" }
 
 func (c *WeComChannel) Start(ctx context.Context) error {
-	logger.InfoC("wecom", "Starting WeCom channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	c.ctx, c.cancel = context.WithCancel(ctx)
 	c.SetRunning(true)
 	go c.connectLoop()
@@ -148,7 +149,7 @@ func (c *WeComChannel) Start(ctx context.Context) error {
 }
 
 func (c *WeComChannel) Stop(_ context.Context) error {
-	logger.InfoC("wecom", "Stopping WeCom channel...")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	if c.cancel != nil {
 		c.cancel()
 	}
@@ -160,6 +161,7 @@ func (c *WeComChannel) Stop(_ context.Context) error {
 	c.connMu.Unlock()
 	c.clearTurns()
 	c.SetRunning(false)
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

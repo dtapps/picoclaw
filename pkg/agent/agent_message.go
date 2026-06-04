@@ -8,11 +8,13 @@ import (
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/bus"
+	"github.com/sipeed/picoclaw/pkg/config"
 	"github.com/sipeed/picoclaw/pkg/constants"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/routing"
 	"github.com/sipeed/picoclaw/pkg/session"
 	"github.com/sipeed/picoclaw/pkg/utils"
+	"github.com/sipeed/picoclaw/pkg/workflow"
 )
 
 func (al *AgentLoop) buildContinuationTarget(msg bus.InboundMessage) (*continuationTarget, error) {
@@ -48,7 +50,8 @@ func (al *AgentLoop) ProcessDirectWithChannel(
 		return "", err
 	}
 	if err := al.ensureMCPInitialized(ctx); err != nil {
-		return "", err
+		logger.WarnCF("agent", "MCP initialization failed, processing without MCP tools",
+			map[string]any{"error": err.Error()})
 	}
 
 	msg := bus.InboundMessage{
@@ -73,7 +76,8 @@ func (al *AgentLoop) ProcessHeartbeat(
 		return "", err
 	}
 	if err := al.ensureMCPInitialized(ctx); err != nil {
-		return "", err
+		logger.WarnCF("agent", "MCP initialization failed, processing heartbeat without MCP tools",
+			map[string]any{"error": err.Error()})
 	}
 
 	agent := al.GetRegistry().GetDefaultAgent()
@@ -197,6 +201,41 @@ func (al *AgentLoop) processMessage(ctx context.Context, msg bus.InboundMessage)
 	opts, err = resolveTurnProfileOptions(al.GetConfig(), opts)
 	if err != nil {
 		return "", err
+	}
+
+	// workflow 执行时设置自己的 turn_profile 配置
+	if workflow.IsWorkflowExecution(ctx) {
+		opts.TurnProfile.Enabled = true
+		if history, ok := workflow.HistoryFromCtx(ctx); ok {
+			if history == "off" {
+				opts.NoHistory = true
+				opts.EnableSummary = false
+				opts.TurnProfile.HistoryMode = config.TurnProfileModeOff
+			} else {
+				opts.TurnProfile.HistoryMode = config.TurnProfileModeDefault
+			}
+		}
+		if systemPrompt, ok := workflow.SystemPromptFromCtx(ctx); ok {
+			if systemPrompt == "off" {
+				opts.TurnProfile.SystemPromptMode = config.TurnProfileModeOff
+			} else {
+				opts.TurnProfile.SystemPromptMode = config.TurnProfileModeDefault
+			}
+		}
+		if skills, ok := workflow.SkillsModeFromCtx(ctx); ok {
+			if skills == "off" {
+				opts.TurnProfile.SkillsMode = config.TurnProfileModeOff
+			} else {
+				opts.TurnProfile.SkillsMode = config.TurnProfileModeDefault
+			}
+		}
+		if tools, ok := workflow.ToolsModeFromCtx(ctx); ok {
+			if tools == "off" {
+				opts.TurnProfile.ToolsMode = config.TurnProfileModeOff
+			} else {
+				opts.TurnProfile.ToolsMode = config.TurnProfileModeDefault
+			}
+		}
 	}
 
 	// context-dependent commands check their own Runtime fields and report

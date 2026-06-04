@@ -31,6 +31,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/utils"
@@ -83,7 +84,9 @@ func NewWhatsAppNativeChannel(
 }
 
 func (c *WhatsAppNativeChannel) Start(ctx context.Context) error {
-	logger.InfoCF("whatsapp", "Starting WhatsApp native channel (whatsmeow)", map[string]any{"store": c.storePath})
+	logger.InfoCF(c.Name(), i18n.T("channel_starting"), map[string]any{
+		"store": c.storePath,
+	})
 
 	// Reset lifecycle state from any previous Stop() so a restarted channel
 	// behaves correctly.  Use reconnectMu to be consistent with eventHandler
@@ -208,12 +211,12 @@ func (c *WhatsAppNativeChannel) Start(ctx context.Context) error {
 
 	startOK = true
 	c.SetRunning(true)
-	logger.InfoC("whatsapp", "WhatsApp native channel connected")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 func (c *WhatsAppNativeChannel) Stop(ctx context.Context) error {
-	logger.InfoC("whatsapp", "Stopping WhatsApp native channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 
 	// Mark as stopping under reconnectMu so the flag is visible to
 	// eventHandler atomically with respect to its wg.Add(1) call.
@@ -265,6 +268,7 @@ func (c *WhatsAppNativeChannel) Stop(ctx context.Context) error {
 		_ = container.Close()
 	}
 	c.SetRunning(false)
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

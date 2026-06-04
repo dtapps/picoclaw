@@ -21,6 +21,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -105,13 +106,14 @@ func NewDiscordChannel(
 }
 
 func (c *DiscordChannel) Start(ctx context.Context) error {
-	logger.InfoC("discord", "Starting Discord bot")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	// Get bot user ID before opening session to avoid race condition
 	botUser, err := c.session.User("@me")
 	if err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to get bot user: %w", err)
 	}
 	c.botUserID = botUser.ID
@@ -121,12 +123,13 @@ func (c *DiscordChannel) Start(ctx context.Context) error {
 	go c.listenVoiceControl(c.ctx)
 
 	if err := c.session.Open(); err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to open discord session: %w", err)
 	}
 
 	c.SetRunning(true)
 
-	logger.InfoCF("discord", "Discord bot connected", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"username": botUser.Username,
 		"user_id":  botUser.ID,
 	})
@@ -135,7 +138,7 @@ func (c *DiscordChannel) Start(ctx context.Context) error {
 }
 
 func (c *DiscordChannel) Stop(ctx context.Context) error {
-	logger.InfoC("discord", "Stopping Discord bot")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	// Stop all typing goroutines before closing session
@@ -155,9 +158,11 @@ func (c *DiscordChannel) Stop(ctx context.Context) error {
 	}
 
 	if err := c.session.Close(); err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_stop_failed"))
 		return fmt.Errorf("failed to close discord session: %w", err)
 	}
 
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 
