@@ -314,7 +314,7 @@ func (c *FeishuChannel) SendPlaceholder(ctx context.Context, chatID string) (str
 	}
 
 	req := larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		ReceiveIdType(larkim.CreateMessageV1ReceiveIDTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeInteractive).
@@ -1074,7 +1074,7 @@ func appendMediaTags(content, messageType string, mediaRefs []string) string {
 // sendCard sends an interactive card message to a chat.
 func (c *FeishuChannel) sendCard(ctx context.Context, chatID, cardContent string) (string, error) {
 	req := larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		ReceiveIdType(larkim.CreateMessageV1ReceiveIDTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeInteractive).
@@ -1107,7 +1107,7 @@ func (c *FeishuChannel) sendText(ctx context.Context, chatID, text string) (stri
 	content, _ := json.Marshal(map[string]string{"text": text})
 
 	req := larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		ReceiveIdType(larkim.CreateMessageV1ReceiveIDTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeText).
@@ -1161,7 +1161,7 @@ func (c *FeishuChannel) sendImage(ctx context.Context, chatID string, file *os.F
 	// Send image message
 	content, _ := json.Marshal(map[string]string{"image_key": imageKey})
 	req := larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		ReceiveIdType(larkim.CreateMessageV1ReceiveIDTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeImage).
@@ -1217,7 +1217,7 @@ func (c *FeishuChannel) sendFile(ctx context.Context, chatID string, file *os.Fi
 	// Send file message
 	content, _ := json.Marshal(map[string]string{"file_key": fileKey})
 	req := larkim.NewCreateMessageReqBuilder().
-		ReceiveIdType(larkim.ReceiveIdTypeChatId).
+		ReceiveIdType(larkim.CreateMessageV1ReceiveIDTypeChatId).
 		Body(larkim.NewCreateMessageReqBodyBuilder().
 			ReceiveId(chatID).
 			MsgType(larkim.MsgTypeFile).
