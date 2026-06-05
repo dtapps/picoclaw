@@ -67,6 +67,7 @@ linters:
       replace-allow-list:
         - github.com/bwmarrin/discordgo 
         - github.com/open-dingtalk/dingtalk-stream-sdk-go
+        - github.com/invopop/jsonschema
     errcheck:
       check-type-assertions: true
       check-blank: true
