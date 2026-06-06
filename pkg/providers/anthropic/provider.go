@@ -262,7 +262,9 @@ func applyThinkingConfig(params *anthropic.MessageNewParams, level string) {
 	params.Temperature = anthropic.MessageNewParams{}.Temperature
 
 	if level == "adaptive" {
-		adaptive := anthropic.ThinkingConfigAdaptiveParam{}
+		adaptive := anthropic.ThinkingConfigAdaptiveParam{
+			Display: anthropic.ThinkingConfigAdaptiveDisplaySummarized,
+		}
 		params.Thinking = anthropic.ThinkingConfigParamUnion{OfAdaptive: &adaptive}
 		params.OutputConfig = anthropic.OutputConfigParam{
 			Effort: anthropic.OutputConfigEffortHigh,
