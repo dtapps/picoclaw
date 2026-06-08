@@ -752,8 +752,8 @@ func (c *FeishuChannel) isBotMentioned(message *larkim.EventMessage) bool {
 		return false
 	}
 
-	knownID, _ := c.botOpenID.Load().(string)
-	if knownID == "" {
+	knownID, ok := c.botOpenID.Load().(string)
+	if !ok || knownID == "" {
 		logger.DebugCF("feishu", "Bot open_id unknown, cannot detect @mention", nil)
 		return false
 	}
@@ -1019,7 +1019,13 @@ func (c *FeishuChannel) storeResourceFile(
 		})
 		return ""
 	}
-	out.Close()
+	if closeErr := out.Close(); closeErr != nil {
+		logger.ErrorCF("feishu", "Failed to close downloaded resource file", map[string]any{
+			"error": closeErr.Error(),
+		})
+		os.Remove(localPath)
+		return ""
+	}
 
 	ref, err := store.Store(localPath, media.MediaMeta{
 		Filename:      filename,
