@@ -31,7 +31,9 @@ func NewGitHubCopilotProvider(uri string, connectMode string, model string) (*Gi
 		return nil, fmt.Errorf("stdio mode not implemented for GitHub Copilot provider; please use 'grpc' mode instead")
 	case "grpc":
 		client := copilot.NewClient(&copilot.ClientOptions{
-			CLIUrl: uri,
+			Connection: &copilot.URIConnection{
+				URL: uri,
+			},
 		})
 		if err := client.Start(context.Background()); err != nil {
 			return nil, fmt.Errorf(
