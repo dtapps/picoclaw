@@ -11,21 +11,23 @@ import (
 
 // Handler serves HTTP API requests.
 type Handler struct {
-	configPath           string
-	serverPort           int
-	serverPublic         bool
-	serverPublicExplicit bool
-	serverHostInput      string
-	serverHostExplicit   bool
-	serverCIDRs          []string
-	debug                bool
-	oauthMu              sync.Mutex
-	oauthFlows           map[string]*oauthFlow
-	oauthState           map[string]string
-	weixinMu             sync.Mutex
-	weixinFlows          map[string]*weixinFlow
-	wecomMu              sync.Mutex
-	wecomFlows           map[string]*wecomFlow
+	configPath                 string
+	serverPort                 int
+	serverPublic               bool
+	serverPublicExplicit       bool
+	serverHostInput            string
+	serverHostExplicit         bool
+	serverCIDRs                []string
+	serverAllowLocalhostBypass bool
+	serverTrustedProxyCIDRs    []string
+	debug                      bool
+	oauthMu                    sync.Mutex
+	oauthFlows                 map[string]*oauthFlow
+	oauthState                 map[string]string
+	weixinMu                   sync.Mutex
+	weixinFlows                map[string]*weixinFlow
+	wecomMu                    sync.Mutex
+	wecomFlows                 map[string]*wecomFlow
 
 	// 缓存的工作流持久化存储实例（懒初始化，避免每次请求重复读配置文件）
 	workflowStoreOnce sync.Once
@@ -36,12 +38,13 @@ type Handler struct {
 // NewHandler creates an instance of the API handler.
 func NewHandler(configPath string) *Handler {
 	return &Handler{
-		configPath:  configPath,
-		serverPort:  launcherconfig.DefaultPort,
-		oauthFlows:  make(map[string]*oauthFlow),
-		oauthState:  make(map[string]string),
-		weixinFlows: make(map[string]*weixinFlow),
-		wecomFlows:  make(map[string]*wecomFlow),
+		configPath:                 configPath,
+		serverPort:                 launcherconfig.DefaultPort,
+		serverAllowLocalhostBypass: launcherconfig.Default().AllowLocalhostBypass,
+		oauthFlows:                 make(map[string]*oauthFlow),
+		oauthState:                 make(map[string]string),
+		weixinFlows:                make(map[string]*weixinFlow),
+		wecomFlows:                 make(map[string]*wecomFlow),
 	}
 }
 
@@ -53,6 +56,11 @@ func (h *Handler) SetServerOptions(port int, public bool, publicExplicit bool, a
 	h.serverHostInput = ""
 	h.serverHostExplicit = false
 	h.serverCIDRs = append([]string(nil), allowedCIDRs...)
+}
+
+func (h *Handler) SetServerAccessOptions(allowLocalhostBypass bool, trustedProxyCIDRs []string) {
+	h.serverAllowLocalhostBypass = allowLocalhostBypass
+	h.serverTrustedProxyCIDRs = append([]string(nil), trustedProxyCIDRs...)
 }
 
 // SetServerBindHost stores the launcher's effective bind host.
