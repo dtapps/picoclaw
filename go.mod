@@ -22,7 +22,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/ergochat/irc-go v0.6.0
 	github.com/ergochat/readline v0.1.3
-	github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df
+	github.com/gomarkdown/markdown v0.0.0-20260614204949-e08cff860f76
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/h2non/filetype v1.1.3
@@ -33,7 +33,7 @@ require (
 	github.com/minio/selfupdate v0.6.0
 	github.com/modelcontextprotocol/go-sdk v1.6.1
 	github.com/muesli/termenv v0.16.0
-	github.com/mymmrac/telego v1.9.0
+	github.com/mymmrac/telego v1.10.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
 	github.com/openai/openai-go/v3 v3.39.0
@@ -42,7 +42,7 @@ require (
 	github.com/pion/webrtc/v3 v3.3.6
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/rs/zerolog v1.35.1
-	github.com/slack-go/slack v0.25.0
+	github.com/slack-go/slack v0.26.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
@@ -90,7 +90,7 @@ require (
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.3 // indirect
-	github.com/coder/websocket v1.8.14 // indirect
+	github.com/coder/websocket v1.8.15 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
@@ -102,7 +102,6 @@ require (
 	github.com/invopop/jsonschema v0.14.0 // indirect
 	github.com/kylelemons/godebug v1.1.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.4.0 // indirect
-	github.com/mailru/easyjson v0.9.2 // indirect
 	github.com/mattn/go-colorable v0.1.15 // indirect
 	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/mattn/go-runewidth v0.0.24 // indirect
@@ -120,7 +119,6 @@ require (
 	github.com/vektah/gqlparser/v2 v2.5.34 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
-	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.mau.fi/libsignal v0.2.2 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
@@ -129,7 +127,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.5 // indirect
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
-	modernc.org/libc v1.73.0 // indirect
+	modernc.org/libc v1.73.3 // indirect
 	modernc.org/mathutil v1.7.1 // indirect
 	modernc.org/memory v1.11.0 // indirect
 )
@@ -166,5 +164,3 @@ require (
 replace github.com/bwmarrin/discordgo => github.com/yeongaori/discordgo-fork v0.0.0-20260319072544-e8e546f5d532
 
 replace github.com/open-dingtalk/dingtalk-stream-sdk-go => cnb.cool/dtapp/dingtalk-stream-sdk-go v0.0.0-20260514021942-d36cf347e9b9
-
-replace github.com/invopop/jsonschema => github.com/invopop/jsonschema v0.13.0
