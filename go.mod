@@ -47,7 +47,7 @@ require (
 	github.com/spf13/pflag v1.0.10
 	github.com/stretchr/testify v1.11.1
 	github.com/tencent-connect/botgo v0.2.1
-	go.mau.fi/util v0.9.9
+	go.mau.fi/util v0.9.10
 	go.mau.fi/whatsmeow v0.0.0-20260611094716-089932318bc2
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/term v0.44.0
@@ -55,7 +55,7 @@ require (
 	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
-	maunium.net/go/mautrix v0.28.0
+	maunium.net/go/mautrix v0.28.1
 	modernc.org/sqlite v1.52.0
 	rsc.io/qr v0.2.0
 )
