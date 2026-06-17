@@ -13,6 +13,7 @@ import (
 	"math"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"sort"
 	"strings"
 	"sync"
@@ -1320,7 +1321,17 @@ func (m *Manager) StartAll(ctx context.Context) error {
 			for _, listener := range m.httpListeners {
 				ln := listener
 				go func() {
-					logger.InfoCF("channels", i18n.T("shared_http_server_listening"), map[string]any{
+					defer func() {
+						if r := recover(); r != nil {
+							logger.ErrorCF("channels", "HTTP server goroutine panic recovered",
+								map[string]any{
+									"addr":  ln.Addr().String(),
+									"panic": fmt.Sprintf("%v", r),
+									"stack": string(debug.Stack()),
+								})
+						}
+					}()
+					logger.InfoCF("channels", "Shared HTTP server listening", map[string]any{
 						"addr": ln.Addr().String(),
 					})
 					if err := m.httpServer.Serve(ln); err != nil && err != http.ErrServerClosed {
@@ -1333,7 +1344,17 @@ func (m *Manager) StartAll(ctx context.Context) error {
 			}
 		} else {
 			go func() {
-				logger.InfoCF("channels", i18n.T("shared_http_server_listening"), map[string]any{
+				defer func() {
+					if r := recover(); r != nil {
+						logger.ErrorCF("channels", "HTTP server goroutine panic recovered",
+							map[string]any{
+								"addr":  m.httpServer.Addr,
+								"panic": fmt.Sprintf("%v", r),
+								"stack": string(debug.Stack()),
+							})
+					}
+				}()
+				logger.InfoCF("channels", "Shared HTTP server listening", map[string]any{
 					"addr": m.httpServer.Addr,
 				})
 				if err := m.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -1984,6 +2005,15 @@ func (m *Manager) Reload(ctx context.Context, cfg *config.Config) error {
 	// Commit hashes only on full success.
 	m.channelHashes = list
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				logger.ErrorCF("channels", "channel registration goroutine panic recovered",
+					map[string]any{
+						"panic": fmt.Sprintf("%v", r),
+						"stack": string(debug.Stack()),
+					})
+			}
+		}()
 		for _, f := range deferFuncs {
 			f()
 		}
