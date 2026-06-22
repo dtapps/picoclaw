@@ -424,6 +424,7 @@ deps:
 update-deps:
 	@$(GO) get -u ./...
 	@$(GO) mod tidy
+	cd web/frontend && pnpm update && cd .. && cd ..
 
 ## check: Run deps, fmt, vet, tests, and docs consistency checks
 check: deps fmt vet test lint-docs
