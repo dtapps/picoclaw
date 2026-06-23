@@ -8,7 +8,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0
 	github.com/SevereCloud/vksdk/v3 v3.3.1
 	github.com/adhocore/gronx v1.20.0
-	github.com/anthropics/anthropic-sdk-go v1.51.0
+	github.com/anthropics/anthropic-sdk-go v1.51.1
 	github.com/atc0005/go-teams-notify/v2 v2.14.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
@@ -37,7 +37,7 @@ require (
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
 	github.com/openai/openai-go/v3 v3.41.0
-	github.com/pelletier/go-toml/v2 v2.4.0
+	github.com/pelletier/go-toml/v2 v2.4.1
 	github.com/pion/rtp v1.10.2
 	github.com/pion/webrtc/v3 v3.3.6
 	github.com/pmezard/go-difflib v1.0.0
@@ -48,7 +48,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/tencent-connect/botgo v0.2.1
 	go.mau.fi/util v0.9.10
-	go.mau.fi/whatsmeow v0.0.0-20260616120636-eaa388b4e537
+	go.mau.fi/whatsmeow v0.0.0-20260622185415-5f04eac6dbbb
 	golang.org/x/oauth2 v0.36.0
 	golang.org/x/term v0.44.0
 	golang.org/x/text v0.38.0
@@ -89,7 +89,7 @@ require (
 	github.com/charmbracelet/x/term v0.2.2 // indirect
 	github.com/clipperhouse/displaywidth v0.11.0 // indirect
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
-	github.com/cloudflare/circl v1.6.3 // indirect
+	github.com/cloudflare/circl v1.6.4 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
