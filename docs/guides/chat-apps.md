@@ -4,7 +4,7 @@
 
 ## 💬 Chat Apps
 
-Talk to your picoclaw through Telegram, Discord, WhatsApp, Matrix, QQ, DingTalk, LINE, WeCom, Feishu, Slack, IRC, OneBot, MQTT, MaixCam, or Pico (native protocol)
+Talk to your picoclaw through Telegram, Discord, WhatsApp, Matrix, QQ, DingTalk, LINE, WeCom, Feishu, Slack, IRC, OneBot, MQTT, MaixCam, Server酱³ Bot, or Pico (native protocol)
 
 > **Note**: Channels that rely on HTTP callbacks share a single Gateway HTTP server (`gateway.host`:`gateway.port`, default `127.0.0.1:18790`). Socket/stream-based channels such as Feishu, DingTalk, and WeCom do not rely on the shared webhook server for inbound delivery.
 
@@ -25,6 +25,7 @@ Talk to your picoclaw through Telegram, Discord, WhatsApp, Matrix, QQ, DingTalk,
 | **OneBot**           | ⭐⭐ Medium        | NapCat/Go-CQHTTP compatible, community ecosystem      | [Docs](../channels/onebot/README.md)                                                                            |
 | **MQTT**             | ⭐ Easy            | Any MQTT client via broker pub/sub                    | [Docs](../channels/mqtt/README.md)                                                                              |
 | **MaixCam**          | ⭐ Easy            | Hardware integration channel for Sipeed AI cameras    | [Docs](../channels/maixcam/README.md)                                                                           |
+| **Server酱³ Bot**     | ⭐ Easy            | Server酱³ messaging platform Bot API                  | [Docs](../channels/sc3bot/README.md)                                                                            |
 | **Pico**             | ⭐ Easy            | Native PicoClaw protocol channel                      |                                                                                                                  |
 
 <a id="telegram"></a>
@@ -77,6 +78,23 @@ You can also inspect skills and MCP servers directly from Telegram:
 - `/use <skill>` and then send the actual request in the next message
 - `/use clear`
 - `/btw <question>` to ask an immediate side question without changing the active session history; `/btw` is handled as a no-tool query and does not enter the normal tool-execution flow
+
+**Exec Command (CLI only)**
+
+The `/exec` command allows executing shell commands directly from the chat interface. For security reasons, this command is **restricted to internal channels only** (CLI) by default. To enable it for remote channels, set `tools.exec.allow_remote: true` in your configuration.
+
+- `/exec run <command>` - Execute a shell command and return output
+- `/exec sessions` - List active exec sessions
+- `/exec kill <session-id>` - Kill a running exec session
+
+Examples:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Security Note:** By default, exec is only available from the CLI channel. Remote channels like Telegram, Discord, etc. cannot use exec unless explicitly enabled via configuration.
 
 **4. Advanced Formatting**
 You can set use_markdown_v2: true to enable enhanced formatting options. This allows the bot to utilize the full range of Telegram MarkdownV2 features, including nested styles, spoilers, and custom fixed-width blocks.
@@ -652,5 +670,49 @@ mosquitto_sub -t "/picoclaw/assistant/device1/response"
 ```
 
 For full configuration options see [MQTT Channel Docs](../channels/mqtt/README.md).
+
+</details>
+
+<a id="sc3bot"></a>
+<details>
+<summary><b>Server酱³ Bot</b></summary>
+
+Server酱³ is a Chinese messaging platform. The Bot API allows PicoClaw to send and receive messages.
+
+**1. Create a Bot**
+
+* Visit [Server酱³](https://sc3.ft07.com/) and create an account
+* Navigate to the Bot management page
+* Create a new Bot and copy the Bot Token
+
+**2. Configure**
+
+```json
+{
+  "channel_list": {
+    "sc3bot": {
+      "enabled": true,
+      "type": "sc3bot",
+      "settings": {
+        "token": "YOUR_BOT_TOKEN"
+      }
+    }
+  }
+}
+```
+
+Optional settings:
+- `proxy`: HTTP proxy URL (e.g., `http://127.0.0.1:7890`)
+- `secret`: Webhook secret for request verification
+
+**3. Run**
+
+```bash
+picoclaw gateway
+```
+
+The channel will start in polling mode by default. To use webhook mode, configure a public webhook URL in the Server酱³ client.
+
+For full configuration options see [Server酱³ Bot Channel Docs](../channels/sc3bot/README.md).
 
 </details>

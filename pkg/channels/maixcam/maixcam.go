@@ -11,6 +11,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
@@ -53,7 +54,7 @@ func NewMaixCamChannel(
 }
 
 func (c *MaixCamChannel) Start(ctx context.Context) error {
-	logger.InfoC("maixcam", "Starting MaixCam channel server")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
@@ -61,13 +62,14 @@ func (c *MaixCamChannel) Start(ctx context.Context) error {
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		c.cancel()
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("failed to listen on %s: %w", addr, err)
 	}
 
 	c.listener = listener
 	c.SetRunning(true)
 
-	logger.InfoCF("maixcam", "MaixCam server listening", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"host": c.config.Host,
 		"port": c.config.Port,
 	})
@@ -218,7 +220,7 @@ func (c *MaixCamChannel) handleStatusUpdate(msg MaixCamMessage) {
 }
 
 func (c *MaixCamChannel) Stop(ctx context.Context) error {
-	logger.InfoC("maixcam", "Stopping MaixCam channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	// Cancel context first to signal goroutines to exit
@@ -238,7 +240,7 @@ func (c *MaixCamChannel) Stop(ctx context.Context) error {
 	}
 	c.clients = make(map[net.Conn]bool)
 
-	logger.InfoC("maixcam", "MaixCam channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

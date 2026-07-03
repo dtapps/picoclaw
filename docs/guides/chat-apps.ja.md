@@ -71,6 +71,23 @@ Telegram 側はコマンドメニュー登録機能を保持し、汎用コマ�
 
 ネットワークや API の一時的なエラーで登録に失敗しても、チャネルの起動はブロックされません。システムがバックグラウンドで自動リトライします。
 
+**Exec コマンド（CLI のみ）**
+
+`/exec` コマンドを使用すると、チャットインターフェースから直接シェルコマンドを実行できます。セキュリティ上の理由から、このコマンドはデフォルトで**内部チャネル（CLI）のみ**に制限されています。リモートチャネルで有効にするには、設定で `tools.exec.allow_remote: true` を設定してください。
+
+- `/exec run <command>` - シェルコマンドを実行して出力を返す
+- `/exec sessions` - アクティブな exec セッションを一覧表示
+- `/exec kill <session-id>` - 実行中の exec セッションを終了
+
+例：
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **セキュリティ注意：** デフォルトでは、exec は CLI チャネルでのみ使用できます。設定で明示的に有効にしない限り、Telegram、Discord などのリモートチャネルでは exec を使用できません。
+
 </details>
 
 <a id="discord"></a>

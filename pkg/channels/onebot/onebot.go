@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/identity"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/media"
@@ -151,11 +152,14 @@ func (c *OneBotChannel) ReactToMessage(ctx context.Context, chatID, messageID st
 }
 
 func (c *OneBotChannel) Start(ctx context.Context) error {
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
+
 	if c.config.WSUrl == "" {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("OneBot ws_url not configured")
 	}
 
-	logger.InfoCF("onebot", "Starting OneBot channel", map[string]any{
+	logger.InfoCF("onebot", "Connecting to OneBot", map[string]any{
 		"ws_url": c.config.WSUrl,
 	})
 
@@ -179,7 +183,7 @@ func (c *OneBotChannel) Start(ctx context.Context) error {
 	}
 
 	c.SetRunning(true)
-	logger.InfoC("onebot", "OneBot channel started successfully")
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 
 	return nil
 }
@@ -369,7 +373,7 @@ func (c *OneBotChannel) reconnectLoop() {
 }
 
 func (c *OneBotChannel) Stop(ctx context.Context) error {
-	logger.InfoC("onebot", "Stopping OneBot channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	if c.cancel != nil {
@@ -393,6 +397,7 @@ func (c *OneBotChannel) Stop(ctx context.Context) error {
 	}
 	c.mu.Unlock()
 
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

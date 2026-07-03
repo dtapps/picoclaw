@@ -12,6 +12,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -49,7 +50,7 @@ func NewIRCChannel(bc *config.Channel, cfg *config.IRCSettings, messageBus *bus.
 
 // Start connects to the IRC server and begins listening.
 func (c *IRCChannel) Start(ctx context.Context) error {
-	logger.InfoC("irc", "Starting IRC channel")
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	c.ctx, c.cancel = context.WithCancel(ctx)
 
 	user := c.config.User
@@ -99,6 +100,7 @@ func (c *IRCChannel) Start(ctx context.Context) error {
 	})
 
 	if err := conn.Connect(); err != nil {
+		logger.ErrorC(c.Name(), i18n.T("channel_start_failed"))
 		return fmt.Errorf("irc connect failed: %w", err)
 	}
 
@@ -108,7 +110,7 @@ func (c *IRCChannel) Start(ctx context.Context) error {
 	go conn.Loop()
 
 	c.SetRunning(true)
-	logger.InfoCF("irc", "IRC channel started", map[string]any{
+	logger.InfoCF(c.Name(), i18n.T("channel_started"), map[string]any{
 		"server": c.config.Server,
 		"nick":   c.config.Nick,
 	})
@@ -117,7 +119,7 @@ func (c *IRCChannel) Start(ctx context.Context) error {
 
 // Stop disconnects from the IRC server.
 func (c *IRCChannel) Stop(ctx context.Context) error {
-	logger.InfoC("irc", "Stopping IRC channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
 
 	if c.conn != nil {
@@ -127,7 +129,7 @@ func (c *IRCChannel) Stop(ctx context.Context) error {
 		c.cancel()
 	}
 
-	logger.InfoC("irc", "IRC channel stopped")
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

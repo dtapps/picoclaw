@@ -123,6 +123,7 @@
 | `proxy` | string | 否 | 此模型条目的 HTTP 代理 URL |
 | `user_agent` | string | 否 | 自定义 `User-Agent` 请求头（支持 OpenAI 兼容、Gemini、Anthropic 和 Azure provider） |
 | `request_timeout` | int | 否 | 请求超时时间（秒），默认值因 provider 而异 |
+| `max_tokens` | int | 否 | 最大 Token 数 |
 | `streaming.enabled` | bool | 否 | 是否允许此模型条目尝试 provider 流式请求，默认 `false`。它只表达模型/端点能力 opt-in，实际还需要当前 channel 的 `settings.streaming.enabled` 同时开启 |
 | `max_tokens_field` | string | 否 | 覆盖请求体中 max tokens 的字段名（如 o1 模型使用 `max_completion_tokens`） |
 | `thinking_level` | string | 否 | 扩展思考级别：`off`、`low`、`medium`、`high`、`xhigh` 或 `adaptive` |

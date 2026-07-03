@@ -145,6 +145,23 @@ export PICOCLAW_BUILTIN_SKILLS=/path/to/skills
 dammi le ultime news
 ```
 
+**Exec コマンド（CLI のみ）**
+
+`/exec` コマンドを使用すると、チャットインターフェースから直接シェルコマンドを実行できます。セキュリティ上の理由から、このコマンドはデフォルトで**内部チャネル（CLI）のみ**に制限されています。リモートチャネルで有効にするには、設定で `tools.exec.allow_remote: true` を設定してください。
+
+- `/exec run <command>` - シェルコマンドを実行して出力を返す
+- `/exec sessions` - アクティブな exec セッションを一覧表示
+- `/exec kill <session-id>` - 実行中の exec セッションを終了
+
+例：
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **セキュリティ注意：** `/exec` コマンドはシステムへの直接アクセスを許可します。注意して使用し、セキュリティへの影響を完全に理解し、チャネルアクセス権を持つすべてのユーザーを信頼している場合のみ、リモートチャネルで有効にしてください。
+
 ### 統一コマンド実行ポリシー
 
 - 汎用スラッシュコマンドは `pkg/agent/loop.go` 内の `commands.Executor` を通じて統一的に実行されます。

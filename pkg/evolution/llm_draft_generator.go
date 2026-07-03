@@ -3,9 +3,9 @@ package evolution
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strings"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
@@ -64,10 +64,13 @@ func (g *LLMDraftGenerator) GenerateDraftWithEvidence(
 
 	callCtx, cancel := withLLMCallTimeout(ctx, llmDraftGenerationTimeout)
 	defer cancel()
+
+	systemPrompt := i18n.T("llm_draft_system_prompt")
+
 	resp, err := g.provider.Chat(callCtx, []providers.Message{
 		{
 			Role:    "system",
-			Content: "Return exactly one JSON object for a skill draft. Do not use markdown fences.",
+			Content: systemPrompt,
 		},
 		{
 			Role:    "user",
@@ -111,48 +114,44 @@ func (g *LLMDraftGenerator) buildPrompt(
 	matches []skills.SkillInfo,
 	evidence DraftEvidence,
 ) string {
-	return strings.Join([]string{
-		"Generate a skill draft JSON object with these required string fields:",
-		`target_skill_name, draft_type, change_kind, human_summary, body_or_patch.`,
-		"Optional array fields: intended_use_cases, preferred_entry_path, avoid_patterns.",
-		"",
-		"Allowed values:",
-		"- draft_type: workflow | shortcut",
-		"- change_kind: create | append | replace | merge",
-		"- target_skill_name: lowercase hyphenated skill name that describes the functional purpose; it must not be numeric-only",
-		"",
-		"Rule summary: " + strings.TrimSpace(rule.Summary),
-		"Winning path: " + joinOrFallback(rule.WinningPath, "none"),
-		"Late-added successful skills: " + joinOrFallback(rule.LateAddedSkills, "none"),
-		"Final snapshot trigger: " + fallbackString(rule.FinalSnapshotTrigger, "none"),
-		fmt.Sprintf("Event count: %d", rule.EventCount),
-		fmt.Sprintf("Success rate: %.2f", rule.SuccessRate),
-		"Matched skill refs: " + summarizeSkillMatches(matches),
-		"Matched skill names: " + joinOrFallback(rule.MatchedSkillNames, "none"),
-		"Source task evidence:",
-		summarizeDraftTaskEvidence(evidence),
-		"Matched skill content excerpts:",
-		summarizeMatchedSkillExcerpts(matches),
-		"",
-		combinedSkillGuidance(rule),
-		skillDraftPromptText(),
-	}, "\n")
+	return i18n.Tf("llm_draft_build_prompt", map[string]any{
+		"Summary":              strings.TrimSpace(rule.Summary),
+		"WinningPath":          joinOrFallback(rule.WinningPath, i18n.T("llm_draft_none")),
+		"LateAddedSkills":      joinOrFallback(rule.LateAddedSkills, i18n.T("llm_draft_none")),
+		"FinalSnapshotTrigger": fallbackString(rule.FinalSnapshotTrigger, i18n.T("llm_draft_none")),
+		"EventCount":           rule.EventCount,
+		"SuccessRate":          rule.SuccessRate,
+		"SkillMatches":         summarizeSkillMatches(matches),
+		"MatchedSkillNames":    joinOrFallback(rule.MatchedSkillNames, i18n.T("llm_draft_none")),
+		"TaskEvidence":         summarizeDraftTaskEvidence(evidence),
+		"SkillExcerpts":        summarizeMatchedSkillExcerpts(matches),
+		"CombinedGuidance":     combinedSkillGuidance(rule),
+		"DraftInstructions":    skillDraftPromptText(),
+	})
 }
 
 func summarizeDraftTaskEvidence(evidence DraftEvidence) string {
 	if len(evidence.TaskRecords) == 0 {
-		return "none"
+		return i18n.T("llm_draft_none")
 	}
+
+	labels := i18n.T("llm_draft_evidence_labels")
+	labelParts := strings.Split(labels, "|")
+	if len(labelParts) != 6 {
+		labelParts = []string{"id", "summary", "final_output_excerpt", "used_skill_names", "unknown", "none"}
+	}
+	idLabel, summaryLabel, outputLabel, skillsLabel, unknownLabel, noneLabel := labelParts[0], labelParts[1], labelParts[2], labelParts[3], labelParts[4], labelParts[5]
+
 	lines := make([]string, 0, minInt(len(evidence.TaskRecords), 5))
 	for i, task := range evidence.TaskRecords {
 		if i >= 5 {
 			break
 		}
 		parts := []string{
-			"- id: " + fallbackString(task.ID, "unknown"),
-			"  summary: " + fallbackString(task.Summary, "none"),
-			"  final_output_excerpt: " + fallbackString(summarizeText(task.FinalOutput, 700), "none"),
-			"  used_skill_names: " + joinOrFallback(task.UsedSkillNames, "none"),
+			"- " + idLabel + ": " + fallbackString(task.ID, unknownLabel),
+			"  " + summaryLabel + ": " + fallbackString(task.Summary, noneLabel),
+			"  " + outputLabel + ": " + fallbackString(summarizeText(task.FinalOutput, 700), noneLabel),
+			"  " + skillsLabel + ": " + joinOrFallback(task.UsedSkillNames, noneLabel),
 		}
 		lines = append(lines, strings.Join(parts, "\n"))
 	}
@@ -161,13 +160,11 @@ func summarizeDraftTaskEvidence(evidence DraftEvidence) string {
 
 func combinedSkillGuidance(rule LearningRecord) string {
 	if target := inferCombinedSkillName(rule); target != "" {
-		return strings.Join([]string{
-			"This rule represents a stable multi-step successful path.",
-			"Prefer creating a new combined shortcut skill instead of modifying one component skill.",
-			"Suggested target skill name: " + target,
-		}, "\n")
+		return i18n.Tf("llm_draft_combined_guidance", map[string]any{
+			"Target": target,
+		})
 	}
-	return "Prefer updating an existing skill only when the learned pattern clearly belongs inside that single skill."
+	return i18n.T("llm_draft_single_guidance")
 }
 
 func parseLLMDraft(content string) (SkillDraft, bool) {

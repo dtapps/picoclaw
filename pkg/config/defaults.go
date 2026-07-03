@@ -492,6 +492,12 @@ func DefaultConfig() *Config {
 			WriteFile: ToolConfig{
 				Enabled: true,
 			},
+			BrowserExt: ToolConfig{
+				Enabled: false,
+			},
+			GetCurrentTime: ToolConfig{
+				Enabled: true,
+			},
 		},
 		Heartbeat: HeartbeatConfig{
 			Enabled:  true,
@@ -507,6 +513,7 @@ func DefaultConfig() *Config {
 			EchoTranscription: false,
 			ElevenLabsAPIKey:  "",
 		},
+		EnvVars: EnvVarsConfig{},
 		BuildInfo: BuildInfo{
 			Version:   Version,
 			GitCommit: GitCommit,
@@ -597,6 +604,14 @@ func defaultChannels() ChannelsConfig {
 				"tls":      true,
 				"nick":     "picoclaw",
 				"channels": []string{},
+			},
+		},
+		"weibo":   map[string]any{},
+		"yuanbao": map[string]any{},
+		"browser": map[string]any{},
+		"sc3bot": map[string]any{
+			"settings": map[string]any{
+				"token": "",
 			},
 		},
 	}

@@ -188,6 +188,23 @@ export PICOCLAW_BUILTIN_SKILLS=/path/to/skills
 dammi le ultime news
 ```
 
+**Exec 命令（仅 CLI）**
+
+`/exec` 命令允许直接从聊天界面执行 shell 命令。出于安全考虑，此命令默认**仅限于内部通道**（CLI）。要为远程通道启用它，请在配置中设置 `tools.exec.allow_remote: true`。
+
+- `/exec run <command>` - 执行 shell 命令并返回输出
+- `/exec sessions` - 列出活动的 exec 会话
+- `/exec kill <session-id>` - 终止正在运行的 exec 会话
+
+示例：
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **安全提示：** `/exec` 命令允许直接访问系统。请谨慎使用，只有在您完全理解安全影响并信任所有有频道访问权限的用户时，才为远程通道启用它。
+
 ### 统一命令执行策略
 
 - 通用斜杠命令通过 `pkg/agent/loop.go` 中的 `commands.Executor` 统一执行。

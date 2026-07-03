@@ -19,6 +19,7 @@ import (
 const (
 	ChannelPico           = "pico"
 	ChannelPicoClient     = "pico_client"
+	ChannelBrowser        = "browser"
 	ChannelTelegram       = "telegram"
 	ChannelDiscord        = "discord"
 	ChannelFeishu         = "feishu"
@@ -39,6 +40,9 @@ const (
 	ChannelTeamsWebHook   = "teams_webhook"
 	ChannelMQTT           = "mqtt"
 	ChannelSlackWebHook   = "slack_webhook"
+	ChannelWeibo          = "weibo"
+	ChannelYuanbao        = "yuanbao"
+	ChannelSC3Bot         = "sc3bot"
 )
 
 func initChannel() {
@@ -554,7 +558,7 @@ var BaseFieldNames = map[string]struct{}{
 // SecureString or SecureStrings and returns their JSON field names.
 func extractSecureFieldNames(target any) map[string]struct{} {
 	v := reflect.ValueOf(target)
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
@@ -662,6 +666,7 @@ var channelSettingsMu sync.RWMutex
 var channelSettingsFactory = map[string]any{
 	ChannelPico:           (PicoSettings{}),
 	ChannelPicoClient:     (PicoClientSettings{}),
+	ChannelBrowser:        (BrowserSettings{}),
 	ChannelTelegram:       (TelegramSettings{}),
 	ChannelDiscord:        (DiscordSettings{}),
 	ChannelFeishu:         (FeishuSettings{}),
@@ -682,6 +687,9 @@ var channelSettingsFactory = map[string]any{
 	ChannelTeamsWebHook:   (TeamsWebhookSettings{}),
 	ChannelMQTT:           (MQTTSettings{}),
 	ChannelSlackWebHook:   (SlackWebhookSettings{}),
+	ChannelWeibo:          (WeiboSettings{}),
+	ChannelYuanbao:        (YuanbaoSettings{}),
+	ChannelSC3Bot:         (SC3BotSettings{}),
 }
 
 // RegisterChannelSettings registers a settings struct prototype for a custom

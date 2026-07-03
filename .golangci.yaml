@@ -23,6 +23,7 @@ linters:
     - tagliatelle
     - testpackage
     - varnamelen
+    - gomodguard
     - wrapcheck
     - wsl
     - wsl_v5
@@ -64,7 +65,9 @@ linters:
   settings:
     gomoddirectives:
       replace-allow-list:
-        - github.com/bwmarrin/discordgo
+        - github.com/bwmarrin/discordgo 
+        - github.com/open-dingtalk/dingtalk-stream-sdk-go
+        - github.com/invopop/jsonschema
     errcheck:
       check-type-assertions: true
       check-blank: true
@@ -148,6 +151,9 @@ linters:
       - linters:
           - nolintlint
         path: 'pkg/tools/(i2c\.go|spi\.go)$'
+      - linters:
+          - canonicalheader
+        path: 'pkg/channels/sc3bot/'
 
 issues:
   max-issues-per-linter: 0

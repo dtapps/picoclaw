@@ -1,14 +1,18 @@
 package commands
 
-import "context"
+import (
+	"context"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
+)
 
 func startCommand() Definition {
 	return Definition{
 		Name:        "start",
-		Description: "Start the bot",
-		Usage:       "/start",
+		Description: i18n.T("commands_start_description"),
+		Usage:       i18n.T("commands_start_usage"),
 		Handler: func(_ context.Context, req Request, _ *Runtime) error {
-			return req.Reply("Hello! I am PicoClaw 🦞")
+			return req.Reply(i18n.T("commands_start_response"))
 		},
 	}
 }

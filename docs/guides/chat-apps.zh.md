@@ -4,7 +4,7 @@
 
 ## 💬 聊天应用集成 (Chat Apps)
 
-PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方，包括 Telegram、Discord、WhatsApp、微信、QQ、钉钉、LINE、企业微信、飞书、Slack、IRC、OneBot、MQTT、MaixCam 等。
+PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方，包括 Telegram、Discord、WhatsApp、微信、QQ、钉钉、LINE、企业微信、飞书、Slack、IRC、OneBot、MQTT、MaixCam、Server酱³ Bot 等。
 
 > **注意**: 依赖 HTTP 回调的渠道共用同一个 Gateway HTTP 服务器（`gateway.host`:`gateway.port`，默认 `127.0.0.1:18790`），无需为每个渠道单独配置端口。飞书、钉钉、企业微信这类 Socket/Stream 模式渠道不依赖共享 webhook 服务器来接收入站消息。
 
@@ -27,6 +27,7 @@ PicoClaw 支持多种聊天平台，使您的 Agent 能够连接到任何地方�
 | **OneBot**           | ⭐⭐ 中等   | 兼容 NapCat/Go-CQHTTP，社区生态丰富       | [查看文档](../channels/onebot/README.zh.md)                                                                   |
 | **MQTT**             | ⭐ 简单     | 任意 MQTT 客户端通过 Broker 收发消息      | [查看文档](../channels/mqtt/README.zh.md)                                                                     |
 | **MaixCam**          | ⭐ 简单     | 专为 AI 摄像头设计的硬件集成通道          | [查看文档](../channels/maixcam/README.zh.md)                                                                  |
+| **Server酱³ Bot**     | ⭐ 简单     | Server酱³ 消息平台 Bot API                | [查看文档](../channels/sc3bot/README.zh.md)                                                                   |
 | **Pico**             | ⭐ 简单     | PicoClaw 原生协议通道                     |                                                                                                               |
 
 ---
@@ -78,6 +79,23 @@ Telegram 侧保留的是命令菜单注册能力；通用命令的实际执行�
 - `/use <skill>`，然后在下一条消息里发送真正的请求
 - `/use clear`
 - `/btw <question>`，用于发起一个不改动当前会话历史的即时旁支提问；`/btw` 会按一次无工具的直接问答处理，不会进入常规的工具执行流程
+
+**Exec 命令（仅 CLI）**
+
+`/exec` 命令允许直接从聊天界面执行 shell 命令。出于安全考虑，此命令默认**仅限于内部通道**（CLI）。要为远程通道启用它，请在配置中设置 `tools.exec.allow_remote: true`。
+
+- `/exec run <command>` - 执行 shell 命令并返回输出
+- `/exec sessions` - 列出活动的 exec 会话
+- `/exec kill <session-id>` - 终止正在运行的 exec 会话
+
+示例：
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **安全提示：** 默认情况下，exec 仅适用于 CLI 通道。除非通过配置明确启用，否则 Telegram、Discord 等远程通道无法使用 exec。
 
 </details>
 
@@ -675,5 +693,49 @@ mosquitto_sub -t "/picoclaw/assistant/device1/response"
 ```
 
 完整配置选项请参考 [MQTT 渠道文档](../channels/mqtt/README.zh.md)。
+
+</details>
+
+<a id="sc3bot"></a>
+<details>
+<summary><b>Server酱³ Bot</b></summary>
+
+Server酱³ 是一个中文消息推送平台。Bot API 允许 PicoClaw 发送和接收消息。
+
+**1. 创建 Bot**
+
+* 访问 [Server酱³](https://sc3.ft07.com/) 并创建账户
+* 进入 Bot 管理页面
+* 创建一个新的 Bot 并复制 Bot Token
+
+**2. 配置**
+
+```json
+{
+  "channel_list": {
+    "sc3bot": {
+      "enabled": true,
+      "type": "sc3bot",
+      "settings": {
+        "token": "YOUR_BOT_TOKEN"
+      }
+    }
+  }
+}
+```
+
+可选配置：
+- `proxy`: HTTP 代理 URL（例如：`http://127.0.0.1:7890`）
+- `secret`: Webhook 密钥，用于请求验证
+
+**3. 运行**
+
+```bash
+picoclaw gateway
+```
+
+默认情况下，频道使用轮询模式接收消息。如需使用 Webhook 模式，请在 Server酱³ 客户端中配置公网 Webhook URL。
+
+完整配置选项请参考 [Server酱³ Bot 渠道文档](../channels/sc3bot/README.zh.md)。
 
 </details>

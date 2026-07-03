@@ -1,0 +1,33 @@
+name: server-health-check
+description: "检查服务器健康状态：成功时记录日志，失败时通知管理员"
+
+triggers:
+  - cron: "*/10 * * * *"
+
+steps:
+  - id: health_check
+    action: tool_call
+    tool: exec
+    args:
+      command: "curl -sf http://localhost:8080/health || echo 'FAILED'"
+    output_key: health
+    delay: 2s
+    retry:
+      max_attempts: 3
+      delay: 10s
+    timeout: 30s
+
+  - id: check_result
+    action: if
+    when: on_error
+    if_true:
+      - id: notify_admin
+        action: agent_prompt
+        prompt: "服务器健康检查失败，请通知管理员排查问题。最近的检查结果：{{.health_check.health}}"
+    if_false:
+      - id: log_success
+        action: agent_prompt
+        prompt: "服务器运行正常，记录健康检查通过日志"
+
+config:
+  failure_strategy: stop

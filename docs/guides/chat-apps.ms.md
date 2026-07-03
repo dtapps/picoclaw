@@ -510,3 +510,44 @@ mosquitto_sub -t "/picoclaw/assistant/device1/response"
 Untuk semua pilihan konfigurasi, lihat [Dokumentasi Saluran MQTT](../channels/mqtt/README.md).
 
 </details>
+
+---
+
+## 🛠️ Arahan Sembang
+
+PicoClaw menyokong beberapa arahan slash yang boleh digunakan dalam mana-mana saluran sembang:
+
+### Arahan Asas
+
+- `/help` - Papar bantuan dan maklumat tentang arahan yang tersedia
+- `/start` - Mulakan interaksi dengan bot
+
+### Arahan Skill
+
+- `/list skills` - Papar skill yang dipasang dan tersedia
+- `/use <skill> <message>` - Paksa penggunaan skill tertentu untuk satu permintaan
+- `/use <skill>` - Sediakan skill untuk mesej seterusnya
+- `/use clear` - Batalkan pilihan skill yang tertunda
+- `/btw <question>` - Tanya soalan sampingan segera tanpa mengubah sejarah sesi aktif
+
+### Arahan Paparan
+
+- `/show <laluan>` - Papar kandungan fail
+- `/list <direktori>` - Senaraikan kandungan direktori
+
+**Arahan Exec (CLI sahaja)**
+
+Arahan `/exec` membolehkan melaksanakan arahan shell terus dari antara muka sembang. Atas sebab keselamatan, arahan ini **dihadkan kepada saluran dalaman sahaja** (CLI) secara lalai. Untuk membolehkannya untuk saluran jauh, tetapkan `tools.exec.allow_remote: true` dalam konfigurasi anda.
+
+- `/exec run <arahan>` - Jalankan arahan shell dan pulangkan output
+- `/exec sessions` - Senaraikan sesi exec yang aktif
+- `/exec kill <session-id>` - Hentikan sesi exec yang sedang berjalan
+
+Contoh:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Nota Keselamatan:** Arahan exec memberikan akses terus ke sistem. Gunakan dengan berhati-hati dan jangan dayakannya untuk saluran jauh kecuali anda memahami risiko keselamatan yang terlibat.

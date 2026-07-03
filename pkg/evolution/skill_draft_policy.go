@@ -1,22 +1,13 @@
 package evolution
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
+)
 
 func skillDraftPromptInstructions() []string {
-	return []string{
-		"body_or_patch must contain the complete draft body or patch content as plain text.",
-		"body_or_patch is an internal draft and review artifact, so it may include concise learning provenance, source task evidence, and source skill summaries when useful for human review.",
-		"If change_kind is create, body_or_patch must be a complete SKILL.md file with exactly two parts: YAML frontmatter and a Markdown body.",
-		"The YAML frontmatter must contain only name and description fields.",
-		"The description field must and only describe what this skill can do and when to use it.",
-		"The deployable Markdown body should only contain what the skill is useful for and how to use it.",
-		"The Markdown body is loaded only after the skill triggers, so focus on concise usage guidance and the execution steps needed to complete the task.",
-		"When describing an operation process in the body, do not use vague summaries; provide detailed step-by-step instructions for the exact operation or execution process.",
-		"When creating a combined shortcut skill, summarize the functional purpose and result of the provided SKILL.md inputs; do not copy or directly include other skills' instructions.",
-		"Extract only the necessary operations from source skills and evidence, such as formulas, ordered transformations, commands, inputs, outputs, and boundary conditions.",
-		"The operational part of the generated skill must be directly usable by a future agent without reading the original task records or source skills.",
-		"Keep operational instructions separable from audit/provenance notes because the final deployed SKILL.md will be rendered without learning traces.",
-	}
+	return strings.Split(i18n.T("skill_draft_instructions"), "\n")
 }
 
 func skillDraftPromptText() string {
@@ -24,30 +15,15 @@ func skillDraftPromptText() string {
 }
 
 func learningTraceReplacer() *strings.Replacer {
-	return strings.NewReplacer(
-		"## Learned Shortcut Update", "## Shortcut Update",
-		"## Learned Evolution", "## Usage Notes",
-		"## Learned Pattern", "## Usage Pattern",
-		"## Learned Context", "## Procedure Notes",
-		"## Source Evidence", "## Validation",
-		"## Source Skills", "## Procedure Details",
-		"### Source Skills", "### Procedure Details",
-		"## Learned Shortcut", "## Shortcut",
-		"### Learned Shortcut", "### Shortcut",
-		"Learned workflow for ", "Workflow for ",
-		"learned workflow for ", "workflow for ",
-		"from learned pattern: ", "for: ",
-		"Learned task:", "Task:",
-		"learned task:", "task:",
-		"Learned pattern:", "Pattern:",
-		"learned pattern:", "pattern:",
-		"Learned from", "Based on",
-		"learned from", "based on",
-		"Source evidence", "Validation",
-		"source evidence", "validation",
-		"task records", "validated examples",
-		"Task records", "Validated examples",
-	)
+	pairs := i18n.T("learning_trace_replacements")
+	var replacements []string
+	for _, line := range strings.Split(pairs, "\n") {
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) == 2 {
+			replacements = append(replacements, strings.TrimSpace(parts[0]), strings.TrimSpace(parts[1]))
+		}
+	}
+	return strings.NewReplacer(replacements...)
 }
 
 func renderDeployableSkillBody(body string) string {

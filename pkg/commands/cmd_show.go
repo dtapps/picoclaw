@@ -2,30 +2,36 @@ package commands
 
 import (
 	"context"
-	"fmt"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
 
 func showCommand() Definition {
 	return Definition{
 		Name:        "show",
-		Description: "Show current configuration",
+		Description: i18n.T("commands_show_description"),
 		SubCommands: []SubCommand{
 			{
 				Name:        "model",
-				Description: "Current model and provider",
+				Description: i18n.T("commands_show_model_description"),
 				Handler: func(_ context.Context, req Request, rt *Runtime) error {
 					if rt == nil || rt.GetModelInfo == nil {
-						return req.Reply(unavailableMsg)
+						return req.Reply(unavailableMsg())
 					}
 					name, provider := rt.GetModelInfo()
-					return req.Reply(fmt.Sprintf("Current Model: %s (Provider: %s)", name, provider))
+					return req.Reply(i18n.Tf("commands_show_model_response", map[string]any{
+						"Name":     name,
+						"Provider": provider,
+					}))
 				},
 			},
 			{
 				Name:        "channel",
-				Description: "Current channel",
+				Description: i18n.T("commands_show_channel_description"),
 				Handler: func(_ context.Context, req Request, _ *Runtime) error {
-					return req.Reply(fmt.Sprintf("Current Channel: %s", req.Channel))
+					return req.Reply(i18n.Tf("commands_show_channel_response", map[string]any{
+						"Channel": req.Channel,
+					}))
 				},
 			},
 			{

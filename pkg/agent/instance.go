@@ -119,11 +119,20 @@ func NewAgentInstance(
 		}
 	}
 
+	// browser_ext 工具通过浏览器插件执行操作，回调在 agent_init.go 中设置
+	if cfg.Tools.IsToolEnabled("browser_ext") {
+		browserExtTool := tools.NewBrowserExtTool()
+		toolsRegistry.Register(browserExtTool)
+	}
+
 	if cfg.Tools.IsToolEnabled("edit_file") {
 		toolsRegistry.Register(tools.NewEditFileTool(workspace, restrict, allowWritePaths))
 	}
 	if cfg.Tools.IsToolEnabled("append_file") {
 		toolsRegistry.Register(tools.NewAppendFileTool(workspace, restrict, allowWritePaths))
+	}
+	if cfg.Tools.IsToolEnabled("get_current_time") {
+		toolsRegistry.Register(tools.NewGetCurrentTimeTool(""))
 	}
 
 	sessionsDir := filepath.Join(workspace, "sessions")

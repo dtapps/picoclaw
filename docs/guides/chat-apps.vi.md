@@ -152,6 +152,47 @@ picoclaw gateway
 
 </details>
 
+---
+
+## 🛠️ Lệnh Chat
+
+PicoClaw hỗ trợ nhiều lệnh slash có thể được sử dụng trong bất kỳ kênh chat nào:
+
+### Lệnh Cơ Bản
+
+- `/help` - Hiển thị trợ giúp và thông tin về các lệnh có sẵn
+- `/start` - Bắt đầu tương tác với bot
+
+### Lệnh Skill
+
+- `/list skills` - Hiển thị các skill đã cài đặt có sẵn
+- `/use <skill> <message>` - Buộc sử dụng một skill cụ thể cho một yêu cầu
+- `/use <skill>` - Chuẩn bị skill cho tin nhắn tiếp theo
+- `/use clear` - Hủy chọn skill đang chờ
+- `/btw <question>` - Đặt câu hỏi phụ ngay lập tức mà không thay đổi lịch sử phiên đang hoạt động
+
+### Lệnh Hiển Thị
+
+- `/show <đường_dẫn>` - Hiển thị nội dung tệp
+- `/list <thư_mục>` - Liệt kê nội dung thư mục
+
+**Lệnh Exec (Chỉ CLI)**
+
+Lệnh `/exec` cho phép thực thi các lệnh shell trực tiếp từ giao diện chat. Vì lý do bảo mật, lệnh này **bị hạn chế chỉ cho các kênh nội bộ** (CLI) theo mặc định. Để bật cho các kênh từ xa, hãy đặt `tools.exec.allow_remote: true` trong cấu hình của bạn.
+
+- `/exec run <lệnh>` - Thực thi lệnh shell và trả về đầu ra
+- `/exec sessions` - Liệt kê các phiên exec đang hoạt động
+- `/exec kill <session-id>` - Kết thúc một phiên exec đang chạy
+
+Ví dụ:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Lưu ý Bảo Mật:** Lệnh exec cho phép truy cập trực tiếp vào hệ thống. Hãy sử dụng cẩn thận và không bật cho các kênh từ xa trừ khi bạn hiểu các rủi ro bảo mật liên quan.
+
 <a id="whatsapp"></a>
 <details>
 <summary><b>WhatsApp</b> (native qua whatsmeow)</summary>

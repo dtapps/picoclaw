@@ -746,3 +746,44 @@ mosquitto_sub -t "/picoclaw/assistant/device1/response"
 Pour les options complètes, voir [Documentation du canal MQTT](../channels/mqtt/README.fr.md).
 
 </details>
+
+---
+
+## 🛠️ Commandes de Chat
+
+PicoClaw prend en charge plusieurs commandes slash qui peuvent être utilisées dans n'importe quel canal de chat :
+
+### Commandes de Base
+
+- `/help` - Afficher l'aide et les informations sur les commandes disponibles
+- `/start` - Démarrer une interaction avec le bot
+
+### Commandes de Compétences
+
+- `/list skills` - Afficher les compétences installées disponibles
+- `/use <skill> <message>` - Forcer l'utilisation d'une compétence spécifique pour une requête
+- `/use <skill>` - Préparer une compétence pour le prochain message
+- `/use clear` - Annuler la sélection de compétence en attente
+- `/btw <question>` - Poser une question annexe immédiate sans modifier l'historique de session actif
+
+### Commandes d'Affichage
+
+- `/show <chemin>` - Afficher le contenu d'un fichier
+- `/list <répertoire>` - Lister le contenu d'un répertoire
+
+**Commande Exec (CLI uniquement)**
+
+La commande `/exec` permet d'exécuter des commandes shell directement depuis l'interface de chat. Pour des raisons de sécurité, cette commande est **restreinte aux canaux internes uniquement** (CLI) par défaut. Pour l'activer pour les canaux distants, définissez `tools.exec.allow_remote: true` dans votre configuration.
+
+- `/exec run <commande>` - Exécuter une commande shell et retourner la sortie
+- `/exec sessions` - Lister les sessions exec actives
+- `/exec kill <session-id>` - Terminer une session exec en cours
+
+Exemples :
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Note de sécurité :** La commande exec permet un accès direct au système. Utilisez-la avec prudence et ne l'activez pour les canaux distants que si vous comprenez les risques de sécurité impliqués.

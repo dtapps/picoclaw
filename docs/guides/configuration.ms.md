@@ -132,6 +132,23 @@ Contoh:
 dammi le ultime news
 ```
 
+**Arahan Exec (CLI sahaja)**
+
+Arahan `/exec` membolehkan melaksanakan arahan shell terus dari antara muka sembang. Atas sebab keselamatan, arahan ini **dihadkan kepada saluran dalaman sahaja** (CLI) secara lalai. Untuk membolehkannya untuk saluran jauh, tetapkan `tools.exec.allow_remote: true` dalam konfigurasi anda.
+
+- `/exec run <arahan>` - Jalankan arahan shell dan pulangkan output
+- `/exec sessions` - Senaraikan sesi exec yang aktif
+- `/exec kill <session-id>` - Hentikan sesi exec yang sedang berjalan
+
+Contoh:
+```
+/exec run ls -la
+/exec run pwd
+/exec run echo "Hello World"
+```
+
+> **Nota Keselamatan:** Arahan `/exec` memberikan akses terus ke sistem. Gunakan dengan berhati-hati dan jangan dayakannya untuk saluran jauh kecuali anda memahami risiko keselamatan yang terlibat dan mempercayai semua pengguna yang mempunyai akses saluran.
+
 ### Polisi Pelaksanaan Arahan Bersepadu
 
 - Generic slash command dilaksanakan melalui satu laluan dalam `pkg/agent/loop.go` melalui `commands.Executor`.

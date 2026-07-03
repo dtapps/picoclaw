@@ -15,6 +15,7 @@ import (
 	"github.com/sipeed/picoclaw/pkg/bus"
 	"github.com/sipeed/picoclaw/pkg/channels"
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 )
 
@@ -109,22 +110,25 @@ func NewTeamsWebhookChannel(
 
 // Start initializes the channel. For output-only channels, this is a no-op.
 func (c *TeamsWebhookChannel) Start(ctx context.Context) error {
+	logger.InfoC(c.Name(), i18n.T("channel_starting"))
 	targets := make([]string, 0, len(c.config.Webhooks))
 	for name := range c.config.Webhooks {
 		targets = append(targets, name)
 	}
 	sort.Strings(targets)
-	logger.InfoCF("teams_webhook", "Starting Teams webhook channel (output-only)", map[string]any{
+	logger.InfoCF("teams_webhook", "Teams webhook targets configured", map[string]any{
 		"targets": targets,
 	})
 	c.SetRunning(true)
+	logger.InfoC(c.Name(), i18n.T("channel_started"))
 	return nil
 }
 
 // Stop shuts down the channel.
 func (c *TeamsWebhookChannel) Stop(ctx context.Context) error {
-	logger.InfoC("teams_webhook", "Stopping Teams webhook channel")
+	logger.InfoC(c.Name(), i18n.T("channel_stopping"))
 	c.SetRunning(false)
+	logger.InfoC(c.Name(), i18n.T("channel_stopped"))
 	return nil
 }
 

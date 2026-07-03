@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/sipeed/picoclaw/pkg/workflow"
 	"github.com/sipeed/picoclaw/web/backend/launcherconfig"
 )
 
@@ -27,6 +28,11 @@ type Handler struct {
 	weixinFlows                map[string]*weixinFlow
 	wecomMu                    sync.Mutex
 	wecomFlows                 map[string]*wecomFlow
+
+	// 缓存的工作流持久化存储实例（懒初始化，避免每次请求重复读配置文件）
+	workflowStoreOnce sync.Once
+	workflowStore     *workflow.PersistStore
+	workflowStoreErr  error
 }
 
 // NewHandler creates an instance of the API handler.
@@ -115,6 +121,21 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// WeCom QR login flow
 	h.registerWecomRoutes(mux)
+
+	// MCP 管理
+	h.registerMCPRoutes(mux)
+
+	// 定时任务管理
+	h.registerCronRoutes(mux)
+
+	// 环境变量管理
+	h.registerEnvVarsRoutes(mux)
+
+	// 智能体模型设置（活动模型 + 备选模型）
+	h.registerModelSettingsRoutes(mux)
+
+	// 工作流引擎
+	h.registerWorkflowRoutes(mux)
 }
 
 // Shutdown gracefully shuts down the handler, stopping the gateway if it was started by this handler.

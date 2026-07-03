@@ -3,23 +3,23 @@ package commands
 import (
 	"context"
 	"strings"
+
+	"github.com/sipeed/picoclaw/pkg/i18n"
 )
 
 func btwCommand() Definition {
 	return Definition{
 		Name:        "btw",
-		Description: "Ask a side question without changing session history",
-		Usage:       "/btw <question>",
+		Description: i18n.T("commands_btw_description"),
+		Usage:       i18n.T("commands_btw_usage"),
 		Handler: func(ctx context.Context, req Request, rt *Runtime) error {
-			const emptyAnswerMsg = "The model returned an empty response. This may indicate a provider error or token limit."
-
 			if rt == nil || rt.AskSideQuestion == nil {
-				return req.Reply(unavailableMsg)
+				return req.Reply(unavailableMsg())
 			}
 
 			question := sideQuestionText(req.Text)
 			if question == "" {
-				return req.Reply("Usage: /btw <question>")
+				return req.Reply(i18n.T("commands_btw_usage_example"))
 			}
 
 			answer, err := rt.AskSideQuestion(ctx, question)
@@ -27,7 +27,7 @@ func btwCommand() Definition {
 				return req.Reply(err.Error())
 			}
 			if strings.TrimSpace(answer) == "" {
-				return req.Reply(emptyAnswerMsg)
+				return req.Reply(i18n.T("commands_btw_empty_answer"))
 			}
 
 			return req.Reply(answer)

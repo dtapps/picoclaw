@@ -7,6 +7,21 @@ export interface ToolSupportItem {
   config_key: string
   status: "enabled" | "disabled" | "blocked"
   reason_code?: string
+  parameters?: ToolParameters
+}
+
+/** JSON Schema 格式的工具参数定义 */
+export interface ToolParameters {
+  type?: string
+  properties?: Record<string, ToolParamProperty>
+  required?: string[]
+}
+
+export interface ToolParamProperty {
+  type?: string
+  description?: string
+  enum?: string[]
+  default?: unknown
 }
 
 interface ToolsResponse {

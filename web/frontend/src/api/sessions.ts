@@ -7,6 +7,7 @@ export interface SessionSummary {
   message_count: number
   created: string
   updated: string
+  channel?: string
 }
 
 export interface SessionDetail {
@@ -39,6 +40,7 @@ export interface SessionDetail {
   summary: string
   created: string
   updated: string
+  channel?: string
 }
 
 export async function getSessions(
@@ -72,4 +74,28 @@ export async function deleteSession(id: string): Promise<void> {
   if (!res.ok) {
     throw new Error(`Failed to delete session ${id}: ${res.status}`)
   }
+}
+
+export async function getAllSessions(
+  offset: number = 0,
+  limit: number = 20,
+): Promise<SessionSummary[]> {
+  const params = new URLSearchParams({
+    offset: offset.toString(),
+    limit: limit.toString(),
+  })
+
+  const res = await launcherFetch(`/api/all-sessions?${params.toString()}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch all sessions: ${res.status}`)
+  }
+  return res.json()
+}
+
+export async function getAllSessionHistory(id: string): Promise<SessionDetail> {
+  const res = await launcherFetch(`/api/all-sessions/${encodeURIComponent(id)}`)
+  if (!res.ok) {
+    throw new Error(`Failed to fetch all session ${id}: ${res.status}`)
+  }
+  return res.json()
 }

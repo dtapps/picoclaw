@@ -43,6 +43,7 @@ func (al *AgentLoop) handleCommand(
 	result := executor.Execute(ctx, commands.Request{
 		Channel:  msg.Channel,
 		ChatID:   msg.ChatID,
+		ChatType: msg.Context.ChatType,
 		SenderID: msg.SenderID,
 		Text:     msg.Content,
 		Reply: func(text string) error {
@@ -288,6 +289,53 @@ func (al *AgentLoop) buildCommandsRuntime(
 			return fmt.Errorf("reload not configured")
 		}
 		return al.reloadFunc()
+	}
+
+	// 工作流命令回调
+	if al.workflowService != nil {
+		ws := al.workflowService
+		rt.WorkflowList = func() []commands.WorkflowInfo {
+			return ws.ListWorkflowsForCommand()
+		}
+		rt.WorkflowRun = func(ctx context.Context, name, channel, chatID string) (string, error) {
+			return ws.RunWorkflow(ctx, name, channel, chatID)
+		}
+		rt.WorkflowShow = func(name string) (*commands.WorkflowInfo, []string, error) {
+			return ws.ShowWorkflow(name)
+		}
+		rt.WorkflowBind = func(name, channel, chatID string) error {
+			return ws.BindChannel(name, channel, chatID)
+		}
+		rt.WorkflowUnbind = func(name, channel, chatID string) error {
+			return ws.UnbindChannel(name, channel, chatID)
+		}
+		rt.WorkflowChannels = func(name string) ([]commands.NotifyTarget, error) {
+			targets, err := ws.GetNotifyChannels(name)
+			if err != nil {
+				return nil, err
+			}
+			// 转换为 commands.NotifyTarget
+			result := make([]commands.NotifyTarget, len(targets))
+			for i, t := range targets {
+				result[i] = commands.NotifyTarget{
+					Channel: t.Channel,
+					ChatID:  t.ChatID,
+				}
+			}
+			return result, nil
+		}
+		rt.WorkflowEnable = func(name string, enabled bool) error {
+			return ws.SetEnabled(name, enabled)
+		}
+		rt.WorkflowInstances = func(name string) ([]commands.WorkflowInstanceInfo, error) {
+			return ws.InstancesForCommand(name)
+		}
+		rt.WorkflowStop = func(instanceID string) error {
+			return ws.StopInstance(instanceID)
+		}
+		rt.WorkflowCronList = func() []commands.CronTaskInfo {
+			return ws.CronListForCommand()
+		}
 	}
 	if agent != nil {
 		if agent.ContextBuilder != nil {

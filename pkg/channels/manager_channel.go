@@ -139,6 +139,14 @@ func hiddenValues(key string, value map[string]any, ch *config.Channel) {
 			}
 			value["webhooks"] = webhooks
 		}
+	case "weibo":
+		if settings, ok := v.(*config.WeiboSettings); ok {
+			value["app_secret"] = settings.AppSecret.String()
+		}
+	case "yuanbao":
+		if settings, ok := v.(*config.YuanbaoSettings); ok {
+			value["app_secret"] = settings.AppSecret.String()
+		}
 	}
 }
 

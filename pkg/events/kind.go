@@ -103,6 +103,17 @@ const (
 	KindMCPToolCallStart Kind = "mcp.tool.call.start"
 	// KindMCPToolCallEnd is emitted when an MCP tool call ends.
 	KindMCPToolCallEnd Kind = "mcp.tool.call.end"
+
+	// KindWorkflowInstanceStart is emitted when a workflow instance starts execution.
+	KindWorkflowInstanceStart Kind = "workflow.instance.start"
+	// KindWorkflowInstanceComplete is emitted when a workflow instance completes (success or failure).
+	KindWorkflowInstanceComplete Kind = "workflow.instance.complete"
+	// KindWorkflowStepStart is emitted when a workflow step starts execution.
+	KindWorkflowStepStart Kind = "workflow.step.start"
+	// KindWorkflowStepComplete is emitted when a workflow step completes (success or failure).
+	KindWorkflowStepComplete Kind = "workflow.step.complete"
+	// KindWorkflowStepLog is emitted when a workflow step produces a log entry.
+	KindWorkflowStepLog Kind = "workflow.step.log"
 )
 
 var knownKinds = []Kind{
@@ -152,6 +163,11 @@ var knownKinds = []Kind{
 	KindMCPToolDiscovered,
 	KindMCPToolCallStart,
 	KindMCPToolCallEnd,
+	KindWorkflowInstanceStart,
+	KindWorkflowInstanceComplete,
+	KindWorkflowStepStart,
+	KindWorkflowStepComplete,
+	KindWorkflowStepLog,
 }
 
 // KnownKinds returns the runtime event kinds declared by this package.

@@ -461,26 +461,28 @@ PicoClaw hỗ trợ 30+ Provider LLM thông qua cấu hình `model_list`. Sử d
 
 ## 💬 Channels (Ứng dụng Chat)
 
-Trò chuyện với PicoClaw của bạn qua 17+ nền tảng nhắn tin:
+Trò chuyện với PicoClaw của bạn qua 18+ nền tảng nhắn tin:
 
-| Channel | Thiết lập | Protocol | Tài liệu |
-|---------|-----------|----------|----------|
-| **Telegram** | Dễ (bot token) | Long polling | [Hướng dẫn](../channels/telegram/README.vi.md) |
-| **Discord** | Dễ (bot token + intents) | WebSocket | [Hướng dẫn](../channels/discord/README.vi.md) |
+| Channel | Thiết lập | Protocol | Tài liệu                                        |
+|---------|-----------|----------|-------------------------------------------------|
+| **Telegram** | Dễ (bot token) | Long polling | [Hướng dẫn](../channels/telegram/README.vi.md)  |
+| **Discord** | Dễ (bot token + intents) | WebSocket | [Hướng dẫn](../channels/discord/README.vi.md)   |
 | **WhatsApp** | Dễ (quét QR hoặc bridge URL) | Native / Bridge | [Hướng dẫn](../guides/chat-apps.vi.md#whatsapp) |
-| **Weixin** | Dễ (quét QR gốc) | iLink API | [Hướng dẫn](../guides/chat-apps.vi.md#weixin) |
-| **QQ** | Dễ (AppID + AppSecret) | WebSocket | [Hướng dẫn](../channels/qq/README.vi.md) |
-| **Slack** | Dễ (bot + app token) | Socket Mode | [Hướng dẫn](../channels/slack/README.vi.md) |
-| **Matrix** | Trung bình (homeserver + token) | Sync API | [Hướng dẫn](../channels/matrix/README.vi.md) |
-| **DingTalk** | Trung bình (client credentials) | Stream | [Hướng dẫn](../channels/dingtalk/README.vi.md) |
-| **Feishu / Lark** | Trung bình (App ID + Secret) | WebSocket/SDK | [Hướng dẫn](../channels/feishu/README.vi.md) |
-| **LINE** | Trung bình (credentials + webhook) | Webhook | [Hướng dẫn](../channels/line/README.vi.md) |
-| **WeCom** | Dễ (đăng nhập QR hoặc thủ công) | WebSocket | [Hướng dẫn](../channels/wecom/README.vi.md) |
-| **IRC** | Trung bình (server + nick) | IRC protocol | [Hướng dẫn](../guides/chat-apps.vi.md#irc) |
-| **OneBot** | Trung bình (WebSocket URL) | OneBot v11 | [Hướng dẫn](../channels/onebot/README.vi.md) |
-| **MaixCam** | Dễ (bật) | TCP socket | [Hướng dẫn](../channels/maixcam/README.vi.md) |
-| **Pico** | Dễ (bật) | Native protocol | Tích hợp sẵn |
-| **Pico Client** | Dễ (WebSocket URL) | WebSocket | Tích hợp sẵn |
+| **Weixin** | Dễ (quét QR gốc) | iLink API | [Hướng dẫn](../guides/chat-apps.vi.md#weixin)   |
+| **QQ** | Dễ (AppID + AppSecret) | WebSocket | [Hướng dẫn](../channels/qq/README.vi.md)        |
+| **Slack** | Dễ (bot + app token) | Socket Mode | [Hướng dẫn](../channels/slack/README.vi.md)     |
+| **Matrix** | Trung bình (homeserver + token) | Sync API | [Hướng dẫn](../channels/matrix/README.vi.md)    |
+| **DingTalk** | Trung bình (client credentials) | Stream | [Hướng dẫn](../channels/dingtalk/README.vi.md)  |
+| **Feishu / Lark** | Trung bình (App ID + Secret) | WebSocket/SDK | [Hướng dẫn](../channels/feishu/README.vi.md)    |
+| **LINE** | Trung bình (credentials + webhook) | Webhook | [Hướng dẫn](../channels/line/README.vi.md)      |
+| **WeCom** | Dễ (đăng nhập QR hoặc thủ công) | WebSocket | [Hướng dẫn](../channels/wecom/README.vi.md)     |
+| **IRC** | Trung bình (server + nick) | IRC protocol | [Hướng dẫn](../guides/chat-apps.vi.md#irc)      |
+| **OneBot** | Trung bình (WebSocket URL) | OneBot v11 | [Hướng dẫn](../channels/onebot/README.vi.md)    |
+| **MaixCam** | Dễ (bật) | TCP socket | [Hướng dẫn](../channels/maixcam/README.vi.md)   |
+| **Weibo** | Dễ (App ID + Secret) | WebSocket | [Hướng dẫn](../channels/weibo/README.vi.md)     |
+| **Yuanbao** | Dễ (AppID + AppSecret) | WebSocket | [Hướng dẫn](../channels/yuanbao/README.vi.md)   |
+| **Pico** | Dễ (bật) | Native protocol | Tích hợp sẵn                                    |
+| **Pico Client** | Dễ (WebSocket URL) | WebSocket | Tích hợp sẵn                                    |
 
 > Tất cả các Channel dựa trên webhook dùng chung một Gateway HTTP server (`gateway.host`:`gateway.port`, mặc định `127.0.0.1:18790`). Feishu sử dụng chế độ WebSocket/SDK và không dùng HTTP server chung.
 

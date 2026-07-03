@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PicoClaw 浏览器助手</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div id="loadingIndicator" style="position: fixed; top: 0; left: 0; right: 0; background: #667eea; color: white; padding: 8px; text-align: center; z-index: 9999; font-size: 12px;">
+    正在加载 PicoClaw...
+  </div>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="logo">
+        <span class="logo-icon">🦞</span>
+        <span class="logo-text">PicoClaw</span>
+      </div>
+      <div class="header-actions">
+        <button id="settingsBtn" class="icon-btn" title="设置">⚙️</button>
+        <button id="clearBtn" class="icon-btn" title="清空对话">🗑️</button>
+      </div>
+    </header>
+
+    <!-- Connection Status -->
+    <div id="connectionStatus" class="connection-status">
+      <span class="status-dot"></span>
+      <span class="status-text">连接中...</span>
+    </div>
+
+    <!-- Chat Container -->
+    <div id="chatContainer" class="chat-container">
+      <!-- Welcome Message -->
+      <div class="message system-message">
+        <div class="message-content">
+          <p>👋 你好！我是 PicoClaw 浏览器助手。</p>
+          <p>我可以帮你：</p>
+          <ul>
+            <li>💬 聊天和回答问题</li>
+            <li>🖱️ 控制浏览器（点击、输入、滚动等）</li>
+            <li>📄 获取当前页面信息</li>
+            <li>🔍 帮你操作网页</li>
+          </ul>
+          <p>试着问我："点击登录按钮" 或 "滚动到页面底部"</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Page Info Panel -->
+    <div id="pageInfoPanel" class="page-info-panel collapsed">
+      <div class="panel-header">
+        <span>📄 当前页面</span>
+        <button id="togglePageInfo" class="toggle-btn">▼</button>
+      </div>
+      <div class="panel-content">
+        <div id="pageInfoContent" class="page-info-content">
+          <p class="loading-text">加载中...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input Area -->
+    <div class="input-area">
+      <div class="input-wrapper">
+        <textarea 
+          id="messageInput" 
+          class="message-input" 
+          placeholder="输入消息... (Shift+Enter 换行)"
+          rows="1"
+        ></textarea>
+        <button id="sendBtn" class="send-btn" disabled>
+          <span>➤</span>
+        </button>
+      </div>
+      <div class="input-hints">
+        <span class="hint">Enter 发送</span>
+        <span class="hint">Shift+Enter 换行</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>⚙️ 设置</h3>
+        <button id="closeSettings" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="gatewayUrl">Gateway 地址</label>
+          <input type="text" id="gatewayUrl" placeholder="http://localhost:18790">
+          <small>PicoClaw Gateway 地址，默认端口 18790</small>
+        </div>
+        <div class="form-group">
+          <label for="picoToken">Token</label>
+          <input type="text" id="picoToken" placeholder="必填，Browser Channel 认证令牌">
+          <small>在 PicoClaw Web UI 的浏览器频道配置中获取</small>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" id="autoConnect">
+            <span>启动时自动连接</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="testConnection" class="btn btn-secondary">测试连接</button>
+        <button id="saveSettings" class="btn btn-primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../common/config.js"></script>
+  <script src="../common/api-client.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

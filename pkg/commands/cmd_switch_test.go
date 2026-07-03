@@ -25,7 +25,7 @@ func TestSwitchModel_Success(t *testing.T) {
 	if res.Outcome != OutcomeHandled {
 		t.Fatalf("outcome=%v, want=%v", res.Outcome, OutcomeHandled)
 	}
-	want := "Switched model from old-model to gpt-4"
+	want := "Model switched from old-model to gpt-4"
 	if reply != want {
 		t.Fatalf("reply=%q, want=%q", reply, want)
 	}
@@ -136,7 +136,7 @@ func TestSwitchChannel_Redirect(t *testing.T) {
 	if res.Outcome != OutcomeHandled {
 		t.Fatalf("outcome=%v, want=%v", res.Outcome, OutcomeHandled)
 	}
-	want := "This command has moved. Please use: /check channel <name>"
+	want := "This command has been moved. Please use: /check channel <name>"
 	if reply != want {
 		t.Fatalf("reply=%q, want=%q", reply, want)
 	}
@@ -253,7 +253,7 @@ func TestSwitch_BangPrefix(t *testing.T) {
 	if res.Outcome != OutcomeHandled {
 		t.Fatalf("! prefix: outcome=%v, want=%v", res.Outcome, OutcomeHandled)
 	}
-	if reply != "Switched model from old to gpt-4" {
+	if reply != "Model switched from old to gpt-4" {
 		t.Fatalf("! prefix: reply=%q, want success message", reply)
 	}
 }

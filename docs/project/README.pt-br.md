@@ -461,26 +461,28 @@ Para detalhes completos de configuração de providers, veja [Providers & Models
 
 ## 💬 Channels (Apps de Chat)
 
-Converse com seu PicoClaw por meio de mais de 17 plataformas de mensagens:
+Converse com seu PicoClaw por meio de mais de 18 plataformas de mensagens:
 
-| Channel | Configuração | Protocolo | Docs |
-|---------|--------------|-----------|------|
-| **Telegram** | Fácil (bot token) | Long polling | [Guia](../channels/telegram/README.pt-br.md) |
-| **Discord** | Fácil (bot token + intents) | WebSocket | [Guia](../channels/discord/README.pt-br.md) |
+| Channel | Configuração | Protocolo | Docs                                          |
+|---------|--------------|-----------|-----------------------------------------------|
+| **Telegram** | Fácil (bot token) | Long polling | [Guia](../channels/telegram/README.pt-br.md)  |
+| **Discord** | Fácil (bot token + intents) | WebSocket | [Guia](../channels/discord/README.pt-br.md)   |
 | **WhatsApp** | Fácil (QR scan ou bridge URL) | Nativo / Bridge | [Guia](../guides/chat-apps.pt-br.md#whatsapp) |
-| **Weixin** | Fácil (scan QR nativo) | iLink API | [Guia](../guides/chat-apps.pt-br.md#weixin) |
-| **QQ** | Fácil (AppID + AppSecret) | WebSocket | [Guia](../channels/qq/README.pt-br.md) |
-| **Slack** | Fácil (bot + app token) | Socket Mode | [Guia](../channels/slack/README.pt-br.md) |
-| **Matrix** | Médio (homeserver + token) | Sync API | [Guia](../channels/matrix/README.pt-br.md) |
-| **DingTalk** | Médio (credenciais do cliente) | Stream | [Guia](../channels/dingtalk/README.pt-br.md) |
-| **Feishu / Lark** | Médio (App ID + Secret) | WebSocket/SDK | [Guia](../channels/feishu/README.pt-br.md) |
-| **LINE** | Médio (credenciais + webhook) | Webhook | [Guia](../channels/line/README.pt-br.md) |
-| **WeCom** | Fácil (login QR ou manual) | WebSocket | [Guia](../channels/wecom/README.pt-br.md) |
-| **IRC** | Médio (servidor + nick) | Protocolo IRC | [Guia](../guides/chat-apps.pt-br.md#irc) |
-| **OneBot** | Médio (WebSocket URL) | OneBot v11 | [Guia](../channels/onebot/README.pt-br.md) |
-| **MaixCam** | Fácil (habilitar) | TCP socket | [Guia](../channels/maixcam/README.pt-br.md) |
-| **Pico** | Fácil (habilitar) | Protocolo nativo | Integrado |
-| **Pico Client** | Fácil (WebSocket URL) | WebSocket | Integrado |
+| **Weixin** | Fácil (scan QR nativo) | iLink API | [Guia](../guides/chat-apps.pt-br.md#weixin)   |
+| **QQ** | Fácil (AppID + AppSecret) | WebSocket | [Guia](../channels/qq/README.pt-br.md)        |
+| **Slack** | Fácil (bot + app token) | Socket Mode | [Guia](../channels/slack/README.pt-br.md)     |
+| **Matrix** | Médio (homeserver + token) | Sync API | [Guia](../channels/matrix/README.pt-br.md)    |
+| **DingTalk** | Médio (credenciais do cliente) | Stream | [Guia](../channels/dingtalk/README.pt-br.md)  |
+| **Feishu / Lark** | Médio (App ID + Secret) | WebSocket/SDK | [Guia](../channels/feishu/README.pt-br.md)    |
+| **LINE** | Médio (credenciais + webhook) | Webhook | [Guia](../channels/line/README.pt-br.md)      |
+| **WeCom** | Fácil (login QR ou manual) | WebSocket | [Guia](../channels/wecom/README.pt-br.md)     |
+| **IRC** | Médio (servidor + nick) | Protocolo IRC | [Guia](../guides/chat-apps.pt-br.md#irc)      |
+| **OneBot** | Médio (WebSocket URL) | OneBot v11 | [Guia](../channels/onebot/README.pt-br.md)    |
+| **MaixCam** | Fácil (habilitar) | TCP socket | [Guia](../channels/maixcam/README.pt-br.md)   |
+| **Weibo** | Fácil (App ID + Secret) | WebSocket | [Guia](../channels/weibo/README.pt-br.md)     |
+| **Yuanbao** | Fácil (AppID + AppSecret) | WebSocket | [Guia](../channels/yuanbao/README.pt-br.md)   |
+| **Pico** | Fácil (habilitar) | Protocolo nativo | Integrado                                     |
+| **Pico Client** | Fácil (WebSocket URL) | WebSocket | Integrado                                     |
 
 > Todos os channels baseados em webhook compartilham um único servidor HTTP do Gateway (`gateway.host`:`gateway.port`, padrão `127.0.0.1:18790`). O Feishu usa modo WebSocket/SDK e não utiliza o servidor HTTP compartilhado.
 

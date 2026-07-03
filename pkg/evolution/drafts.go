@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/sipeed/picoclaw/pkg/config"
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/skills"
 )
 
@@ -348,9 +349,15 @@ func (g *DefaultDraftGenerator) loadBaseSkillContent(target string, matches []sk
 
 func (g *DefaultDraftGenerator) buildHumanSummary(target string, rule LearningRecord, hasExisting bool) string {
 	if hasExisting {
-		return fmt.Sprintf("Refresh %s with learned pattern: %s", target, rule.Summary)
+		return i18n.Tf("draft_human_summary_refresh", map[string]any{
+			"Target":  target,
+			"Summary": rule.Summary,
+		})
 	}
-	return fmt.Sprintf("Create %s from learned pattern: %s", target, rule.Summary)
+	return i18n.Tf("draft_human_summary_create", map[string]any{
+		"Target":  target,
+		"Summary": rule.Summary,
+	})
 }
 
 func (g *DefaultDraftGenerator) buildNewSkillBody(
@@ -359,32 +366,51 @@ func (g *DefaultDraftGenerator) buildNewSkillBody(
 	evidence DraftEvidence,
 	matches []skills.SkillInfo,
 ) string {
-	description := fmt.Sprintf(
-		"Use this skill to %s when the task matches this workflow.",
-		sentenceFragment(fallbackString(rule.Summary, target)),
-	)
+	description := i18n.Tf("draft_skill_description", map[string]any{
+		"Summary": sentenceFragment(fallbackString(rule.Summary, target)),
+	})
+
+	sections := i18n.T("draft_skill_sections")
+	sectionParts := strings.Split(sections, "|")
+	if len(sectionParts) != 7 {
+		sectionParts = []string{
+			"## Start Here",
+			"## When To Use",
+			"## Learned Pattern",
+			"## Procedure",
+			"## Expected Result",
+			"## Source Skills",
+			"## Source Evidence",
+		}
+	}
+	startHere, whenToUse, learnedPattern, procedure, expectedResult, sourceSkills, sourceEvidence := sectionParts[0], sectionParts[1], sectionParts[2], sectionParts[3], sectionParts[4], sectionParts[5], sectionParts[6]
+
+	whenToUseLine := i18n.Tf("draft_when_to_use_line", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
+
 	body := strings.Join([]string{
 		"# " + titleCaseSkillName(target),
 		"",
-		"## Start Here",
+		startHere,
 		g.startHereLine(rule),
 		"",
-		"## When To Use",
-		fmt.Sprintf("Use this skill when the task matches `%s`.", strings.TrimSpace(rule.Summary)),
+		whenToUse,
+		whenToUseLine,
 		"",
-		"## Learned Pattern",
+		learnedPattern,
 		g.learnedPatternLine(rule),
 		"",
-		"## Procedure",
+		procedure,
 		g.procedureLine(rule, evidence),
 		"",
-		"## Expected Result",
+		expectedResult,
 		g.expectedResultLine(evidence),
 		"",
-		"## Source Skills",
+		sourceSkills,
 		synthesizedComponentBreakdown(matches),
 		"",
-		"## Source Evidence",
+		sourceEvidence,
 		g.evidenceLine(rule, evidence),
 	}, "\n")
 	return buildSkillDocument(target, description, body)
@@ -395,15 +421,30 @@ func (g *DefaultDraftGenerator) buildAppendBody(
 	evidence DraftEvidence,
 	matches []skills.SkillInfo,
 ) string {
+	labels := i18n.T("draft_append_labels")
+	labelParts := strings.Split(labels, "|")
+	if len(labelParts) != 7 {
+		labelParts = []string{
+			"## Learned Evolution",
+			"Summary",
+			"Learned pattern",
+			"Procedure",
+			"Expected result",
+			"Evidence",
+			"### Source Skills",
+		}
+	}
+	learnedEvolution, summaryLabel, learnedPatternLabel, procedureLabel, expectedResultLabel, evidenceLabel, sourceSkills := labelParts[0], labelParts[1], labelParts[2], labelParts[3], labelParts[4], labelParts[5], labelParts[6]
+
 	return strings.Join([]string{
-		"## Learned Evolution",
-		fmt.Sprintf("- Summary: %s", strings.TrimSpace(rule.Summary)),
-		fmt.Sprintf("- Learned pattern: %s", g.learnedPatternLine(rule)),
-		fmt.Sprintf("- Procedure: %s", g.procedureLine(rule, evidence)),
-		fmt.Sprintf("- Expected result: %s", g.expectedResultLine(evidence)),
-		fmt.Sprintf("- Evidence: %s", g.evidenceLine(rule, evidence)),
+		learnedEvolution,
+		fmt.Sprintf("- %s: %s", summaryLabel, strings.TrimSpace(rule.Summary)),
+		fmt.Sprintf("- %s: %s", learnedPatternLabel, g.learnedPatternLine(rule)),
+		fmt.Sprintf("- %s: %s", procedureLabel, g.procedureLine(rule, evidence)),
+		fmt.Sprintf("- %s: %s", expectedResultLabel, g.expectedResultLine(evidence)),
+		fmt.Sprintf("- %s: %s", evidenceLabel, g.evidenceLine(rule, evidence)),
 		"",
-		"### Source Skills",
+		sourceSkills,
 		synthesizedComponentBreakdown(matches),
 		"",
 	}, "\n")
@@ -430,56 +471,60 @@ func titleCaseSkillName(name string) string {
 		parts[i] = strings.ToUpper(part[:1]) + part[1:]
 	}
 	if len(parts) == 0 {
-		return "Learned Skill"
+		return i18n.T("draft_learned_skill_title")
 	}
 	return strings.Join(parts, " ")
 }
 
 func (g *DefaultDraftGenerator) startHereLine(rule LearningRecord) string {
 	if len(rule.WinningPath) > 0 {
-		return fmt.Sprintf("Start with `%s` before trying other paths.", strings.Join(rule.WinningPath, " -> "))
+		return i18n.Tf("draft_start_here_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	return fmt.Sprintf("Start from the learned path for `%s`.", strings.TrimSpace(rule.Summary))
+	return i18n.Tf("draft_start_here_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) learnedPatternLine(rule LearningRecord) string {
 	if len(rule.LateAddedSkills) > 0 {
-		return fmt.Sprintf(
-			"Late-added skill `%s` was repeatedly introduced immediately before success%s.",
-			strings.Join(rule.LateAddedSkills, " -> "),
-			triggerSuffix(rule.FinalSnapshotTrigger),
-		)
+		return i18n.Tf("draft_learned_pattern_late", map[string]any{
+			"Skills":  strings.Join(rule.LateAddedSkills, " -> "),
+			"Trigger": triggerSuffix(rule.FinalSnapshotTrigger),
+		})
 	}
 	if len(rule.WinningPath) > 0 {
-		return fmt.Sprintf(
-			"Prefer `%s` because it was the most reliable recent path.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("draft_learned_pattern_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
-	return fmt.Sprintf("Prefer the pattern summarized as `%s`.", strings.TrimSpace(rule.Summary))
+	return i18n.Tf("draft_learned_pattern_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) procedureLine(rule LearningRecord, evidence DraftEvidence) string {
 	if len(rule.WinningPath) > 0 {
-		return fmt.Sprintf(
-			"Follow `%s`, applying the concrete operation from each source skill, then return the final result directly.",
-			strings.Join(rule.WinningPath, " -> "),
-		)
+		return i18n.Tf("draft_procedure_path", map[string]any{
+			"Path": strings.Join(rule.WinningPath, " -> "),
+		})
 	}
 	if excerpt := firstFinalOutputExcerpt(evidence, 260); excerpt != "" {
-		return "Use the same operation demonstrated by the source task result: " + excerpt
+		return i18n.Tf("draft_procedure_excerpt", map[string]any{
+			"Excerpt": excerpt,
+		})
 	}
-	return fmt.Sprintf(
-		"Solve tasks matching `%s` using the learned successful workflow, then return the final result directly.",
-		strings.TrimSpace(rule.Summary),
-	)
+	return i18n.Tf("draft_procedure_summary", map[string]any{
+		"Summary": strings.TrimSpace(rule.Summary),
+	})
 }
 
 func (g *DefaultDraftGenerator) expectedResultLine(evidence DraftEvidence) string {
 	if excerpt := firstFinalOutputExcerpt(evidence, 320); excerpt != "" {
 		return excerpt
 	}
-	return "Return the completed result for the matched task without restating unrelated discovery steps."
+	return i18n.T("draft_expected_result")
 }
 
 func (g *DefaultDraftGenerator) evidenceLine(rule LearningRecord, evidence DraftEvidence) string {
@@ -488,12 +533,16 @@ func (g *DefaultDraftGenerator) evidenceLine(rule LearningRecord, evidence Draft
 		for _, task := range evidence.TaskRecords {
 			ids = append(ids, task.ID)
 		}
-		return fmt.Sprintf("Learned from task records: %s", strings.Join(ids, ", "))
+		return i18n.Tf("draft_evidence_tasks", map[string]any{
+			"IDs": strings.Join(ids, ", "),
+		})
 	}
 	if len(rule.TaskRecordIDs) > 0 {
-		return fmt.Sprintf("Learned from task records: %s", strings.Join(rule.TaskRecordIDs, ", "))
+		return i18n.Tf("draft_evidence_rule", map[string]any{
+			"IDs": strings.Join(rule.TaskRecordIDs, ", "),
+		})
 	}
-	return "Learned from the pattern record."
+	return i18n.T("draft_evidence_pattern")
 }
 
 func firstFinalOutputExcerpt(evidence DraftEvidence, maxLen int) string {
@@ -510,5 +559,7 @@ func triggerSuffix(trigger string) string {
 	if trigger == "" {
 		return ""
 	}
-	return fmt.Sprintf(" during `%s`", trigger)
+	return i18n.Tf("draft_trigger_suffix", map[string]any{
+		"Trigger": trigger,
+	})
 }

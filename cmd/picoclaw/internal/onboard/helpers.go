@@ -5,6 +5,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"golang.org/x/term"
 
@@ -151,6 +152,15 @@ func copyEmbeddedToTarget(targetDir string) error {
 		return fmt.Errorf("Failed to create target directory: %w", err)
 	}
 
+	// 检查 LANG 环境变量以确定语言偏好
+	lang := os.Getenv("LANG")
+	isZh := strings.HasPrefix(strings.ToLower(lang), "zh")
+
+	// 先处理已存在的文件：中文环境把 .zh.md 改为 .md，非中文环境删除 .zh.md
+	if err := cleanupExistingFiles(targetDir, isZh); err != nil {
+		return fmt.Errorf("Failed to cleanup existing files: %w", err)
+	}
+
 	// Walk through all files in embed.FS
 	err := fs.WalkDir(embeddedFiles, "workspace", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
@@ -162,18 +172,36 @@ func copyEmbeddedToTarget(targetDir string) error {
 			return nil
 		}
 
-		// Read embedded file
-		data, err := embeddedFiles.ReadFile(path)
-		if err != nil {
-			return fmt.Errorf("Failed to read embedded file %s: %w", path, err)
-		}
-
 		new_path, err := filepath.Rel("workspace", path)
 		if err != nil {
 			return fmt.Errorf("Failed to get relative path for %s: %v\n", path, err)
 		}
 		if new_path == "AGENTS.md" || new_path == "IDENTITY.md" {
 			return nil
+		}
+
+		// 根据语言环境处理文件
+		if isZh {
+			// 中文环境：跳过 .md 文件，只处理 .zh.md 文件并重命名为 .md
+			if strings.HasSuffix(new_path, ".md") && !strings.HasSuffix(new_path, ".zh.md") {
+				// 跳过英文 .md 文件
+				return nil
+			}
+			if strings.HasSuffix(new_path, ".zh.md") {
+				// 将 .zh.md 重命名为 .md
+				new_path = strings.TrimSuffix(new_path, ".zh.md") + ".md"
+			}
+		} else {
+			// 非中文环境：跳过 .zh.md 文件，只处理 .md 文件
+			if strings.HasSuffix(new_path, ".zh.md") {
+				return nil
+			}
+		}
+
+		// Read embedded file
+		data, err := embeddedFiles.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("Failed to read embedded file %s: %w", path, err)
 		}
 
 		// Build target file path
@@ -193,4 +221,47 @@ func copyEmbeddedToTarget(targetDir string) error {
 	})
 
 	return err
+}
+
+// cleanupExistingFiles 根据语言环境处理已存在的文件
+// 中文环境：将 .zh.md 文件重命名为 .md
+// 非中文环境：删除所有 .zh.md 文件
+func cleanupExistingFiles(targetDir string, isZh bool) error {
+	return filepath.WalkDir(targetDir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip directories
+		if d.IsDir() {
+			return nil
+		}
+
+		filename := d.Name()
+
+		if isZh {
+			// 中文环境：如果存在 .zh.md 文件，将其重命名为 .md
+			if strings.HasSuffix(filename, ".zh.md") {
+				newPath := filepath.Join(filepath.Dir(path), strings.TrimSuffix(filename, ".zh.md")+".md")
+				// 如果目标文件已存在，先删除
+				if _, err := os.Stat(newPath); err == nil {
+					if err := os.Remove(newPath); err != nil {
+						return fmt.Errorf("Failed to remove existing file %s: %w", newPath, err)
+					}
+				}
+				if err := os.Rename(path, newPath); err != nil {
+					return fmt.Errorf("Failed to rename %s to %s: %w", path, newPath, err)
+				}
+			}
+		} else {
+			// 非中文环境：删除所有 .zh.md 文件
+			if strings.HasSuffix(filename, ".zh.md") {
+				if err := os.Remove(path); err != nil {
+					return fmt.Errorf("Failed to remove file %s: %w", path, err)
+				}
+			}
+		}
+
+		return nil
+	})
 }

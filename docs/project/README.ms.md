@@ -459,26 +459,28 @@ Untuk butiran konfigurasi penyedia penuh, lihat [Penyedia & Model](../guides/pro
 
 ## 💬 Saluran (Aplikasi Sembang)
 
-Bercakap dengan PicoClaw anda melalui 17+ platform pemesejan:
+Bercakap dengan PicoClaw anda melalui 18+ platform pemesejan:
 
-| Saluran | Persediaan | Protokol | Dok |
-|---------|-----------|----------|-----|
-| **Telegram** | Mudah (token bot) | Long polling | [Panduan](../channels/telegram/README.md) |
-| **Discord** | Mudah (token bot + intents) | WebSocket | [Panduan](../channels/discord/README.md) |
+| Saluran | Persediaan | Protokol | Dok                                           |
+|---------|-----------|----------|-----------------------------------------------|
+| **Telegram** | Mudah (token bot) | Long polling | [Panduan](../channels/telegram/README.md)     |
+| **Discord** | Mudah (token bot + intents) | WebSocket | [Panduan](../channels/discord/README.md)      |
 | **WhatsApp** | Mudah (imbas QR atau URL jambatan) | Natif / Jambatan | [Panduan](../guides/chat-apps.ms.md#whatsapp) |
-| **Weixin** | Mudah (imbas QR natif) | iLink API | [Panduan](../guides/chat-apps.ms.md#weixin) |
-| **QQ** | Mudah (AppID + AppSecret) | WebSocket | [Panduan](../channels/qq/README.md) |
-| **Slack** | Mudah (token bot + app) | Socket Mode | [Panduan](../channels/slack/README.md) |
-| **Matrix** | Sederhana (homeserver + token) | Sync API | [Panduan](../channels/matrix/README.md) |
-| **DingTalk** | Sederhana (kelayakan klien) | Stream | [Panduan](../channels/dingtalk/README.md) |
-| **Feishu / Lark** | Sederhana (App ID + Secret) | WebSocket/SDK | [Panduan](../channels/feishu/README.md) |
-| **LINE** | Sederhana (kelayakan + webhook) | Webhook | [Panduan](../channels/line/README.md) |
-| **WeCom** | Mudah (log masuk QR atau manual) | WebSocket | [Panduan](../channels/wecom/README.md) |
-| **IRC** | Sederhana (pelayan + nick) | Protokol IRC | [Panduan](../guides/chat-apps.ms.md#irc) |
-| **OneBot** | Sederhana (URL WebSocket) | OneBot v11 | [Panduan](../channels/onebot/README.md) |
-| **MaixCam** | Mudah (aktifkan) | TCP socket | [Panduan](../channels/maixcam/README.md) |
-| **Pico** | Mudah (aktifkan) | Protokol natif | Terbina dalam |
-| **Pico Client** | Mudah (URL WebSocket) | WebSocket | Terbina dalam |
+| **Weixin** | Mudah (imbas QR natif) | iLink API | [Panduan](../guides/chat-apps.ms.md#weixin)   |
+| **QQ** | Mudah (AppID + AppSecret) | WebSocket | [Panduan](../channels/qq/README.md)           |
+| **Slack** | Mudah (token bot + app) | Socket Mode | [Panduan](../channels/slack/README.md)        |
+| **Matrix** | Sederhana (homeserver + token) | Sync API | [Panduan](../channels/matrix/README.md)       |
+| **DingTalk** | Sederhana (kelayakan klien) | Stream | [Panduan](../channels/dingtalk/README.md)     |
+| **Feishu / Lark** | Sederhana (App ID + Secret) | WebSocket/SDK | [Panduan](../channels/feishu/README.md)       |
+| **LINE** | Sederhana (kelayakan + webhook) | Webhook | [Panduan](../channels/line/README.md)         |
+| **WeCom** | Mudah (log masuk QR atau manual) | WebSocket | [Panduan](../channels/wecom/README.md)        |
+| **IRC** | Sederhana (pelayan + nick) | Protokol IRC | [Panduan](../guides/chat-apps.ms.md#irc)      |
+| **OneBot** | Sederhana (URL WebSocket) | OneBot v11 | [Panduan](../channels/onebot/README.md)       |
+| **MaixCam** | Mudah (aktifkan) | TCP socket | [Panduan](../channels/maixcam/README.md)      |
+| **Weibo** | Mudah (App ID + Secret) | WebSocket | [Panduan](../channels/weibo/README.md)        |
+| **Yuanbao** | Mudah (AppID + AppSecret) | WebSocket | [Panduan](../channels/yuanbao/README.md)      |
+| **Pico** | Mudah (aktifkan) | Protokol natif | Terbina dalam                                 |
+| **Pico Client** | Mudah (URL WebSocket) | WebSocket | Terbina dalam                                 |
 
 > Semua saluran berasaskan webhook berkongsi satu pelayan HTTP Gateway (`gateway.host`:`gateway.port`, lalai `127.0.0.1:18790`). Feishu menggunakan mod WebSocket/SDK dan tidak menggunakan pelayan HTTP yang dikongsi.
 

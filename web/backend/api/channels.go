@@ -28,10 +28,14 @@ var channelCatalog = []channelCatalogItem{
 	{Name: "whatsapp", ConfigKey: "whatsapp", Variant: "bridge"},
 	{Name: "whatsapp_native", ConfigKey: "whatsapp", Variant: "native"},
 	{Name: "pico", ConfigKey: "pico"},
+	{Name: "browser", ConfigKey: "browser"},
 	{Name: "maixcam", ConfigKey: "maixcam"},
 	{Name: "matrix", ConfigKey: "matrix"},
 	{Name: "irc", ConfigKey: "irc"},
 	{Name: "mqtt", ConfigKey: "mqtt"},
+	{Name: "weibo", ConfigKey: "weibo"},
+	{Name: "yuanbao", ConfigKey: "yuanbao"},
+	{Name: "sc3bot", ConfigKey: "sc3bot"},
 }
 
 type channelConfigResponse struct {
@@ -103,12 +107,16 @@ var channelSecretFieldMap = map[string][]string{
 	"onebot":          {"access_token"},
 	"wecom":           {"secret"},
 	"pico":            {"token"},
+	"browser":         {"token"},
 	"matrix":          {"access_token"},
 	"irc":             {"password", "nickserv_password", "sasl_password"},
 	"whatsapp":        {},
 	"whatsapp_native": {},
 	"maixcam":         {},
 	"mqtt":            {"username", "password"},
+	"weibo":           {"app_secret"},
+	"yuanbao":         {"app_secret"},
+	"sc3bot":          {"token"},
 }
 
 func buildChannelConfigResponse(cfg *config.Config, item channelCatalogItem) channelConfigResponse {

@@ -12,7 +12,7 @@ func contextCommand() Definition {
 		Usage:       "/context",
 		Handler: func(_ context.Context, req Request, rt *Runtime) error {
 			if rt == nil || rt.GetContextStats == nil {
-				return req.Reply(unavailableMsg)
+				return req.Reply(unavailableMsg())
 			}
 			stats := rt.GetContextStats()
 			if stats == nil {

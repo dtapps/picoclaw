@@ -436,7 +436,7 @@ func TestHandleSessions_JSONLScopeDiscovery(t *testing.T) {
 		t.Fatalf("NewJSONLStore() error = %v", storeErr)
 	}
 
-	sessionKey := "sk_v1_scope_discovery"
+	sessionKey := "agent:main:pico:direct:pico:scope-jsonl"
 	if err := store.AddFullMessage(nil, sessionKey, providers.Message{
 		Role:    "user",
 		Content: "scope discovered session",

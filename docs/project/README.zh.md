@@ -461,7 +461,7 @@ PicoClaw 通过 `model_list` 配置支持 30+ LLM Provider，使用 `协议/模�
 
 ## 💬 Channels（聊天应用）
 
-通过 18+ 消息平台与你的 PicoClaw 对话：
+通过 21+ 消息平台与你的 PicoClaw 对话：
 
 | Channel | 配置难度 | 协议 | 文档 |
 |---------|----------|------|------|
@@ -480,6 +480,9 @@ PicoClaw 通过 `model_list` 配置支持 30+ LLM Provider，使用 `协议/模�
 | **IRC** | 中等（server + nick） | IRC 协议 | [指南](../guides/chat-apps.zh.md#irc) |
 | **OneBot** | 中等（WebSocket URL） | OneBot v11 | [指南](../channels/onebot/README.zh.md) |
 | **MaixCam** | 简单（启用即可） | TCP socket | [指南](../channels/maixcam/README.zh.md) |
+| **Weibo** | 简单（App ID + Secret） | WebSocket | [指南](../channels/weibo/README.zh.md)     |
+| **Yuanbao** | 简单（AppID + AppSecret） | WebSocket | [指南](../channels/yuanbao/README.zh.md)   |
+| **Server酱³ Bot** | 简单（bot token） | 轮询/Webhook | [指南](../channels/sc3bot/README.zh.md) |
 | **Pico** | 简单（启用即可） | 原生协议 | 内置 |
 | **Pico Client** | 简单（WebSocket URL） | WebSocket | 内置 |
 

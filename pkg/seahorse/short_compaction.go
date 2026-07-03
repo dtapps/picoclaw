@@ -6,6 +6,7 @@ import (
 	"sort"
 	"time"
 
+	"github.com/sipeed/picoclaw/pkg/i18n"
 	"github.com/sipeed/picoclaw/pkg/logger"
 	"github.com/sipeed/picoclaw/pkg/providers"
 	"github.com/sipeed/picoclaw/pkg/tokenizer"
@@ -777,45 +778,19 @@ func buildLeafSummaryPrompt(sourceText, previousSummary string, targetTokens int
 	if previousSummary != "" {
 		prev = previousSummary
 	}
-	return fmt.Sprintf(`You summarize a SEGMENT of a conversation for future model turns.
-Treat this as incremental memory compaction input, not a full-conversation summary.
 
-Normal summary policy:
-- Preserve key decisions, rationale, constraints, and active tasks.
-- Keep essential technical details needed to continue work safely.
-- Remove obvious repetition and conversational filler.
-
-Output requirements:
-- Plain text only.
-- No preamble, headings, or markdown formatting.
-- Track file operations (created, modified, deleted, renamed) with file paths and current status.
-- If no file operations appear, include exactly: "Files: none".
-- End with exactly: "Expand for details about: <comma-separated list of what was dropped or compressed>".
-- Target length: about %d tokens or less.
-
-<previous_context>
-%s
-</previous_context>
-
-<conversation_segment>
-%s
-</conversation_segment>`, targetTokens, prev, sourceText)
+	return i18n.Tf("leaf_summary_prompt", map[string]any{
+		"TargetTokens": targetTokens,
+		"Prev":         prev,
+		"SourceText":   sourceText,
+	})
 }
 
 func buildCondensedSummaryPrompt(sourceText string, targetTokens int) string {
-	return fmt.Sprintf(`You condense multiple summaries into a single higher-level summary.
-Preserve all important decisions, constraints, and outcomes.
-Merge overlapping topics. Keep technical details intact.
-
-Output requirements:
-- Plain text only.
-- No preamble, headings, or markdown formatting.
-- End with exactly: "Expand for details about: <comma-separated list>".
-- Target length: about %d tokens or less.
-
-<summaries>
-%s
-</summaries>`, targetTokens, sourceText)
+	return i18n.Tf("condensed_summary_prompt", map[string]any{
+		"TargetTokens": targetTokens,
+		"SourceText":   sourceText,
+	})
 }
 
 func buildAggressiveLeafSummaryPrompt(sourceText, previousSummary string, targetTokens int) string {
@@ -823,27 +798,12 @@ func buildAggressiveLeafSummaryPrompt(sourceText, previousSummary string, target
 	if previousSummary != "" {
 		prev = previousSummary
 	}
-	return fmt.Sprintf(`You summarize a SEGMENT of a conversation for future model turns.
-Aggressive summary policy:
-- Keep only durable facts and current task state.
-- Remove examples, repetition, and low-value narrative details.
-- Preserve explicit TODOs, blockers, decisions, and constraints.
 
-Output requirements:
-- Plain text only.
-- No preamble, headings, or markdown formatting.
-- Track file operations (created, modified, deleted, renamed) with file paths and current status.
-- If no file operations appear, include exactly: "Files: none".
-- End with exactly: "Expand for details about: <comma-separated list of what was dropped or compressed>".
-- Target length: about %d tokens or less.
-
-<previous_context>
-%s
-</previous_context>
-
-<conversation_segment>
-%s
-</conversation_segment>`, targetTokens, prev, sourceText)
+	return i18n.Tf("aggressive_leaf_summary_prompt", map[string]any{
+		"TargetTokens": targetTokens,
+		"Prev":         prev,
+		"SourceText":   sourceText,
+	})
 }
 
 func truncateSummary(messages []Message) string {

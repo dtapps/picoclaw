@@ -32,9 +32,13 @@ const CHANNEL_SECRET_FIELDS: Record<string, string[]> = {
   onebot: ["access_token"],
   wecom: ["secret"],
   pico: ["token"],
+  browser: ["token"],
   matrix: ["access_token"],
   irc: ["password", "nickserv_password", "sasl_password"],
   mqtt: ["username", "password"],
+  weibo: ["app_secret"],
+  yuanbao: ["app_secret"],
+  sc3bot: ["token"],
 }
 
 const SECRET_FIELD_SET = new Set(Object.keys(SECRET_FIELD_MAP))
