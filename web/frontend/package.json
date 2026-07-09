@@ -35,7 +35,7 @@
     "radix-ui": "^1.6.2",
     "react": "19.2.7",
     "react-dom": "19.2.7",
-    "react-i18next": "^17.0.8",
+    "react-i18next": "^17.0.9",
     "react-markdown": "^10.1.0",
     "react-textarea-autosize": "^8.5.9",
     "rehype-highlight": "^7.0.2",
