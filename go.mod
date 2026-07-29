@@ -31,7 +31,7 @@ require (
 	github.com/line/line-bot-sdk-go/v8 v8.22.0
 	github.com/mdp/qrterminal/v3 v3.2.1
 	github.com/minio/selfupdate v0.6.0
-	github.com/modelcontextprotocol/go-sdk v1.6.1
+	github.com/modelcontextprotocol/go-sdk v1.7.0
 	github.com/muesli/termenv v0.16.0
 	github.com/mymmrac/telego v1.10.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
