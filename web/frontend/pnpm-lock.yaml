@@ -42,8 +42,8 @@ importers:
         specifier: ^1.11.21
         version: 1.11.21
       highlight.js:
-        specifier: ^11.11.1
-        version: 11.11.1
+        specifier: ^11.11.2
+        version: 11.11.2
       i18next:
         specifier: ^26.3.5
         version: 26.3.5(typescript@6.0.3)
@@ -2250,8 +2250,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  highlight.js@11.11.1:
-    resolution: {integrity: sha512-Xwwo44whKBVCYoliBQwaPvtd/2tYFkRQtXDWj1nackaV2JPXx3L0+Jvd8/qCJ2p+ML0/XVkJ2q+Mr+UVdpJK5w==}
+  highlight.js@11.11.2:
+    resolution: {integrity: sha512-oaXMACAU0kzOMXBjWpNcX+vlwSBCIAiZ9BHa7gA15NOTtT2L/l8OSZDuqS2XppOhZBPJ7hm4o8ep2kyuip2uEQ==}
     engines: {node: '>=12.0.0'}
 
   hono@4.12.28:
@@ -5952,7 +5952,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  highlight.js@11.11.1: {}
+  highlight.js@11.11.2: {}
 
   hono@4.12.28: {}
 
@@ -6201,7 +6201,7 @@ snapshots:
     dependencies:
       '@types/hast': 3.0.4
       devlop: 1.1.0
-      highlight.js: 11.11.1
+      highlight.js: 11.11.2
 
   lru-cache@5.1.1:
     dependencies:
