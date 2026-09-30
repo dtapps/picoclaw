@@ -49,7 +49,7 @@ require (
 	github.com/tencent-connect/botgo v0.2.1
 	go.mau.fi/util v0.9.10
 	go.mau.fi/whatsmeow v0.0.0-20260630180629-b572e5bcb92b
-	golang.org/x/oauth2 v0.36.0
+	golang.org/x/oauth2 v0.37.0
 	golang.org/x/term v0.45.0
 	golang.org/x/text v0.40.0
 	golang.org/x/time v0.15.0
