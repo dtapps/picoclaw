@@ -4,14 +4,14 @@ go 1.26.3
 
 require (
 	fyne.io/systray v1.12.2
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.22.0
-	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.0
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.23.1
+	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.14.1
 	github.com/SevereCloud/vksdk/v3 v3.3.1
 	github.com/adhocore/gronx v1.20.0
 	github.com/anthropics/anthropic-sdk-go v1.56.0
 	github.com/atc0005/go-teams-notify/v2 v2.14.0
-	github.com/aws/aws-sdk-go-v2 v1.42.1
-	github.com/aws/aws-sdk-go-v2/config v1.32.29
+	github.com/aws/aws-sdk-go-v2 v1.47.0
+	github.com/aws/aws-sdk-go-v2/config v1.33.4
 	github.com/aws/aws-sdk-go-v2/service/bedrockruntime v1.55.0
 	github.com/bwmarrin/discordgo v0.29.0
 	github.com/caarlos0/env/v11 v11.4.1
@@ -36,7 +36,7 @@ require (
 	github.com/mymmrac/telego v1.10.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/open-dingtalk/dingtalk-stream-sdk-go v0.9.1
-	github.com/openai/openai-go/v3 v3.41.1
+	github.com/openai/openai-go/v3 v3.77.0
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/pion/rtp v1.10.3
 	github.com/pion/webrtc/v3 v3.3.6
@@ -45,13 +45,13 @@ require (
 	github.com/slack-go/slack v0.27.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.1
 	github.com/tencent-connect/botgo v0.2.1
 	go.mau.fi/util v0.9.10
 	go.mau.fi/whatsmeow v0.0.0-20260630180629-b572e5bcb92b
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/term v0.45.0
-	golang.org/x/text v0.40.0
+	golang.org/x/term v0.46.0
+	golang.org/x/text v0.42.0
 	golang.org/x/time v0.15.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/yaml.v3 v3.0.1
@@ -64,20 +64,20 @@ require (
 	aead.dev/minisign v0.3.0 // indirect
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.12.0 // indirect
-	github.com/AzureAD/microsoft-authentication-library-for-go v1.7.2 // indirect
+	github.com/AzureAD/microsoft-authentication-library-for-go v1.8.0 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.14 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.28 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.30 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.30 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.30 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.31 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.30 // indirect
-	github.com/aws/aws-sdk-go-v2/service/signin v1.4.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.32.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.37.0 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.44.0 // indirect
-	github.com/aws/smithy-go v1.27.3 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.20.4 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.20.0 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.5.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.8.3 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.5.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.19 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.14.3 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.10.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.38.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.43.0 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.50.0 // indirect
+	github.com/aws/smithy-go v1.28.1 // indirect
 	github.com/aymanbagabas/go-osc52/v2 v2.0.1 // indirect
 	github.com/bahlo/generic-list-go v0.2.0 // indirect
 	github.com/beeper/argo-go v1.1.2 // indirect
@@ -91,7 +91,6 @@ require (
 	github.com/clipperhouse/uax29/v2 v2.7.0 // indirect
 	github.com/cloudflare/circl v1.6.4 // indirect
 	github.com/coder/websocket v1.8.15 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/elliotchance/orderedmap/v3 v3.1.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
@@ -125,6 +124,7 @@ require (
 	go.opentelemetry.io/otel v1.44.0 // indirect
 	go.opentelemetry.io/otel/metric v1.44.0 // indirect
 	go.opentelemetry.io/otel/trace v1.44.0 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	go.yaml.in/yaml/v4 v4.0.0-rc.6 // indirect
 	golang.org/x/exp v0.0.0-20260611194520-c48552f49976 // indirect
 	modernc.org/libc v1.74.1 // indirect
@@ -155,10 +155,10 @@ require (
 	github.com/valyala/fastjson v1.6.10 // indirect
 	github.com/yosida95/uritemplate/v3 v3.0.2 // indirect
 	golang.org/x/arch v0.29.0 // indirect
-	golang.org/x/crypto v0.54.0
-	golang.org/x/net v0.57.0
-	golang.org/x/sync v0.22.0
-	golang.org/x/sys v0.47.0
+	golang.org/x/crypto v0.57.0
+	golang.org/x/net v0.60.0
+	golang.org/x/sync v0.23.0
+	golang.org/x/sys v0.48.0
 )
 
 replace github.com/bwmarrin/discordgo => github.com/yeongaori/discordgo-fork v0.0.0-20260319072544-e8e546f5d532
